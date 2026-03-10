@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(cd D:/PyCharm/goalforge && npm create vite@latest apps/web -- --template react-ts 2>&1)",
-      "Bash(cd D:/PyCharm/goalforge/apps/web && npx tsc --noEmit 2>&1)"
+      "Bash(cd D:/PyCharm/goalforge/apps/web && npx tsc --noEmit 2>&1)",
+      "Bash(cd \"D:\\\\PyCharm\\\\goalforge\\\\apps\\\\web\" && npm install sonner 2>&1)"
     ]
   }
 }

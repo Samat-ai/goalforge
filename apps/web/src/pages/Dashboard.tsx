@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { UserButton, useUser, useAuth } from '@clerk/react'
 import { Target, Sparkles, Star, Circle, CheckCircle2 } from 'lucide-react'
+import { toast } from 'sonner'
 import api, { setAuthToken } from '../lib/api'
 import CreateGoalModal from '../components/CreateGoalModal'
 
@@ -66,16 +67,24 @@ export default function Dashboard() {
     return () => { ignore = true }
   }, [user?.id, getToken, refreshKey])
 
+  const VITALITY_PER_TASK = 10
+
   async function completeTask(taskId: string) {
-    // Optimistic update
+    // Optimistic update: mark task done + bump vitality
     setGoals(prev =>
       prev.map(goal => ({
         ...goal,
+        vitality: goal.daily_tasks.some(t => t.id === taskId)
+          ? Math.min(100, goal.vitality + VITALITY_PER_TASK)
+          : goal.vitality,
         daily_tasks: goal.daily_tasks.map(task =>
           task.id === taskId ? { ...task, is_completed: true } : task
         ),
       }))
     )
+    toast.success('Task completed! +10 Vitality', {
+      icon: '⚡',
+    })
     try {
       await api.patch(`/tasks/${taskId}/complete`)
     } catch {
@@ -83,11 +92,15 @@ export default function Dashboard() {
       setGoals(prev =>
         prev.map(goal => ({
           ...goal,
+          vitality: goal.daily_tasks.some(t => t.id === taskId)
+            ? Math.max(0, goal.vitality - VITALITY_PER_TASK)
+            : goal.vitality,
           daily_tasks: goal.daily_tasks.map(task =>
             task.id === taskId ? { ...task, is_completed: false } : task
           ),
         }))
       )
+      toast.error('Could not save task. Please try again.')
     }
   }
 
@@ -211,7 +224,7 @@ export default function Dashboard() {
                   {/* RPG health bar */}
                   <div className="relative h-5 rounded-full bg-slate-800 border border-white/10 overflow-hidden">
                     <div
-                      className={`h-full rounded-full bg-gradient-to-r transition-all duration-700 ${vitalityColour(activeGoal.vitality)}`}
+                      className={`h-full rounded-full bg-gradient-to-r transition-all duration-500 ease-out ${vitalityColour(activeGoal.vitality)}`}
                       style={{ width: `${activeGoal.vitality}%` }}
                     />
                     {/* Tick marks */}
