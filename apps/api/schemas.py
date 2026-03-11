@@ -24,6 +24,10 @@ class TaskResponse(TaskBase):
     completed_at: datetime | None
 
 
+class TaskUpdate(BaseModel):
+    description: str = Field(..., min_length=1, max_length=500)
+
+
 # ---------------------------------------------------------------------------
 # Goal schemas
 # ---------------------------------------------------------------------------
