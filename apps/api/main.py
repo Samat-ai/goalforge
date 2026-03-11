@@ -11,14 +11,17 @@ from datetime import date, datetime, timezone
 
 from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
+from sqlalchemy import select, update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ai_utils import generate_smart_goal
 from database import engine, get_db, Base
 from models import DailyTask, Goal, User
-from schemas import GoalCreate, GoalResponse, TaskResponse, TaskUpdate
+from schemas import (
+    GoalCreate, GoalProgressUpdate, GoalResponse, GoalStatusUpdate,
+    TaskResponse, TaskUpdate,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,7 +34,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Tighten in production
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -44,7 +47,6 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def on_startup():
-    # In production use Alembic migrations; this is convenient for dev.
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("GoalForge API started.")
@@ -69,6 +71,22 @@ async def get_or_create_user(
 
 
 # ---------------------------------------------------------------------------
+# Users
+# ---------------------------------------------------------------------------
+
+@app.get(
+    "/users/{user_id}/profile",
+    summary="Get user profile (star_points etc.)",
+)
+async def get_user_profile(user_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"star_points": user.star_points}
+
+
+# ---------------------------------------------------------------------------
 # Goals
 # ---------------------------------------------------------------------------
 
@@ -81,12 +99,11 @@ async def get_or_create_user(
 async def create_goal(
     user_id: str,
     payload: GoalCreate,
-    email: str = "unknown@example.com",  # In real app, extract from Clerk JWT
+    email: str = "unknown@example.com",
     db: AsyncSession = Depends(get_db),
 ):
     user = await get_or_create_user(user_id, email, db)
 
-    # --- Call Gemini to generate the structured goal ---
     try:
         ai_output = await generate_smart_goal(payload.raw_input)
     except ValueError as exc:
@@ -104,7 +121,7 @@ async def create_goal(
         status="active",
     )
     db.add(goal)
-    await db.flush()  # get goal.id before inserting tasks
+    await db.flush()
 
     for task_data in ai_output.initial_tasks:
         task = DailyTask(
@@ -118,7 +135,6 @@ async def create_goal(
 
     await db.flush()
 
-    # Reload with relationships for the response
     result = await db.execute(
         select(Goal)
         .options(selectinload(Goal.daily_tasks))
@@ -160,6 +176,79 @@ async def get_goal(goal_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     return goal
 
 
+@app.patch(
+    "/goals/{goal_id}",
+    response_model=GoalResponse,
+    summary="Update goal status (active / achieved / abandoned)",
+)
+async def update_goal_status(
+    goal_id: uuid.UUID,
+    body: GoalStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Goal)
+        .options(selectinload(Goal.daily_tasks))
+        .where(Goal.id == goal_id)
+    )
+    goal = result.scalar_one_or_none()
+    if goal is None:
+        raise HTTPException(status_code=404, detail="Goal not found")
+
+    old_status = goal.status
+    goal.status = body.status
+
+    # Award 100 star points the first time a goal is achieved (atomic SQL increment)
+    if body.status == "achieved" and old_status != "achieved":
+        await db.execute(
+            sql_update(User)
+            .where(User.id == goal.user_id)
+            .values(star_points=User.star_points + 100)
+        )
+
+    await db.flush()
+    return goal
+
+
+@app.patch(
+    "/goals/{goal_id}/progress",
+    response_model=GoalResponse,
+    summary="Update goal progress percentage (0-100)",
+)
+async def update_goal_progress(
+    goal_id: uuid.UUID,
+    body: GoalProgressUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Goal)
+        .options(selectinload(Goal.daily_tasks))
+        .where(Goal.id == goal_id)
+    )
+    goal = result.scalar_one_or_none()
+    if goal is None:
+        raise HTTPException(status_code=404, detail="Goal not found")
+
+    goal.progress = body.progress
+    await db.flush()
+    return goal
+
+
+@app.delete(
+    "/goals/{goal_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Permanently delete a goal and all its tasks",
+)
+async def delete_goal(goal_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Goal).where(Goal.id == goal_id))
+    goal = result.scalar_one_or_none()
+    if goal is None:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    await db.delete(goal)
+    await db.flush()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 # ---------------------------------------------------------------------------
 # Daily Tasks
 # ---------------------------------------------------------------------------
@@ -184,7 +273,7 @@ async def list_tasks(
 @app.patch(
     "/tasks/{task_id}/complete",
     response_model=TaskResponse,
-    summary="Mark a daily task as completed",
+    summary="Mark a daily task as completed and award star points",
 )
 async def complete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(DailyTask).where(DailyTask.id == task_id))
@@ -196,6 +285,17 @@ async def complete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 
     task.is_completed = True
     task.completed_at = datetime.now(timezone.utc)
+
+    # Award 10 star points to the goal's owner (atomic SQL increment avoids race conditions)
+    goal_result = await db.execute(select(Goal).where(Goal.id == task.goal_id))
+    goal = goal_result.scalar_one_or_none()
+    if goal:
+        await db.execute(
+            sql_update(User)
+            .where(User.id == goal.user_id)
+            .values(star_points=User.star_points + 10)
+        )
+
     await db.flush()
     return task
 
