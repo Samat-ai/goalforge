@@ -52,13 +52,15 @@ class Goal(Base):
     current_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     best_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     vitality: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
+    progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
     user: Mapped["User"] = relationship("User", back_populates="goals")
     daily_tasks: Mapped[list["DailyTask"]] = relationship(
-        "DailyTask", back_populates="goal", cascade="all, delete-orphan"
+        "DailyTask", back_populates="goal", cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
 

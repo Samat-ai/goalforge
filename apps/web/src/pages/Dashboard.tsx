@@ -1,14 +1,24 @@
 import { useState, useEffect } from 'react'
-import { UserButton, useUser, useAuth } from '@clerk/react'
-import { Target, Sparkles, Star, Circle, CheckCircle2, Pencil, Trash2, X } from 'lucide-react'
+import { useUser, useAuth } from '@clerk/react'
+import { Circle, CheckCircle2, Pencil, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import api, { setAuthToken } from '../lib/api'
-import CreateGoalModal from '../components/CreateGoalModal'
+import AppHeader from '../components/AppHeader'
+import { StarIcon, Heatmap } from '../components/GamificationSvgs'
+import { todayStr, streak, starBrightness } from '../lib/gamification'
 
-// ---------------------------------------------------------------------------
-// Types (mirror schemas.py)
-// ---------------------------------------------------------------------------
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const T = {
+  bg: "#07070f", surface: "#0e0e1a", card: "#12121f",
+  border: "#1c1c30", borderHi: "#2e2e50",
+  orange: "#f97316", indigo: "#818cf8", emerald: "#34d399",
+  rose: "#fb7185", amber: "#fbbf24", muted: "#71717a",
+  dim: "#3f3f5c", text: "#e8e8f0", textDim: "#a0a0b8",
+  serif: "Georgia, serif",
+  mono: "'Courier New', monospace",
+}
 
+// ── Types ─────────────────────────────────────────────────────────────────────
 interface Task {
   id: string
   goal_id: string
@@ -21,93 +31,537 @@ interface Task {
 
 interface Goal {
   id: string
+  user_id: string
+  raw_input: string
   smart_title: string
   smart_description: string
   goal_type: string
   target_date: string
   milestones: string[]
-  status: 'active' | 'completed' | 'abandoned'
+  status: 'active' | 'achieved' | 'abandoned'
   current_streak: number
   best_streak: number
   vitality: number
+  progress: number
+  created_at: string
   daily_tasks: Task[]
+  completed_days: string[]
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+// ── Atoms ─────────────────────────────────────────────────────────────────────
+function Badge({ children, color = T.orange }: { children: React.ReactNode; color?: string }) {
+  return (
+    <span style={{
+      fontSize: 10, padding: "2px 8px", borderRadius: 20,
+      fontFamily: T.mono, textTransform: "uppercase", letterSpacing: "0.07em",
+      border: `1px solid ${color}50`, background: `${color}15`, color,
+    }}>
+      {children}
+    </span>
+  )
+}
 
+interface BtnProps {
+  children: React.ReactNode
+  onClick?: () => void
+  variant?: "primary" | "ghost" | "danger" | "success"
+  loading?: boolean
+  small?: boolean
+  disabled?: boolean
+}
+function Btn({ children, onClick, variant = "primary", loading = false, small = false, disabled = false }: BtnProps) {
+  const V = {
+    primary: { background: T.orange,           color: "#fff",      border: "none" },
+    ghost:   { background: "transparent",      color: T.muted,     border: `1px solid ${T.border}` },
+    danger:  { background: "transparent",      color: T.rose,      border: `1px solid ${T.rose}40` },
+    success: { background: `${T.emerald}20`,   color: T.emerald,   border: `1px solid ${T.emerald}40` },
+  }
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading || disabled}
+      style={{
+        cursor: loading || disabled ? "default" : "pointer",
+        padding: small ? "5px 12px" : "9px 18px",
+        borderRadius: 8, fontFamily: T.mono, fontSize: small ? 11 : 12,
+        fontWeight: 500, letterSpacing: "0.04em", opacity: disabled ? 0.4 : 1,
+        ...V[variant],
+      }}
+    >
+      {loading ? "···" : children}
+    </button>
+  )
+}
+
+// ── TodayBar ──────────────────────────────────────────────────────────────────
+function TodayBar({ goals }: { goals: Goal[] }) {
+  const active    = goals.filter(g => g.status === "active")
+  const todayAll  = active.flatMap(g => g.daily_tasks.filter(t => t.assigned_date === todayStr()))
+  const doneCnt   = todayAll.filter(t => t.is_completed).length
+  if (!active.length || !todayAll.length) return null
+
+  return (
+    <div style={{
+      background: T.surface, border: `1px solid ${T.border}`, borderRadius: 11,
+      padding: "13px 17px", marginBottom: 19, display: "flex", alignItems: "center", gap: 15,
+    }}>
+      <div>
+        <div style={{ fontSize: 10, color: T.muted, fontFamily: T.mono, marginBottom: 2 }}>TODAY</div>
+        <div style={{ fontFamily: T.serif, fontSize: 19, color: T.text }}>{doneCnt} / {todayAll.length} done</div>
+      </div>
+      <div style={{ flex: 1, height: 5, background: T.dim, borderRadius: 3, overflow: "hidden" }}>
+        <div style={{
+          height: "100%", borderRadius: 3, background: T.orange,
+          width: `${(doneCnt / todayAll.length) * 100}%`, transition: "width 0.5s",
+        }} />
+      </div>
+      <span style={{ fontSize: 20 }}>{doneCnt === todayAll.length ? "🏆" : "🎯"}</span>
+    </div>
+  )
+}
+
+// ── AddGoal (inline form) ─────────────────────────────────────────────────────
+function AddGoal({ onAdd }: { onAdd: (rawInput: string) => Promise<void> }) {
+  const [open,    setOpen]    = useState(false)
+  const [raw,     setRaw]     = useState("")
+  const [loading, setLoading] = useState(false)
+  const [status,  setStatus]  = useState<"idle" | "thinking" | "done">("idle")
+
+  const submit = async () => {
+    if (!raw.trim() || loading) return
+    setLoading(true)
+    setStatus("thinking")
+    await onAdd(raw.trim())
+    setStatus("done")
+    setRaw("")
+    setTimeout(() => { setStatus("idle"); setOpen(false); setLoading(false) }, 700)
+  }
+
+  if (!open) return (
+    <button
+      onClick={() => setOpen(true)}
+      style={{
+        width: "100%", padding: "15px 18px", background: "transparent", cursor: "pointer",
+        border: `1.5px dashed ${T.border}`, borderRadius: 13, color: T.muted,
+        fontFamily: T.mono, fontSize: 13, display: "flex", alignItems: "center", gap: 10,
+        marginBottom: 22,
+      }}
+    >
+      <span style={{ fontSize: 18 }}>+</span> New goal — describe it in plain language
+    </button>
+  )
+
+  return (
+    <div style={{ background: T.card, border: `1px solid ${T.orange}55`, borderRadius: 13, padding: 18, marginBottom: 22 }}>
+      <div style={{ fontSize: 10, color: T.orange, letterSpacing: "0.1em", fontFamily: T.mono, marginBottom: 11 }}>
+        DESCRIBE YOUR GOAL — AI WILL REFINE IT
+      </div>
+      <textarea
+        value={raw}
+        onChange={e => setRaw(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit() }}
+        placeholder="e.g. get better at leetcode, run a 5k, write a novel..."
+        rows={3}
+        autoFocus
+        style={{
+          width: "100%", background: T.surface, border: `1px solid ${T.border}`,
+          borderRadius: 7, padding: "11px 13px", color: T.text, fontFamily: T.mono,
+          fontSize: 13, resize: "none", outline: "none", boxSizing: "border-box",
+        }}
+      />
+      {status === "thinking" && <div style={{ marginTop: 10, fontSize: 12, color: T.orange, fontFamily: T.mono }}>◉ AI is forging your plan···</div>}
+      {status === "done"     && <div style={{ marginTop: 10, fontSize: 12, color: T.emerald, fontFamily: T.mono }}>✓ Goal added!</div>}
+      <div style={{ display: "flex", gap: 8, marginTop: 11 }}>
+        <Btn onClick={submit} loading={loading}>Create Goal →</Btn>
+        <Btn onClick={() => { setOpen(false); setRaw("") }} variant="ghost">Cancel</Btn>
+      </div>
+    </div>
+  )
+}
+
+// ── GoalCard ──────────────────────────────────────────────────────────────────
+interface GoalCardProps {
+  goal: Goal
+  editingTaskId: string | null
+  editingText: string
+  deletingTaskId: string | null
+  setEditingText: (t: string) => void
+  setDeletingTaskId: (id: string | null) => void
+  onCompleteTask:    (taskId: string) => void
+  onStartEdit:       (task: Task) => void
+  onCancelEdit:      () => void
+  onSaveEdit:        (taskId: string, original: string) => void
+  onStartDelete:     (taskId: string) => void
+  onConfirmDelete:   (taskId: string) => void
+  onUpdateProgress:  (goalId: string, progress: number) => void
+  onDeleteGoal:      (goalId: string) => void
+  onStatusChange:    (goalId: string, status: 'active' | 'achieved' | 'abandoned') => void
+}
+
+function GoalCard({
+  goal, editingTaskId, editingText, deletingTaskId,
+  setEditingText, setDeletingTaskId,
+  onCompleteTask, onStartEdit, onCancelEdit, onSaveEdit,
+  onStartDelete, onConfirmDelete, onUpdateProgress, onDeleteGoal, onStatusChange,
+}: GoalCardProps) {
+  const [open,      setOpen]     = useState(false)
+  const [progLocal, setProgLocal] = useState(goal.progress)
+
+  // Keep slider in sync if parent updates goal.progress (e.g. after a successful save)
+  useEffect(() => { setProgLocal(goal.progress) }, [goal.progress])
+
+  const todayTasks = goal.daily_tasks.filter(t => t.assigned_date === todayStr())
+  const doneToday  = todayTasks.length > 0 && todayTasks.every(t => t.is_completed)
+  const s          = streak(goal.completed_days)
+  const b          = goal.status === 'achieved' ? 1 : starBrightness(goal.completed_days, goal.created_at)
+  const isAbandoned = goal.status === 'abandoned'
+  const isAchieved  = goal.status === 'achieved'
+
+  const days = Math.round((new Date(goal.target_date).getTime() - Date.now()) / 864e5)
+  const dl   = days < 0 ? "overdue" : days === 0 ? "today" : days === 1 ? "tomorrow" : `${days}d left`
+
+  return (
+    <div style={{
+      background: T.card, borderRadius: 14, overflow: "hidden", marginBottom: 1,
+      border: `1px solid ${isAbandoned ? T.dim + "40" : open ? T.borderHi : T.border}`,
+      opacity: isAbandoned ? 0.5 : 1,
+    }}>
+
+      {/* ── Header row (click to expand) ── */}
+      <div
+        onClick={() => setOpen(o => !o)}
+        style={{ padding: "16px 18px", cursor: "pointer", display: "flex", gap: 14, alignItems: "flex-start" }}
+      >
+        <StarIcon b={b} size={52} />
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+            <Badge color={T.indigo}>{goal.goal_type}</Badge>
+            {isAbandoned  && <Badge color={T.muted}>abandoned</Badge>}
+            {isAchieved   && <Badge color={T.amber}>✦ achieved</Badge>}
+            {doneToday && !isAbandoned && !isAchieved && <Badge color={T.emerald}>✓ done today</Badge>}
+            {s > 0 && !isAbandoned && <Badge color={T.amber}>{s}d streak</Badge>}
+            {goal.target_date && <Badge color={days < 0 ? T.rose : T.muted}>{dl}</Badge>}
+          </div>
+          <div style={{ fontSize: 15, color: isAbandoned ? T.muted : T.text, fontFamily: T.serif, lineHeight: 1.45, marginBottom: 3 }}>
+            {goal.smart_title}
+          </div>
+          <div style={{ fontSize: 12, color: T.textDim, lineHeight: 1.6, marginBottom: 3 }}>
+            {goal.smart_description}
+          </div>
+          <div style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }}>"{goal.raw_input}"</div>
+        </div>
+
+        <span style={{ color: T.dim, fontSize: 15, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }}>
+          ▾
+        </span>
+      </div>
+
+      {/* ── Abandoned banner ── */}
+      {isAbandoned && (
+        <div style={{ margin: "0 18px 14px", padding: "11px 14px", background: T.dim + "25", borderRadius: 9, border: `1px solid ${T.dim}40` }}>
+          <div style={{ fontSize: 12, color: T.muted, fontFamily: T.mono, marginBottom: 8 }}>
+            ✦ Star faded — goal abandoned.
+          </div>
+          <Btn onClick={() => onStatusChange(goal.id, "active")} variant="ghost" small>Revive goal</Btn>
+        </div>
+      )}
+
+      {/* ── Achieved banner ── */}
+      {isAchieved && (
+        <div style={{ margin: "0 18px 14px", padding: "11px 14px", background: T.amber + "10", borderRadius: 9, border: `1px solid ${T.amber}40` }}>
+          <div style={{ fontSize: 12, color: T.amber, fontFamily: T.mono }}>
+            🏆 Goal achieved — it lives in your Hall of Fame.
+          </div>
+        </div>
+      )}
+
+      {/* ── Today's tasks ── */}
+      {!isAbandoned && !isAchieved && todayTasks.length > 0 && (
+        <div style={{ margin: "0 18px 14px", padding: "13px 15px", background: T.surface, borderRadius: 9, border: `1px solid ${T.border}` }}>
+          <div style={{ fontSize: 10, color: T.muted, letterSpacing: "0.1em", fontFamily: T.mono, marginBottom: 9 }}>
+            TODAY'S TASKS
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {todayTasks.map(task => {
+              const isEditing  = editingTaskId  === task.id
+              const isDeleting = deletingTaskId === task.id
+              return (
+                <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}
+                  className="group">
+
+                  {/* Complete toggle */}
+                  <span
+                    style={{ marginTop: 1, flexShrink: 0, cursor: !task.is_completed && !isEditing ? "pointer" : "default" }}
+                    onClick={() => !task.is_completed && !isEditing && onCompleteTask(task.id)}
+                  >
+                    {task.is_completed
+                      ? <CheckCircle2 size={16} color={T.emerald} />
+                      : <Circle size={16} color={T.dim} />
+                    }
+                  </span>
+
+                  {/* Description */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {isEditing ? (
+                      <input
+                        autoFocus
+                        value={editingText}
+                        onChange={e => setEditingText(e.target.value)}
+                        onBlur={() => onSaveEdit(task.id, task.description)}
+                        onKeyDown={e => {
+                          if (e.key === "Enter")  onSaveEdit(task.id, task.description)
+                          if (e.key === "Escape") onCancelEdit()
+                        }}
+                        style={{
+                          width: "100%", fontSize: 13, background: T.surface,
+                          border: `1px solid ${T.orange}80`, borderRadius: 5,
+                          padding: "2px 7px", color: T.text, outline: "none", fontFamily: T.mono,
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <p style={{
+                          fontSize: 13, color: task.is_completed ? T.dim : T.text,
+                          textDecoration: task.is_completed ? "line-through" : "none",
+                          lineHeight: 1.5, fontFamily: T.mono, margin: 0,
+                        }}>
+                          {task.description}
+                        </p>
+                        {!task.is_completed && task.tip && (
+                          <p style={{ fontSize: 11, color: T.orange, fontFamily: T.mono, fontStyle: "italic", margin: "2px 0 0" }}>
+                            "{task.tip}"
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Action icons — pending tasks only */}
+                  {!task.is_completed && !isEditing && (
+                    <div className={`flex items-center gap-1 shrink-0 transition-opacity ${isDeleting ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                      {isDeleting ? (
+                        <>
+                          <button
+                            onClick={() => onConfirmDelete(task.id)}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 4, fontSize: 11,
+                              color: T.rose, cursor: "pointer", background: `${T.rose}15`,
+                              border: `1px solid ${T.rose}40`, borderRadius: 5, padding: "2px 7px",
+                              fontFamily: T.mono,
+                            }}
+                          >
+                            <Trash2 size={11} /> Delete
+                          </button>
+                          <button
+                            onClick={() => setDeletingTaskId(null)}
+                            style={{ color: T.dim, cursor: "pointer", background: "none", border: "none", padding: 2 }}
+                          >
+                            <X size={13} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onMouseDown={e => e.preventDefault()}
+                            onClick={() => onStartEdit(task)}
+                            className="text-[#3f3f5c] hover:text-indigo-400 transition-colors p-1 rounded bg-transparent border-0 cursor-pointer"
+                            title="Edit task"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            onMouseDown={e => e.preventDefault()}
+                            onClick={() => onStartDelete(task.id)}
+                            className="text-[#3f3f5c] hover:text-rose-400 transition-colors p-1 rounded bg-transparent border-0 cursor-pointer"
+                            title="Delete task"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Status actions ── */}
+      {!isAbandoned && !isAchieved && (
+        <div style={{ padding: "0 18px 14px", display: "flex", gap: 7, flexWrap: "wrap" }}>
+          <Btn onClick={() => onStatusChange(goal.id, "achieved")} small>🏆 Mark Achieved +100 pts</Btn>
+          <Btn onClick={() => onStatusChange(goal.id, "abandoned")} variant="ghost" small>✕ Abandon</Btn>
+          <Btn onClick={() => onDeleteGoal(goal.id)} variant="danger" small>Delete</Btn>
+        </div>
+      )}
+      {(isAbandoned || isAchieved) && (
+        <div style={{ padding: "0 18px 14px", display: "flex", gap: 7 }}>
+          {isAbandoned && <Btn onClick={() => onStatusChange(goal.id, "active")} variant="ghost" small>▶ Revive</Btn>}
+          <Btn onClick={() => onDeleteGoal(goal.id)} variant="danger" small>Delete</Btn>
+        </div>
+      )}
+
+      {/* ── Expanded section ── */}
+      {open && (
+        <div style={{ borderTop: `1px solid ${T.border}`, padding: 18 }}>
+
+          {/* Star brightness */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 10, color: T.muted, letterSpacing: "0.1em", fontFamily: T.mono, marginBottom: 7 }}>
+              STAR BRIGHTNESS — {Math.round(b * 100)}%
+            </div>
+            <div style={{ height: 4, background: T.dim, borderRadius: 2, overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 2,
+                background: b > 0.6 ? "hsl(42,100%,60%)" : b > 0.3 ? T.orange : T.muted,
+                width: `${b * 100}%`, transition: "width 0.7s",
+              }} />
+            </div>
+            <div style={{ fontSize: 10, color: T.dim, fontFamily: T.mono, marginTop: 5 }}>
+              {b > 0.8 ? "Blazing — keep it up!" : b > 0.6 ? "Glowing strong" : b > 0.4 ? "Flickering — stay consistent" : b > 0.2 ? "Fading — come back!" : "Almost out"}
+            </div>
+          </div>
+
+          {/* Milestones */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 10, color: T.muted, letterSpacing: "0.1em", fontFamily: T.mono, marginBottom: 9 }}>MILESTONES</div>
+            {goal.milestones.map((m, i) => (
+              <div key={i} style={{ display: "flex", gap: 9, alignItems: "center", marginBottom: 6 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: "50%", border: `1.5px solid ${T.dim}`,
+                  flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 9, color: T.muted, fontFamily: T.mono,
+                }}>{i + 1}</div>
+                <span style={{ fontSize: 12, color: T.textDim }}>{m}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Progress slider */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 10, color: T.muted, letterSpacing: "0.1em", fontFamily: T.mono, marginBottom: 7 }}>
+              PROGRESS — {progLocal}%
+            </div>
+            <input
+              type="range" min={0} max={100} value={progLocal}
+              onChange={e => setProgLocal(Number(e.target.value))}
+              onMouseUp={() => onUpdateProgress(goal.id, progLocal)}
+              onTouchEnd={() => onUpdateProgress(goal.id, progLocal)}
+              style={{ width: "100%", accentColor: T.orange }}
+            />
+          </div>
+
+          {/* Heatmap */}
+          <div>
+            <div style={{ fontSize: 10, color: T.muted, letterSpacing: "0.1em", fontFamily: T.mono, marginBottom: 9 }}>
+              COMPLETION HISTORY — {goal.completed_days.length} days
+            </div>
+            <Heatmap days={goal.completed_days} />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Dashboard (main page) ─────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { user } = useUser()
+  const { user }     = useUser()
   const { getToken } = useAuth()
 
-  const [goals, setGoals] = useState<Goal[]>([])
+  const [goals,  setGoals]  = useState<Goal[]>([])
+  const [pts,    setPts]    = useState(0)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [refreshKey, setRefreshKey] = useState(0)
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
-  const [editingText, setEditingText] = useState('')
+  const [error,   setError]   = useState<string | null>(null)
+  const [filter,  setFilter]  = useState<string>("all")
+
+  // Task edit/delete state
+  const [editingTaskId,  setEditingTaskId]  = useState<string | null>(null)
+  const [editingText,    setEditingText]    = useState("")
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null)
 
+  // ── Fetch goals + star_points ──
   useEffect(() => {
     if (!user?.id) return
     let ignore = false
 
-    async function fetchGoals() {
+    async function load() {
       try {
         const token = await getToken()
         setAuthToken(token)
-        const { data } = await api.get<Goal[]>(`/users/${user!.id}/goals`)
-        if (!ignore) setGoals(data)
+        const [goalsRes, profileRes] = await Promise.all([
+          api.get<Goal[]>(`/users/${user!.id}/goals`),
+          api.get<{ star_points: number }>(`/users/${user!.id}/profile`).catch(() => ({ data: { star_points: 0 } })),
+        ])
+        if (!ignore) {
+          setGoals(goalsRes.data)
+          setPts(profileRes.data.star_points)
+        }
       } catch {
-        if (!ignore) setError('Failed to load goals. Please refresh.')
+        if (!ignore) setError("Failed to load goals. Please refresh.")
       } finally {
         if (!ignore) setLoading(false)
       }
     }
 
-    fetchGoals()
+    load()
     return () => { ignore = true }
-  }, [user?.id, getToken, refreshKey])
+  }, [user?.id, getToken])
 
-  const VITALITY_PER_TASK = 10
-
-  async function completeTask(taskId: string) {
-    // Optimistic update: mark task done + bump vitality
-    setGoals(prev =>
-      prev.map(goal => ({
-        ...goal,
-        vitality: goal.daily_tasks.some(t => t.id === taskId)
-          ? Math.min(100, goal.vitality + VITALITY_PER_TASK)
-          : goal.vitality,
-        daily_tasks: goal.daily_tasks.map(task =>
-          task.id === taskId ? { ...task, is_completed: true } : task
-        ),
-      }))
-    )
-    toast.success('Task completed! +10 Vitality', {
-      icon: '⚡',
-    })
+  // ── Add Goal ──
+  async function addGoal(rawInput: string) {
+    const email = user?.primaryEmailAddress?.emailAddress ?? "unknown@example.com"
     try {
-      await api.patch(`/tasks/${taskId}/complete`)
-    } catch {
-      // Roll back on failure
-      setGoals(prev =>
-        prev.map(goal => ({
-          ...goal,
-          vitality: goal.daily_tasks.some(t => t.id === taskId)
-            ? Math.max(0, goal.vitality - VITALITY_PER_TASK)
-            : goal.vitality,
-          daily_tasks: goal.daily_tasks.map(task =>
-            task.id === taskId ? { ...task, is_completed: false } : task
-          ),
-        }))
+      const { data } = await api.post<Goal>(
+        `/users/${user!.id}/goals?email=${encodeURIComponent(email)}`,
+        { raw_input: rawInput },
       )
-      toast.error('Could not save task. Please try again.')
+      setGoals(prev => [data, ...prev])
+    } catch {
+      toast.error("Could not create goal. Please try again.")
     }
   }
 
+  // ── Complete task (optimistic) ──
+  function completeTask(taskId: string) {
+    const today = todayStr()
+    setGoals(prev => prev.map(goal => {
+      if (!goal.daily_tasks.some(t => t.id === taskId)) return goal
+      return {
+        ...goal,
+        vitality:       Math.min(100, goal.vitality + 10),
+        daily_tasks:    goal.daily_tasks.map(t => t.id === taskId ? { ...t, is_completed: true } : t),
+        completed_days: goal.completed_days.includes(today) ? goal.completed_days : [...goal.completed_days, today],
+      }
+    }))
+    setPts(p => p + 10)
+    toast.success("Task completed! +10 pts", { icon: "⚡" })
+
+    api.patch(`/tasks/${taskId}/complete`).catch(() => {
+      setGoals(prev => prev.map(goal => {
+        if (!goal.daily_tasks.some(t => t.id === taskId)) return goal
+        // Only remove today from completed_days if no OTHER task for this goal was already completed today
+        const otherTaskDoneToday = goal.daily_tasks.some(
+          t => t.id !== taskId && t.is_completed && t.assigned_date === today
+        )
+        return {
+          ...goal,
+          vitality:    Math.max(0, goal.vitality - 10),
+          daily_tasks: goal.daily_tasks.map(t => t.id === taskId ? { ...t, is_completed: false } : t),
+          completed_days: otherTaskDoneToday
+            ? goal.completed_days
+            : goal.completed_days.filter(d => d !== today),
+        }
+      }))
+      setPts(p => p - 10)
+      toast.error("Could not save task. Please try again.")
+    })
+  }
+
+  // ── Task edit ──
   function startEdit(task: Task) {
     setDeletingTaskId(null)
     setEditingTaskId(task.id)
@@ -116,367 +570,196 @@ export default function Dashboard() {
 
   function cancelEdit() {
     setEditingTaskId(null)
-    setEditingText('')
+    setEditingText("")
   }
 
-  async function saveEdit(taskId: string, originalDescription: string) {
+  async function saveEdit(taskId: string, original: string) {
     const trimmed = editingText.trim()
-    if (!trimmed || trimmed === originalDescription) {
-      cancelEdit()
-      return
-    }
-    setGoals(prev =>
-      prev.map(goal => ({
-        ...goal,
-        daily_tasks: goal.daily_tasks.map(t =>
-          t.id === taskId ? { ...t, description: trimmed } : t
-        ),
-      }))
-    )
+    if (!trimmed || trimmed === original) { cancelEdit(); return }
+    setGoals(prev => prev.map(g => ({
+      ...g,
+      daily_tasks: g.daily_tasks.map(t => t.id === taskId ? { ...t, description: trimmed } : t),
+    })))
     cancelEdit()
     try {
       await api.patch(`/tasks/${taskId}`, { description: trimmed })
-      toast.success('Task updated')
+      toast.success("Task updated")
     } catch {
-      setGoals(prev =>
-        prev.map(goal => ({
-          ...goal,
-          daily_tasks: goal.daily_tasks.map(t =>
-            t.id === taskId ? { ...t, description: originalDescription } : t
-          ),
-        }))
-      )
-      toast.error('Could not update task. Please try again.')
+      setGoals(prev => prev.map(g => ({
+        ...g,
+        daily_tasks: g.daily_tasks.map(t => t.id === taskId ? { ...t, description: original } : t),
+      })))
+      toast.error("Could not update task.")
     }
   }
 
+  // ── Task delete ──
   function startDelete(taskId: string) {
     setEditingTaskId(null)
-    setEditingText('')
+    setEditingText("")
     setDeletingTaskId(taskId)
   }
 
   async function confirmDelete(taskId: string) {
-    const deletedTask = goals.flatMap(g => g.daily_tasks).find(t => t.id === taskId)
-    setGoals(prev =>
-      prev.map(goal => ({
-        ...goal,
-        daily_tasks: goal.daily_tasks.filter(t => t.id !== taskId),
-      }))
-    )
+    const deleted = goals.flatMap(g => g.daily_tasks).find(t => t.id === taskId)
+    setGoals(prev => prev.map(g => ({ ...g, daily_tasks: g.daily_tasks.filter(t => t.id !== taskId) })))
     setDeletingTaskId(null)
     try {
       await api.delete(`/tasks/${taskId}`)
-      toast.success('Task deleted')
+      toast.success("Task deleted")
     } catch {
-      if (deletedTask) {
-        setGoals(prev =>
-          prev.map(goal =>
-            goal.id === deletedTask.goal_id
-              ? { ...goal, daily_tasks: [...goal.daily_tasks, deletedTask] }
-              : goal
-          )
-        )
+      if (deleted) {
+        setGoals(prev => prev.map(g =>
+          g.id === deleted.goal_id ? { ...g, daily_tasks: [...g.daily_tasks, deleted] } : g
+        ))
       }
-      toast.error('Could not delete task. Please try again.')
+      toast.error("Could not delete task.")
     }
   }
 
-  const activeGoal = goals.find(g => g.status === 'active')
-
-  // ---------------------------------------------------------------------------
-  // Vitality bar colour
-  // ---------------------------------------------------------------------------
-
-  function vitalityColour(v: number) {
-    if (v > 60) return 'from-green-500 to-emerald-400'
-    if (v > 30) return 'from-yellow-500 to-amber-400'
-    return 'from-red-600 to-rose-400'
+  // ── Progress update ──
+  async function updateProgress(goalId: string, progress: number) {
+    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, progress } : g))
+    try {
+      await api.patch(`/goals/${goalId}/progress`, { progress })
+    } catch {
+      toast.error("Could not save progress.")
+    }
   }
 
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
+  // ── Delete goal ──
+  async function deleteGoal(goalId: string) {
+    const deleted = goals.find(g => g.id === goalId)
+    setGoals(prev => prev.filter(g => g.id !== goalId))
+    try {
+      await api.delete(`/goals/${goalId}`)
+      toast.success("Goal deleted")
+    } catch {
+      if (deleted) setGoals(prev => [...prev, deleted])
+      toast.error("Could not delete goal.")
+    }
+  }
 
+  // ── Status change ──
+  async function changeStatus(goalId: string, newStatus: 'active' | 'achieved' | 'abandoned') {
+    const prev_status = goals.find(g => g.id === goalId)?.status
+    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, status: newStatus } : g))
+    if (newStatus === "achieved" && prev_status !== "achieved") {
+      setPts(p => p + 100)
+      toast.success("Goal achieved! +100 pts 🏆")
+    }
+    try {
+      await api.patch(`/goals/${goalId}`, { status: newStatus })
+    } catch {
+      setGoals(prev => prev.map(g => g.id === goalId ? { ...g, status: prev_status ?? "active" } : g))
+      if (newStatus === "achieved" && prev_status !== "achieved") setPts(p => p - 100)
+      toast.error("Could not update goal status.")
+    }
+  }
+
+  const filtered = filter === "all" ? goals : goals.filter(g => g.status === filter)
+
+  // ── Render ──
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-900 text-white flex flex-col">
+    <div style={{ minHeight: "100vh", background: T.bg, color: T.text, fontFamily: T.mono }}>
+      <style>{`
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: ${T.dim}; border-radius: 2px; }
+        textarea:focus { border-color: ${T.orange} !important; outline: none; }
+        input[type=range] { height: 4px; }
+        button:hover { opacity: 0.82; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
 
-      {/* ── Top bar ── */}
-      <header className="flex items-center justify-between px-8 py-4 border-b border-white/10">
-        <div className="flex items-center gap-2 font-bold text-lg">
-          <Target className="text-violet-400" size={22} />
-          GoalForge
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-slate-400">
-            {user?.firstName ? `Hey, ${user.firstName}!` : 'Dashboard'}
-          </span>
-          <UserButton />
-        </div>
-      </header>
+      <AppHeader pts={pts} />
 
-      {/* ── Main ── */}
-      <main className="flex-1 px-8 py-10 max-w-5xl mx-auto w-full flex flex-col gap-8">
+      <div style={{ maxWidth: 740, margin: "0 auto", padding: "28px 22px" }}>
+
+        {/* Page heading */}
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontFamily: T.serif, fontSize: 30, fontWeight: 400, color: T.text, marginBottom: 3 }}>
+            Your Goals
+          </h1>
+          <p style={{ fontSize: 12, color: T.muted }}>
+            {goals.filter(g => g.status === "active").length} active · {goals.length} total
+          </p>
+        </div>
 
         {/* Loading */}
         {loading && (
-          <div className="flex items-center justify-center py-24">
-            <div className="w-8 h-8 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
+          <div style={{ display: "flex", justifyContent: "center", padding: "80px 0" }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: "50%",
+              border: `2px solid ${T.dim}`, borderTop: `2px solid ${T.orange}`,
+              animation: "spin 0.75s linear infinite",
+            }} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         )}
 
         {/* Error */}
         {!loading && error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-300 rounded-xl px-6 py-4 text-sm">
+          <div style={{ padding: "14px 18px", background: `${T.rose}10`, border: `1px solid ${T.rose}30`, borderRadius: 10, color: T.rose, fontSize: 13 }}>
             {error}
           </div>
         )}
 
-        {/* Empty state */}
-        {!loading && !error && goals.length === 0 && (
+        {!loading && !error && (
           <>
-            <section className="bg-white/5 border border-white/10 rounded-2xl p-6 flex items-center gap-6">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center shrink-0">
-                <Star size={30} className="text-white" />
-              </div>
-              <div>
-                <h2 className="font-semibold text-lg flex items-center gap-2">
-                  <Sparkles size={16} className="text-violet-400" />
-                  Your Star Companion
-                </h2>
-                <p className="text-slate-400 text-sm mt-1">
-                  Your companion is waiting. Forge your first goal to bring them to life!
-                </p>
-              </div>
-            </section>
+            <TodayBar goals={goals} />
+            <AddGoal onAdd={addGoal} />
 
-            <section className="bg-white/5 border border-dashed border-white/20 rounded-2xl p-16 flex flex-col items-center justify-center text-center gap-4">
-              <Target size={48} className="text-slate-600" />
-              <p className="font-semibold text-xl text-slate-300">No goals yet</p>
-              <p className="text-sm text-slate-500">
-                Let the AI forge your first structured goal from a simple description.
-              </p>
-              <button
-                onClick={() => setModalOpen(true)}
-                className="mt-2 px-6 py-3 bg-violet-600 hover:bg-violet-500 rounded-xl font-semibold transition-colors"
-              >
-                Create Your First Goal
-              </button>
-            </section>
-          </>
-        )}
+            {/* Filter tabs */}
+            <div style={{ display: "flex", borderBottom: `1px solid ${T.border}`, marginBottom: 18 }}>
+              {(["all", "active", "achieved", "abandoned"] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    padding: "7px 14px", fontFamily: T.mono, fontSize: 11,
+                    letterSpacing: "0.06em",
+                    color: filter === f ? T.text : T.muted,
+                    borderBottom: filter === f ? `2px solid ${T.orange}` : "2px solid transparent",
+                  }}
+                >
+                  {f} ({goals.filter(g => f === "all" ? true : g.status === f).length})
+                </button>
+              ))}
+            </div>
 
-        {/* Goals view */}
-        {!loading && !error && goals.length > 0 && (
-          <>
-            {/* ── Star Companion + Vitality bar ── */}
-            <section className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col gap-5">
-              <div className="flex items-center gap-6">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center shrink-0">
-                  <Star size={30} className="text-white" />
-                </div>
-                <div>
-                  <h2 className="font-semibold text-lg flex items-center gap-2">
-                    <Sparkles size={16} className="text-violet-400" />
-                    Your Star Companion
-                  </h2>
-                  <p className="text-slate-400 text-sm mt-1">
-                    {activeGoal
-                      ? `Focused on: ${activeGoal.smart_title}`
-                      : 'No active goal — start a new one!'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Vitality bar — only when there's an active goal */}
-              {activeGoal && (
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-400 font-medium">Vitality</span>
-                    <span className="font-bold tabular-nums">
-                      {activeGoal.vitality}
-                      <span className="text-slate-500 font-normal"> / 100</span>
-                    </span>
-                  </div>
-
-                  {/* RPG health bar */}
-                  <div className="relative h-5 rounded-full bg-slate-800 border border-white/10 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full bg-gradient-to-r transition-all duration-500 ease-out ${vitalityColour(activeGoal.vitality)}`}
-                      style={{ width: `${activeGoal.vitality}%` }}
-                    />
-                    {/* Tick marks */}
-                    <div className="absolute inset-0 flex pointer-events-none">
-                      {Array.from({ length: 9 }).map((_, i) => (
-                        <div key={i} className="flex-1 border-r border-black/25 last:border-0" />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-5 text-xs text-slate-400 pt-0.5">
-                    <span>🔥 Streak <span className="text-white font-semibold">{activeGoal.current_streak}d</span></span>
-                    <span>🏆 Best <span className="text-white font-semibold">{activeGoal.best_streak}d</span></span>
-                    <span className="capitalize">📌 {activeGoal.goal_type}</span>
-                    <span>🗓 Due {activeGoal.target_date}</span>
-                  </div>
+            {/* Goal list */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {filtered.length === 0 && (
+                <div style={{ textAlign: "center", padding: "44px 0", color: T.muted, fontSize: 13 }}>
+                  No goals here yet.
                 </div>
               )}
-            </section>
-
-            {/* ── Goals list ── */}
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-xl">Your Goals</h2>
-                <button
-                  onClick={() => setModalOpen(true)}
-                  className="px-4 py-2 bg-violet-600 hover:bg-violet-500 rounded-lg text-sm font-medium transition-colors"
-                >
-                  + New Goal
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-4">
-                {goals.map(goal => (
-                  <div
-                    key={goal.id}
-                    className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col gap-4"
-                  >
-                    {/* Goal header */}
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-lg leading-snug">{goal.smart_title}</h3>
-                        <p className="text-slate-400 text-sm mt-1 leading-relaxed">{goal.smart_description}</p>
-                      </div>
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium border shrink-0 ${
-                        goal.status === 'active'
-                          ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
-                          : goal.status === 'completed'
-                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                          : 'bg-slate-500/20 text-slate-400 border-slate-500/30'
-                      }`}>
-                        {goal.status}
-                      </span>
-                    </div>
-
-                    {/* Daily tasks */}
-                    {goal.daily_tasks.length > 0 && (
-                      <div className="flex flex-col gap-2 border-t border-white/10 pt-4">
-                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">
-                          Today's Tasks
-                        </p>
-                        {goal.daily_tasks.map(task => {
-                          const isEditing = editingTaskId === task.id
-                          const isDeleting = deletingTaskId === task.id
-                          return (
-                            <div
-                              key={task.id}
-                              className="flex items-start gap-3 group"
-                            >
-                              {/* Complete toggle — only when not editing */}
-                              <span
-                                className={`mt-0.5 shrink-0 transition-colors ${!task.is_completed && !isEditing ? 'cursor-pointer' : ''}`}
-                                onClick={() => !task.is_completed && !isEditing && completeTask(task.id)}
-                              >
-                                {task.is_completed
-                                  ? <CheckCircle2 size={18} className="text-emerald-400" />
-                                  : <Circle size={18} className="text-slate-500 group-hover:text-violet-400 transition-colors" />
-                                }
-                              </span>
-
-                              {/* Description area */}
-                              <div className="flex-1 min-w-0">
-                                {isEditing ? (
-                                  <input
-                                    autoFocus
-                                    value={editingText}
-                                    onChange={e => setEditingText(e.target.value)}
-                                    onBlur={() => saveEdit(task.id, task.description)}
-                                    onKeyDown={e => {
-                                      if (e.key === 'Enter') saveEdit(task.id, task.description)
-                                      if (e.key === 'Escape') cancelEdit()
-                                    }}
-                                    className="w-full text-sm bg-white/10 border border-violet-500/50 rounded-md px-2 py-0.5 text-white focus:outline-none focus:border-violet-400"
-                                  />
-                                ) : (
-                                  <>
-                                    <p className={`text-sm transition-colors ${
-                                      task.is_completed
-                                        ? 'line-through text-slate-500'
-                                        : 'text-slate-200'
-                                    }`}>
-                                      {task.description}
-                                    </p>
-                                    {!task.is_completed && (
-                                      <p className="text-xs text-slate-500 mt-0.5">{task.tip}</p>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-
-                              {/* Action icons — pending tasks only */}
-                              {!task.is_completed && !isEditing && (
-                                <div className={`flex items-center gap-1 shrink-0 transition-opacity ${isDeleting ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                                  {isDeleting ? (
-                                    <>
-                                      <button
-                                        onClick={() => confirmDelete(task.id)}
-                                        className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 transition-colors px-1.5 py-0.5 rounded border border-red-500/30 hover:border-red-400/50"
-                                      >
-                                        <Trash2 size={12} />
-                                        Delete
-                                      </button>
-                                      <button
-                                        onClick={() => setDeletingTaskId(null)}
-                                        className="text-slate-500 hover:text-slate-300 transition-colors p-0.5"
-                                      >
-                                        <X size={14} />
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <button
-                                        onMouseDown={e => e.preventDefault()}
-                                        onClick={() => startEdit(task)}
-                                        className="text-slate-500 hover:text-violet-400 transition-colors p-0.5"
-                                        title="Edit task"
-                                      >
-                                        <Pencil size={14} />
-                                      </button>
-                                      <button
-                                        onMouseDown={e => e.preventDefault()}
-                                        onClick={() => startDelete(task.id)}
-                                        className="text-slate-500 hover:text-red-400 transition-colors p-0.5"
-                                        title="Delete task"
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
+              {filtered.map(goal => (
+                <GoalCard
+                  key={goal.id}
+                  goal={goal}
+                  editingTaskId={editingTaskId}
+                  editingText={editingText}
+                  deletingTaskId={deletingTaskId}
+                  setEditingText={setEditingText}
+                  setDeletingTaskId={setDeletingTaskId}
+                  onCompleteTask={completeTask}
+                  onStartEdit={startEdit}
+                  onCancelEdit={cancelEdit}
+                  onSaveEdit={saveEdit}
+                  onStartDelete={startDelete}
+                  onConfirmDelete={confirmDelete}
+                  onUpdateProgress={updateProgress}
+                  onDeleteGoal={deleteGoal}
+                  onStatusChange={changeStatus}
+                />
+              ))}
+            </div>
           </>
         )}
-
-      </main>
-
-      <CreateGoalModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSuccess={() => {
-          setModalOpen(false)
-          setLoading(true)
-          setRefreshKey(k => k + 1)
-        }}
-      />
+      </div>
     </div>
   )
 }

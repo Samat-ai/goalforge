@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 # ---------------------------------------------------------------------------
@@ -37,6 +37,14 @@ class GoalCreate(BaseModel):
     raw_input: str = Field(..., min_length=10, max_length=2000)
 
 
+class GoalStatusUpdate(BaseModel):
+    status: Literal["active", "achieved", "abandoned"]
+
+
+class GoalProgressUpdate(BaseModel):
+    progress: int = Field(..., ge=0, le=100)
+
+
 class GoalResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -48,12 +56,23 @@ class GoalResponse(BaseModel):
     goal_type: str
     target_date: date
     milestones: list[str]
-    status: Literal["active", "completed", "abandoned"]
+    status: Literal["active", "achieved", "abandoned"]
     current_streak: int
     best_streak: int
     vitality: int
+    progress: int
     created_at: datetime
     daily_tasks: list[TaskResponse] = []
+
+    @computed_field
+    @property
+    def completed_days(self) -> list[str]:
+        """Unique ISO date strings where at least one task was completed."""
+        return sorted({
+            task.assigned_date.isoformat()
+            for task in self.daily_tasks
+            if task.is_completed
+        })
 
 
 # ---------------------------------------------------------------------------

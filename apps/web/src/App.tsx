@@ -3,8 +3,18 @@ import { Show } from '@clerk/react'
 import { Toaster } from 'sonner'
 import LandingPage from './pages/LandingPage'
 import Dashboard from './pages/Dashboard'
+import Analytics from './pages/Analytics'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
+
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <Show when="signed-in">{children}</Show>
+      <Show when="signed-out"><Navigate to="/sign-in" replace /></Show>
+    </>
+  )
+}
 
 export default function App() {
   return (
@@ -14,19 +24,8 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/sign-in/*" element={<SignInPage />} />
         <Route path="/sign-up/*" element={<SignUpPage />} />
-        <Route
-          path="/dashboard"
-          element={
-            <>
-              <Show when="signed-in">
-                <Dashboard />
-              </Show>
-              <Show when="signed-out">
-                <Navigate to="/sign-in" replace />
-              </Show>
-            </>
-          }
-        />
+        <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
+        <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
       </Routes>
     </BrowserRouter>
   )
