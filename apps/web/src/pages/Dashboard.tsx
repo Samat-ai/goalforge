@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { UserButton, useUser, useAuth } from '@clerk/react'
-import { Target, Sparkles, Star, Circle, CheckCircle2 } from 'lucide-react'
+import { Target, Sparkles, Star, Circle, CheckCircle2, Pencil, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import api, { setAuthToken } from '../lib/api'
 import CreateGoalModal from '../components/CreateGoalModal'
@@ -11,6 +11,7 @@ import CreateGoalModal from '../components/CreateGoalModal'
 
 interface Task {
   id: string
+  goal_id: string
   description: string
   tip: string
   assigned_date: string
@@ -45,6 +46,9 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [editingText, setEditingText] = useState('')
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user?.id) return
@@ -101,6 +105,80 @@ export default function Dashboard() {
         }))
       )
       toast.error('Could not save task. Please try again.')
+    }
+  }
+
+  function startEdit(task: Task) {
+    setDeletingTaskId(null)
+    setEditingTaskId(task.id)
+    setEditingText(task.description)
+  }
+
+  function cancelEdit() {
+    setEditingTaskId(null)
+    setEditingText('')
+  }
+
+  async function saveEdit(taskId: string, originalDescription: string) {
+    const trimmed = editingText.trim()
+    if (!trimmed || trimmed === originalDescription) {
+      cancelEdit()
+      return
+    }
+    setGoals(prev =>
+      prev.map(goal => ({
+        ...goal,
+        daily_tasks: goal.daily_tasks.map(t =>
+          t.id === taskId ? { ...t, description: trimmed } : t
+        ),
+      }))
+    )
+    cancelEdit()
+    try {
+      await api.patch(`/tasks/${taskId}`, { description: trimmed })
+      toast.success('Task updated')
+    } catch {
+      setGoals(prev =>
+        prev.map(goal => ({
+          ...goal,
+          daily_tasks: goal.daily_tasks.map(t =>
+            t.id === taskId ? { ...t, description: originalDescription } : t
+          ),
+        }))
+      )
+      toast.error('Could not update task. Please try again.')
+    }
+  }
+
+  function startDelete(taskId: string) {
+    setEditingTaskId(null)
+    setEditingText('')
+    setDeletingTaskId(taskId)
+  }
+
+  async function confirmDelete(taskId: string) {
+    const deletedTask = goals.flatMap(g => g.daily_tasks).find(t => t.id === taskId)
+    setGoals(prev =>
+      prev.map(goal => ({
+        ...goal,
+        daily_tasks: goal.daily_tasks.filter(t => t.id !== taskId),
+      }))
+    )
+    setDeletingTaskId(null)
+    try {
+      await api.delete(`/tasks/${taskId}`)
+      toast.success('Task deleted')
+    } catch {
+      if (deletedTask) {
+        setGoals(prev =>
+          prev.map(goal =>
+            goal.id === deletedTask.goal_id
+              ? { ...goal, daily_tasks: [...goal.daily_tasks, deletedTask] }
+              : goal
+          )
+        )
+      }
+      toast.error('Could not delete task. Please try again.')
     }
   }
 
@@ -286,32 +364,99 @@ export default function Dashboard() {
                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">
                           Today's Tasks
                         </p>
-                        {goal.daily_tasks.map(task => (
-                          <div
-                            key={task.id}
-                            className={`flex items-start gap-3 group ${!task.is_completed ? 'cursor-pointer' : ''}`}
-                            onClick={() => !task.is_completed && completeTask(task.id)}
-                          >
-                            <span className="mt-0.5 shrink-0 transition-colors">
-                              {task.is_completed
-                                ? <CheckCircle2 size={18} className="text-emerald-400" />
-                                : <Circle size={18} className="text-slate-500 group-hover:text-violet-400 transition-colors" />
-                              }
-                            </span>
-                            <div>
-                              <p className={`text-sm transition-colors ${
-                                task.is_completed
-                                  ? 'line-through text-slate-500'
-                                  : 'text-slate-200 group-hover:text-white'
-                              }`}>
-                                {task.description}
-                              </p>
-                              {!task.is_completed && (
-                                <p className="text-xs text-slate-500 mt-0.5">{task.tip}</p>
+                        {goal.daily_tasks.map(task => {
+                          const isEditing = editingTaskId === task.id
+                          const isDeleting = deletingTaskId === task.id
+                          return (
+                            <div
+                              key={task.id}
+                              className="flex items-start gap-3 group"
+                            >
+                              {/* Complete toggle — only when not editing */}
+                              <span
+                                className={`mt-0.5 shrink-0 transition-colors ${!task.is_completed && !isEditing ? 'cursor-pointer' : ''}`}
+                                onClick={() => !task.is_completed && !isEditing && completeTask(task.id)}
+                              >
+                                {task.is_completed
+                                  ? <CheckCircle2 size={18} className="text-emerald-400" />
+                                  : <Circle size={18} className="text-slate-500 group-hover:text-violet-400 transition-colors" />
+                                }
+                              </span>
+
+                              {/* Description area */}
+                              <div className="flex-1 min-w-0">
+                                {isEditing ? (
+                                  <input
+                                    autoFocus
+                                    value={editingText}
+                                    onChange={e => setEditingText(e.target.value)}
+                                    onBlur={() => saveEdit(task.id, task.description)}
+                                    onKeyDown={e => {
+                                      if (e.key === 'Enter') saveEdit(task.id, task.description)
+                                      if (e.key === 'Escape') cancelEdit()
+                                    }}
+                                    className="w-full text-sm bg-white/10 border border-violet-500/50 rounded-md px-2 py-0.5 text-white focus:outline-none focus:border-violet-400"
+                                  />
+                                ) : (
+                                  <>
+                                    <p className={`text-sm transition-colors ${
+                                      task.is_completed
+                                        ? 'line-through text-slate-500'
+                                        : 'text-slate-200'
+                                    }`}>
+                                      {task.description}
+                                    </p>
+                                    {!task.is_completed && (
+                                      <p className="text-xs text-slate-500 mt-0.5">{task.tip}</p>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+
+                              {/* Action icons — pending tasks only */}
+                              {!task.is_completed && !isEditing && (
+                                <div className={`flex items-center gap-1 shrink-0 transition-opacity ${isDeleting ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                                  {isDeleting ? (
+                                    <>
+                                      <button
+                                        onClick={() => confirmDelete(task.id)}
+                                        className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 transition-colors px-1.5 py-0.5 rounded border border-red-500/30 hover:border-red-400/50"
+                                      >
+                                        <Trash2 size={12} />
+                                        Delete
+                                      </button>
+                                      <button
+                                        onClick={() => setDeletingTaskId(null)}
+                                        className="text-slate-500 hover:text-slate-300 transition-colors p-0.5"
+                                      >
+                                        <X size={14} />
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        onMouseDown={e => e.preventDefault()}
+                                        onClick={() => startEdit(task)}
+                                        className="text-slate-500 hover:text-violet-400 transition-colors p-0.5"
+                                        title="Edit task"
+                                      >
+                                        <Pencil size={14} />
+                                      </button>
+                                      <button
+                                        onMouseDown={e => e.preventDefault()}
+                                        onClick={() => startDelete(task.id)}
+                                        className="text-slate-500 hover:text-red-400 transition-colors p-0.5"
+                                        title="Delete task"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
                               )}
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )}
                   </div>

@@ -9,7 +9,7 @@ import logging
 import uuid
 from datetime import date, datetime, timezone
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +18,7 @@ from sqlalchemy.orm import selectinload
 from ai_utils import generate_smart_goal
 from database import engine, get_db, Base
 from models import DailyTask, Goal, User
-from schemas import GoalCreate, GoalResponse, TaskResponse
+from schemas import GoalCreate, GoalResponse, TaskResponse, TaskUpdate
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -198,6 +198,46 @@ async def complete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     task.completed_at = datetime.now(timezone.utc)
     await db.flush()
     return task
+
+
+@app.patch(
+    "/tasks/{task_id}",
+    response_model=TaskResponse,
+    summary="Update a pending task's description",
+)
+async def update_task(
+    task_id: uuid.UUID,
+    body: TaskUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(DailyTask).where(DailyTask.id == task_id))
+    task = result.scalar_one_or_none()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.is_completed:
+        raise HTTPException(status_code=400, detail="Cannot edit a completed task")
+
+    task.description = body.description
+    await db.flush()
+    return task
+
+
+@app.delete(
+    "/tasks/{task_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a pending task",
+)
+async def delete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(DailyTask).where(DailyTask.id == task_id))
+    task = result.scalar_one_or_none()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.is_completed:
+        raise HTTPException(status_code=400, detail="Cannot delete a completed task")
+
+    await db.delete(task)
+    await db.flush()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ---------------------------------------------------------------------------
