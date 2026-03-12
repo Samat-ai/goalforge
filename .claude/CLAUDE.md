@@ -190,6 +190,7 @@ Key exports: `getStage(pts)`, `getNext(pts)`, `stagePct(pts)`, `streak(days)`, `
 - Branch naming: `feature/<short-description>`
 - Commit style: Conventional Commits (`feat:`, `fix:`, `chore:`, etc.)
 - GitHub Actions: automated Claude code review and PR assistant (`.github/workflows/`)
+- Never stage `apps/api/__pycache__/` files — they always appear modified but are compiled bytecode artifacts.
 
 ## Product & UI Philosophy
 
