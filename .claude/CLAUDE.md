@@ -111,6 +111,7 @@ npm run dev      # dev server → http://localhost:5173
 npm run build    # TypeScript check + Vite production build
 npm run lint     # ESLint
 npm run preview  # preview production build
+npx tsc --noEmit  # fast type-check without building — run after every edit
 ```
 
 ### Routes
@@ -131,7 +132,7 @@ npm run preview  # preview production build
 |---|---|
 | `src/main.tsx` | Entry — Clerk `<ClerkProvider>` wraps app |
 | `src/App.tsx` | Router + `AuthGuard` component |
-| `src/pages/Dashboard.tsx` | Main view: goals, daily tasks, gamification UI |
+| `src/pages/Dashboard.tsx` | Main view: goals, daily tasks, gamification UI — also defines internal sub-components `Btn`, `Badge`, `TodayBar`, `AddGoal`, `GoalCard` (no separate files for these) |
 | `src/pages/Analytics.tsx` | Goal analytics and progress charts |
 | `src/components/AppHeader.tsx` | Shared header with nav and user info |
 | `src/components/GamificationSvgs.tsx` | SVG assets for star evolution stages |
@@ -196,6 +197,7 @@ Key exports: `getStage(pts)`, `getNext(pts)`, `stagePct(pts)`, `streak(days)`, `
 - **Design token pattern**: All fonts and colors are defined in a local `const T = { ... }` object at the top of each component (`Dashboard.tsx`, `Analytics.tsx`, `AppHeader.tsx`, `LandingPage.tsx`). No central theme file — update `T` in each file that needs changing.
 - **New page conventions**: New pages should use `min-h-dvh` (not `min-h-screen`) for correct mobile viewport height, and apply `className="mesh-bg"` (defined in `index.css`) for the ambient radial gradient background.
 - **Tailwind v4**: No `tailwind.config.js` exists. Theme overrides go in a `@theme {}` block in `src/index.css`. Use `py -3` (not `python3`) on this Windows machine to run Python scripts.
+- **Touch targets**: All interactive elements (buttons, icon actions) must have `minHeight: 44, minWidth: 44` for mobile usability.
 - **Responsive pattern**: Components use inline `style={}` for design tokens (color, font). Add responsive breakpoints via Tailwind `className` while keeping colors/fonts in `style`. Don't use inline `style` for padding/layout where responsive variants are needed.
 - **Anti-Cheat Mechanics**: Gamification must feel earned. Do not implement manual progress sliders. Star brightness should scale gradually based on consecutive daily task completions, not jump to 100% instantly.
 - **Goal Status**: Strictly adhere to the "3 A's": `ACTIVE`, `ACHIEVED`, and `ABANDONED`.
