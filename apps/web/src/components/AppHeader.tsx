@@ -5,7 +5,7 @@ import { getStage } from '../lib/gamification'
 const T = {
   bg: "#07070f", border: "#1c1c30", orange: "#f97316",
   muted: "#71717a", text: "#e8e8f0",
-  serif: "Georgia, serif", mono: "'Courier New', monospace",
+  serif: "'Plus Jakarta Sans', sans-serif", mono: "'JetBrains Mono', monospace",
 }
 
 interface AppHeaderProps {

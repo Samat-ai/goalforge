@@ -14,8 +14,8 @@ const T = {
   orange: "#f97316", indigo: "#818cf8", emerald: "#34d399",
   rose: "#fb7185", amber: "#fbbf24", muted: "#71717a",
   dim: "#3f3f5c", text: "#e8e8f0", textDim: "#a0a0b8",
-  serif: "Georgia, serif",
-  mono: "'Courier New', monospace",
+  serif: "'Plus Jakarta Sans', sans-serif",
+  mono: "'JetBrains Mono', monospace",
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
