@@ -8,13 +8,13 @@ Structured output is enforced by passing the Pydantic schema directly to the
 
 import json
 import logging
-from datetime import date
+from datetime import date, timedelta
 
 from google import genai
 from google.genai import types
 
 from config import settings
-from schemas import AIGoalOutput
+from schemas import AIGoalOutput, AISprintOutput, AITaskOutput
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +27,31 @@ _MODEL = "gemini-2.5-flash"
 _SYSTEM_PROMPT = """\
 You are GoalForge AI, an expert life coach and productivity specialist.
 Your job is to transform a user's raw, vague goal description into a
-fully structured SMART goal with an actionable first-week task plan.
+fully structured SMART goal with an actionable first-sprint task plan.
 
 Rules:
 - target_date must be in the future (today is {today}).
-- milestones must be chronologically ordered stepping stones toward the goal.
-- initial_tasks covers exactly the first 7 days; assigned_date must start
-  from today and increment by one day per task.
+- Choose 3-5 milestones as chronologically ordered sprint stepping stones.
+  Each milestone covers one 7-day sprint. Set is_final=true ONLY on the last milestone.
+  sprint_theme should be a short phrase describing the focus of that sprint (e.g. "Core strength foundation").
+- initial_tasks covers exactly 7 days for the FIRST milestone only.
+  assigned_date must start from today and increment by one day per task.
 - Be specific, realistic, and encouraging.
+"""
+
+_SPRINT_SYSTEM_PROMPT = """\
+You are GoalForge AI generating a focused 7-day sprint task plan.
+
+Goal context: {goal_context}
+Sprint theme: {sprint_theme}
+Sprint start date: {start_date} (Day 1 of 7)
+
+Rules:
+- Generate exactly 7 daily tasks, one per day.
+- assigned_date runs from {start_date} (Day 1) to {end_date} (Day 7) inclusive.
+- Each task must directly serve the sprint theme and the overall goal.
+- Keep descriptions ≤20 words, actionable and specific.
+- Keep tips ≤20 words, motivational and explaining why it helps.
 """
 
 
@@ -43,7 +60,7 @@ async def generate_smart_goal(raw_input: str) -> AIGoalOutput:
     Call Gemini 2.5 Flash with a user's raw goal string.
 
     Returns a validated AIGoalOutput Pydantic model whose fields map
-    directly onto the Goal and DailyTask database tables.
+    directly onto the Goal, Milestone, and DailyTask database tables.
 
     Raises:
         ValueError: if the model returns unparseable or schema-invalid JSON.
@@ -61,7 +78,6 @@ async def generate_smart_goal(raw_input: str) -> AIGoalOutput:
         contents=user_message,
         config=types.GenerateContentConfig(
             system_instruction=system_instruction,
-            # Enforce JSON output that matches our Pydantic schema
             response_mime_type="application/json",
             response_schema=AIGoalOutput,
             temperature=1.0,   # Gemini 2.5 Flash thinking works best at 1.0
@@ -69,11 +85,72 @@ async def generate_smart_goal(raw_input: str) -> AIGoalOutput:
     )
 
     raw_json: str = response.text
-    logger.debug("Gemini raw response: %s", raw_json)
+    logger.debug("Gemini raw response (goal): %s", raw_json)
 
     try:
         data = json.loads(raw_json)
         return AIGoalOutput.model_validate(data)
     except Exception as exc:
-        logger.error("Failed to parse Gemini response: %s\nRaw: %s", exc, raw_json)
+        logger.error("Failed to parse Gemini goal response: %s\nRaw: %s", exc, raw_json)
         raise ValueError(f"AI returned invalid structured output: {exc}") from exc
+
+
+async def generate_sprint_tasks(
+    goal_context: str,
+    sprint_theme: str,
+    start_date: date,
+) -> list[AITaskOutput]:
+    """
+    Generate 7 daily tasks for a future sprint milestone.
+
+    Called as a background task when the final task of the current sprint is
+    completed (Magic Pre-Gen), and synchronously inside the milestone advance
+    endpoint if pre-gen didn't complete in time.
+
+    Args:
+        goal_context: Human-readable goal summary, e.g. "Run a marathon: Build
+                      endurance to complete 42km by race day."
+        sprint_theme: Short phrase describing this sprint's focus, e.g.
+                      "Core strength foundation".
+        start_date:   The calendar date for Day 1 of this sprint.
+
+    Returns:
+        list of AITaskOutput (7 items, one per day).
+
+    Raises:
+        ValueError: if Gemini returns unparseable or schema-invalid JSON.
+    """
+    end_date = (start_date + timedelta(days=6)).isoformat()
+    system_instruction = _SPRINT_SYSTEM_PROMPT.format(
+        goal_context=goal_context,
+        sprint_theme=sprint_theme,
+        start_date=start_date.isoformat(),
+        end_date=end_date,
+    )
+
+    user_message = (
+        f"Generate the 7-day task plan for this sprint: {sprint_theme}\n"
+        f"Goal: {goal_context}"
+    )
+
+    response = await _client.aio.models.generate_content(
+        model=_MODEL,
+        contents=user_message,
+        config=types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            response_mime_type="application/json",
+            response_schema=AISprintOutput,
+            temperature=1.0,
+        ),
+    )
+
+    raw_json: str = response.text
+    logger.debug("Gemini raw response (sprint): %s", raw_json)
+
+    try:
+        data = json.loads(raw_json)
+        sprint = AISprintOutput.model_validate(data)
+        return sprint.tasks
+    except Exception as exc:
+        logger.error("Failed to parse Gemini sprint response: %s\nRaw: %s", exc, raw_json)
+        raise ValueError(f"AI returned invalid sprint output: {exc}") from exc

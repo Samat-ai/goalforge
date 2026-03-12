@@ -22,11 +22,25 @@ const T = {
 interface Task {
   id: string
   goal_id: string
+  milestone_id: string | null
   description: string
   tip: string
   assigned_date: string
   is_completed: boolean
   completed_at: string | null
+}
+
+interface Milestone {
+  id: string
+  goal_id: string
+  title: string
+  position: number
+  is_final: boolean
+  sprint_theme: string
+  sprint_status: 'pending' | 'generating' | 'ready' | 'active' | 'completed' | 'failed'
+  is_completed: boolean
+  completed_at: string | null
+  created_at: string
 }
 
 interface Goal {
@@ -37,7 +51,9 @@ interface Goal {
   smart_description: string
   goal_type: string
   target_date: string
-  milestones: string[]
+  milestones: Milestone[]
+  milestones_completed: number
+  milestones_total: number
   status: 'active' | 'achieved' | 'abandoned'
   current_streak: number
   best_streak: number
@@ -193,27 +209,32 @@ interface GoalCardProps {
   onSaveEdit:        (taskId: string, original: string) => void
   onStartDelete:     (taskId: string) => void
   onConfirmDelete:   (taskId: string) => void
-  onUpdateProgress:  (goalId: string, progress: number) => void
-  onDeleteGoal:      (goalId: string) => void
-  onStatusChange:    (goalId: string, status: 'active' | 'achieved' | 'abandoned') => void
+  onDeleteGoal:           (goalId: string) => void
+  onStatusChange:         (goalId: string, status: 'active' | 'achieved' | 'abandoned') => void
+  onCompleteMilestone:    (goalId: string, milestoneId: string) => Promise<void>
 }
 
 function GoalCard({
   goal, editingTaskId, editingText, deletingTaskId,
   setEditingText, setDeletingTaskId,
   onCompleteTask, onStartEdit, onCancelEdit, onSaveEdit,
-  onStartDelete, onConfirmDelete, onUpdateProgress, onDeleteGoal, onStatusChange,
+  onStartDelete, onConfirmDelete, onDeleteGoal, onStatusChange, onCompleteMilestone,
 }: GoalCardProps) {
-  const [open,      setOpen]     = useState(false)
-  const [progLocal, setProgLocal] = useState(goal.progress)
+  const [open, setOpen] = useState(false)
+  const [completingMilestone, setCompletingMilestone] = useState(false)
 
-  // Keep slider in sync if parent updates goal.progress (e.g. after a successful save)
-  useEffect(() => { setProgLocal(goal.progress) }, [goal.progress])
+  // Milestone-gated computed values
+  const activeMilestone      = goal.milestones.find(m => m.sprint_status === "active")
+  const nextMilestone        = activeMilestone ? goal.milestones.find(m => m.position === activeMilestone.position + 1) : undefined
+  const currentSprintTasks   = activeMilestone ? goal.daily_tasks.filter(t => t.milestone_id === activeMilestone.id) : []
+  const allSprintTasksDone   = currentSprintTasks.length > 0 && currentSprintTasks.every(t => t.is_completed)
+  const allMilestonesComplete = goal.milestones.length > 0 && goal.milestones.every(m => m.is_completed)
+  const milestonesProgress   = goal.milestones_total > 0 ? Math.round((goal.milestones_completed / goal.milestones_total) * 100) : 0
 
   const todayTasks = goal.daily_tasks.filter(t => t.assigned_date === todayStr())
   const doneToday  = todayTasks.length > 0 && todayTasks.every(t => t.is_completed)
   const s          = streak(goal.completed_days)
-  const b          = goal.status === 'achieved' ? 1 : starBrightness(goal.completed_days, goal.created_at)
+  const b          = goal.status === 'achieved' ? 1 : starBrightness(goal.completed_days)
   const isAbandoned = goal.status === 'abandoned'
   const isAchieved  = goal.status === 'achieved'
 
@@ -256,6 +277,50 @@ function GoalCard({
           ▾
         </span>
       </div>
+
+      {/* ── Sprint Rail ── */}
+      {!isAbandoned && !isAchieved && goal.milestones.length > 0 && (
+        <div style={{ margin: "0 18px 12px", padding: "10px 14px", background: `${T.indigo}08`, borderRadius: 9, border: `1px solid ${T.indigo}20` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 9, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, color: T.indigo, fontFamily: T.mono, letterSpacing: "0.1em", flexShrink: 0 }}>
+              SPRINT {activeMilestone?.position ?? "—"} OF {goal.milestones_total}
+            </span>
+            {activeMilestone?.sprint_status === "generating" ? (
+              <span style={{ fontSize: 10, color: T.muted, fontFamily: T.mono, animation: "pulse 1.5s ease-in-out infinite" }}>
+                ◉ AI forging next sprint···
+              </span>
+            ) : activeMilestone ? (
+              <span style={{ fontSize: 11, color: T.textDim, fontFamily: T.mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>— {activeMilestone.title}</span>
+            ) : null}
+          </div>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            {goal.milestones.flatMap((m, i) => {
+              const isActive    = m.sprint_status === "active" || m.sprint_status === "generating"
+              const dot = (
+                <div key={m.id} style={{
+                  width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 9, fontFamily: T.mono,
+                  background: m.is_completed ? `${T.emerald}20` : isActive ? `${T.indigo}25` : `${T.dim}15`,
+                  border: m.is_completed ? `1.5px solid ${T.emerald}60` : isActive ? `1.5px solid ${T.indigo}70` : `1.5px solid ${T.dim}`,
+                  color: m.is_completed ? T.emerald : isActive ? T.indigo : T.muted,
+                }}>
+                  {m.is_completed ? "✓" : m.position}
+                </div>
+              )
+              if (i === 0) return [dot]
+              const line = (
+                <div key={`line-${i}`} style={{
+                  flex: 1, height: 1, minWidth: 8,
+                  background: m.is_completed ? T.emerald : i <= (activeMilestone?.position ?? 1) - 1 ? T.indigo : T.dim,
+                  opacity: 0.35,
+                }} />
+              )
+              return [line, dot]
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Abandoned banner ── */}
       {isAbandoned && (
@@ -339,7 +404,7 @@ function GoalCard({
 
                   {/* Action icons — pending tasks only */}
                   {!task.is_completed && !isEditing && (
-                    <div className={`flex items-center gap-1 shrink-0 transition-opacity ${isDeleting ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                    <div className={`flex items-center gap-1 shrink-0 transition-opacity ${isDeleting ? "opacity-100" : "opacity-50 sm:opacity-0 sm:group-hover:opacity-100"}`}>
                       {isDeleting ? (
                         <>
                           <button
@@ -391,8 +456,48 @@ function GoalCard({
 
       {/* ── Status actions ── */}
       {!isAbandoned && !isAchieved && (
-        <div style={{ padding: "0 18px 14px", display: "flex", gap: 7, flexWrap: "wrap" }}>
-          <Btn onClick={() => onStatusChange(goal.id, "achieved")} small>🏆 Mark Achieved +100 pts</Btn>
+        <div style={{ padding: "0 18px 14px", display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center" }}>
+          {allMilestonesComplete ? (
+            <button
+              onClick={() => onStatusChange(goal.id, "achieved")}
+              style={{
+                cursor: "pointer", padding: "5px 14px", borderRadius: 8,
+                fontFamily: T.mono, fontSize: 11, fontWeight: 500, letterSpacing: "0.04em",
+                background: `${T.amber}20`, color: T.amber, border: `1px solid ${T.amber}60`,
+                boxShadow: `0 0 14px ${T.amber}50`,
+              }}
+            >
+              ✦ Ascend to Achieved
+            </button>
+          ) : allSprintTasksDone && activeMilestone ? (
+            <button
+              onClick={async () => {
+                setCompletingMilestone(true)
+                await onCompleteMilestone(goal.id, activeMilestone.id)
+                setCompletingMilestone(false)
+              }}
+              disabled={completingMilestone}
+              style={{
+                cursor: completingMilestone ? "default" : "pointer",
+                padding: "5px 14px", borderRadius: 8,
+                fontFamily: T.mono, fontSize: 11, fontWeight: 500, letterSpacing: "0.04em",
+                background: `${T.indigo}20`, color: T.indigo, border: `1px solid ${T.indigo}55`,
+                boxShadow: `0 0 12px ${T.indigo}35`, opacity: completingMilestone ? 0.6 : 1,
+              }}
+            >
+              {completingMilestone
+                ? "···"
+                : `✦ Complete Sprint → ${nextMilestone ? "Start " + nextMilestone.title : "Final Lap"}`}
+            </button>
+          ) : doneToday ? (
+            <span style={{
+              padding: "5px 12px", borderRadius: 8, fontFamily: T.mono, fontSize: 11,
+              background: `${T.emerald}15`, color: T.emerald, border: `1px solid ${T.emerald}40`,
+              letterSpacing: "0.04em",
+            }}>
+              ✓ Today's Work Done
+            </span>
+          ) : null}
           <Btn onClick={() => onStatusChange(goal.id, "abandoned")} variant="ghost" small>✕ Abandon</Btn>
           <Btn onClick={() => onDeleteGoal(goal.id)} variant="danger" small>Delete</Btn>
         </div>
@@ -428,30 +533,54 @@ function GoalCard({
           {/* Milestones */}
           <div style={{ marginBottom: 18 }}>
             <div style={{ fontSize: 10, color: T.muted, letterSpacing: "0.1em", fontFamily: T.mono, marginBottom: 9 }}>MILESTONES</div>
-            {goal.milestones.map((m, i) => (
-              <div key={i} style={{ display: "flex", gap: 9, alignItems: "center", marginBottom: 6 }}>
-                <div style={{
-                  width: 20, height: 20, borderRadius: "50%", border: `1.5px solid ${T.dim}`,
-                  flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 9, color: T.muted, fontFamily: T.mono,
-                }}>{i + 1}</div>
-                <span style={{ fontSize: 12, color: T.textDim }}>{m}</span>
-              </div>
-            ))}
+            {goal.milestones.map(m => {
+              const isActive = m.sprint_status === "active" || m.sprint_status === "generating"
+              return (
+                <div key={m.id} style={{ display: "flex", gap: 9, alignItems: "center", marginBottom: 7 }}>
+                  <div style={{
+                    width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 9, fontFamily: T.mono,
+                    background: m.is_completed ? `${T.emerald}20` : isActive ? `${T.indigo}25` : `${T.dim}15`,
+                    border: m.is_completed ? `1.5px solid ${T.emerald}60` : isActive ? `1.5px solid ${T.indigo}70` : `1.5px solid ${T.dim}`,
+                    color: m.is_completed ? T.emerald : isActive ? T.indigo : T.muted,
+                  }}>
+                    {m.is_completed ? "✓" : m.position}
+                  </div>
+                  <span style={{ fontSize: 12, color: m.is_completed ? T.emerald : isActive ? T.text : T.textDim, flex: 1 }}>
+                    {m.title}
+                  </span>
+                  {m.sprint_status === "generating" && (
+                    <span style={{ fontSize: 10, color: T.muted, fontFamily: T.mono, animation: "pulse 1.5s ease-in-out infinite" }}>
+                      generating···
+                    </span>
+                  )}
+                  {m.sprint_status === "ready" && (
+                    <span style={{ fontSize: 10, color: T.indigo, fontFamily: T.mono }}>ready</span>
+                  )}
+                  {m.is_completed && (
+                    <span style={{ fontSize: 10, color: T.emerald, fontFamily: T.mono }}>done</span>
+                  )}
+                </div>
+              )
+            })}
           </div>
 
-          {/* Progress slider */}
+          {/* Progress — milestone-gated */}
           <div style={{ marginBottom: 18 }}>
             <div style={{ fontSize: 10, color: T.muted, letterSpacing: "0.1em", fontFamily: T.mono, marginBottom: 7 }}>
-              PROGRESS — {progLocal}%
+              PROGRESS — {milestonesProgress}%
             </div>
-            <input
-              type="range" min={0} max={100} value={progLocal}
-              onChange={e => setProgLocal(Number(e.target.value))}
-              onMouseUp={() => onUpdateProgress(goal.id, progLocal)}
-              onTouchEnd={() => onUpdateProgress(goal.id, progLocal)}
-              style={{ width: "100%", accentColor: T.orange }}
-            />
+            <div style={{ height: 4, background: T.dim, borderRadius: 2, overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 2,
+                background: milestonesProgress === 100 ? T.amber : T.orange,
+                width: `${milestonesProgress}%`, transition: "width 0.7s",
+              }} />
+            </div>
+            <div style={{ fontSize: 10, color: T.dim, fontFamily: T.mono, marginTop: 5 }}>
+              {goal.milestones_completed} of {goal.milestones_total} sprints completed
+            </div>
           </div>
 
           {/* Heatmap */}
@@ -617,16 +746,6 @@ export default function Dashboard() {
     }
   }
 
-  // ── Progress update ──
-  async function updateProgress(goalId: string, progress: number) {
-    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, progress } : g))
-    try {
-      await api.patch(`/goals/${goalId}/progress`, { progress })
-    } catch {
-      toast.error("Could not save progress.")
-    }
-  }
-
   // ── Delete goal ──
   async function deleteGoal(goalId: string) {
     const deleted = goals.find(g => g.id === goalId)
@@ -637,6 +756,17 @@ export default function Dashboard() {
     } catch {
       if (deleted) setGoals(prev => [...prev, deleted])
       toast.error("Could not delete goal.")
+    }
+  }
+
+  // ── Complete sprint milestone ──
+  async function completeMilestone(goalId: string, milestoneId: string) {
+    try {
+      const { data } = await api.post<Goal>(`/goals/${goalId}/milestones/${milestoneId}/complete`)
+      setGoals(prev => prev.map(g => g.id === goalId ? data : g))
+      toast.success("Sprint complete! Next sprint unlocked. ✦")
+    } catch {
+      toast.error("Could not complete sprint. Please try again.")
     }
   }
 
@@ -667,18 +797,20 @@ export default function Dashboard() {
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: ${T.dim}; border-radius: 2px; }
         textarea:focus { border-color: ${T.orange} !important; outline: none; }
-        input[type=range] { height: 4px; }
         button:hover { opacity: 0.82; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+        .filter-tabs::-webkit-scrollbar { display: none; }
+        button:focus-visible, a:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; border-radius: 4px; }
       `}</style>
 
       <AppHeader pts={pts} />
 
-      <div style={{ maxWidth: 740, margin: "0 auto", padding: "28px 22px" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }} className="px-4 py-5 sm:px-8 sm:py-7">
 
         {/* Page heading */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontFamily: T.serif, fontSize: 30, fontWeight: 400, color: T.text, marginBottom: 3 }}>
+          <h1 style={{ fontFamily: T.serif, fontWeight: 400, color: T.text, marginBottom: 3 }} className="text-[26px] sm:text-[32px] lg:text-[38px]">
             Your Goals
           </h1>
           <p style={{ fontSize: 12, color: T.muted }}>
@@ -711,7 +843,7 @@ export default function Dashboard() {
             <AddGoal onAdd={addGoal} />
 
             {/* Filter tabs */}
-            <div style={{ display: "flex", borderBottom: `1px solid ${T.border}`, marginBottom: 18 }}>
+            <div style={{ display: "flex", borderBottom: `1px solid ${T.border}`, marginBottom: 18, overflowX: "auto", scrollbarWidth: "none" }} className="filter-tabs">
               {(["all", "active", "achieved", "abandoned"] as const).map(f => (
                 <button
                   key={f}
@@ -719,7 +851,7 @@ export default function Dashboard() {
                   style={{
                     background: "none", border: "none", cursor: "pointer",
                     padding: "7px 14px", fontFamily: T.mono, fontSize: 11,
-                    letterSpacing: "0.06em",
+                    letterSpacing: "0.06em", flexShrink: 0,
                     color: filter === f ? T.text : T.muted,
                     borderBottom: filter === f ? `2px solid ${T.orange}` : "2px solid transparent",
                   }}
@@ -751,9 +883,9 @@ export default function Dashboard() {
                   onSaveEdit={saveEdit}
                   onStartDelete={startDelete}
                   onConfirmDelete={confirmDelete}
-                  onUpdateProgress={updateProgress}
                   onDeleteGoal={deleteGoal}
                   onStatusChange={changeStatus}
+                  onCompleteMilestone={completeMilestone}
                 />
               ))}
             </div>

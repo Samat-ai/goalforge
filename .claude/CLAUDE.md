@@ -68,6 +68,7 @@ uvicorn main:app --reload --port 8000
 | `PATCH` | `/tasks/{task_id}` | Update pending task description |
 | `DELETE` | `/tasks/{task_id}` | Delete pending task |
 | `GET` | `/health` | Health check (hidden from OpenAPI docs) |
+| `POST` | `/goals/{goal_id}/milestones/{milestone_id}/complete` | Mark sprint done, unlock next sprint |
 
 CORS allows `http://localhost:5173` only. Tighten `allow_origins` before deploying.
 
@@ -76,14 +77,16 @@ CORS allows `http://localhost:5173` only. Tighten `allow_origins` before deployi
 ```
 users          id (Clerk user_id), email, star_points, created_at
 goals          id (uuid), user_id → users, raw_input, smart_title, smart_description,
-               goal_type, target_date, milestones (JSON array), status, current_streak,
-               best_streak, vitality, progress (0-100), created_at
-daily_tasks    id (uuid), goal_id → goals, description, tip, assigned_date,
-               is_completed, completed_at
+               goal_type, target_date, status, current_streak, best_streak, vitality,
+               progress (0-100), created_at
+milestones     id (uuid), goal_id → goals, title, position, is_final, sprint_theme,
+               sprint_status (pending|generating|ready|active|completed|failed),
+               is_completed, completed_at, created_at
+daily_tasks    id (uuid), goal_id → goals, milestone_id → milestones (nullable),
+               description, tip, assigned_date, is_completed, completed_at
 ```
 
-`GoalResponse` includes a computed field `completed_days` — sorted list of ISO date strings
-where at least one task was completed.
+`GoalResponse` computed fields: `completed_days`, `milestones_completed`, `milestones_total`.
 
 ## Frontend — apps/web/
 
@@ -148,7 +151,8 @@ Star points thresholds:
 | Nova | 350 |
 | Celestial | 600 |
 
-Key exports: `getStage(pts)`, `getNext(pts)`, `stagePct(pts)`, `streak(days)`, `starBrightness(days, createdAt)`.
+Key exports: `getStage(pts)`, `getNext(pts)`, `stagePct(pts)`, `streak(days)`, `starBrightness(days)`.
+`starBrightness` = `Math.min(1, streak(days) / 7)` — scales 0→1 over 7 consecutive days.
 
 ## Architecture notes
 
@@ -158,12 +162,36 @@ Key exports: `getStage(pts)`, `getNext(pts)`, `stagePct(pts)`, `streak(days)`, `
   to avoid race conditions. +10 per completed task, +100 on first goal achievement.
 - **DB session**: all handlers inject `db: AsyncSession = Depends(get_db)`. Sessions auto-commit
   on success and roll back on exception.
-- **User resolution**: `get_or_create_user()` in `main.py` upserts a `User` row using the Clerk
-  `user_id` path param. Email is a query param for now (TODO: extract from JWT).
+- **User resolution & Auth**: `get_or_create_user()` in `main.py` upserts a `User` row using the Clerk `user_id` path param. **Note:** The `user_id` is a Clerk string (e.g., `user_2...`), NOT a UUID. Email is currently a query param.
+- **Strict Boundaries**:
+  - DO NOT refactor the Auth JWT logic unless explicitly instructed.
+  - DO NOT tighten or modify the CORS `allow_origins` during local development tasks.
+- **Milestone-Gated Architecture**: Progress = `milestones_completed / milestones_total`. "Achieved"
+  only available when all milestones are `is_completed`. AI chooses 3-5 milestones; sprints = 7 days fixed.
+- **Background tasks (pre-gen)**: `asyncio.create_task()` coroutines MUST open their own
+  `AsyncSession(engine)` — they cannot reuse the closed request session.
+- **Gemini**: Use `temperature=1.0` for Gemini 2.5 Flash (required for thinking mode). Pattern:
+  `response_mime_type="application/json"` + `response_schema=PydanticModel`.
+- **Alembic gotcha**: `Base.metadata.create_all` on startup auto-creates blank tables before
+  migrations run, causing `DuplicateTableError`. If this happens: drop the auto-created table,
+  then re-run `alembic upgrade head`.
 - **No test suite** exists yet.
+
+## Preferred Coding Patterns
+
+- **FastAPI / SQLAlchemy**: Strictly use asynchronous patterns (`async def`, `AsyncSession`).
+- **Queries**: Always prefer SQLAlchemy 2.0 `select()` statements over legacy `.query()`.
+- **Execution**: Never use `Session.execute` without an `await`.
+- **Atomic Operations**: Always use SQL-level math (e.g., `User.star_points + 10`) for point transactions to prevent race conditions. Do not compute points in memory and save.
 
 ## Git conventions
 
 - Branch naming: `feature/<short-description>`
 - Commit style: Conventional Commits (`feat:`, `fix:`, `chore:`, etc.)
 - GitHub Actions: automated Claude code review and PR assistant (`.github/workflows/`)
+
+## Product & UI Philosophy
+
+- **Aesthetic**: "Obsidian Command" — dark mode, monospace fonts (`'Courier New', monospace`) for badges/stats, serif fonts (`Georgia, serif`) for headings. Use full-screen width; avoid restrictive containers that squish the dashboard.
+- **Anti-Cheat Mechanics**: Gamification must feel earned. Do not implement manual progress sliders. Star brightness should scale gradually based on consecutive daily task completions, not jump to 100% instantly.
+- **Goal Status**: Strictly adhere to the "3 A's": `ACTIVE`, `ACHIEVED`, and `ABANDONED`.

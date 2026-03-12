@@ -7,7 +7,6 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
-    JSON,
     String,
     Text,
     func,
@@ -46,8 +45,6 @@ class Goal(Base):
     smart_description: Mapped[str] = mapped_column(Text, nullable=False)
     goal_type: Mapped[str] = mapped_column(String, nullable=False)
     target_date: Mapped[datetime] = mapped_column(Date, nullable=False)
-    # Stored as a JSON array of milestone strings, e.g. ["Week 1: ...", "Week 4: ..."]
-    milestones: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     status: Mapped[str] = mapped_column(String, nullable=False, default="active")
     current_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     best_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -58,9 +55,45 @@ class Goal(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="goals")
+    milestones: Mapped[list["Milestone"]] = relationship(
+        "Milestone", back_populates="goal",
+        order_by="Milestone.position",
+        cascade="all, delete-orphan",
+    )
     daily_tasks: Mapped[list["DailyTask"]] = relationship(
         "DailyTask", back_populates="goal", cascade="all, delete-orphan",
         passive_deletes=True,
+    )
+
+
+class Milestone(Base):
+    __tablename__ = "milestones"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    goal_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("goals.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    # True only for the last milestone — gates the "Ascend to Achieved" button
+    is_final: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Context string passed to Gemini when generating this sprint's tasks
+    sprint_theme: Mapped[str] = mapped_column(String, nullable=False)
+    # Lifecycle: pending → generating → ready → active → completed | failed
+    sprint_status: Mapped[str] = mapped_column(String, nullable=False, default="pending")
+    is_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    goal: Mapped["Goal"] = relationship("Goal", back_populates="milestones")
+    daily_tasks: Mapped[list["DailyTask"]] = relationship(
+        "DailyTask", back_populates="milestone"
     )
 
 
@@ -73,6 +106,9 @@ class DailyTask(Base):
     goal_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("goals.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    milestone_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("milestones.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     description: Mapped[str] = mapped_column(String, nullable=False)
     tip: Mapped[str] = mapped_column(String, nullable=False)
     assigned_date: Mapped[datetime] = mapped_column(Date, nullable=False)
@@ -82,3 +118,4 @@ class DailyTask(Base):
     )
 
     goal: Mapped["Goal"] = relationship("Goal", back_populates="daily_tasks")
+    milestone: Mapped["Milestone | None"] = relationship("Milestone", back_populates="daily_tasks")
