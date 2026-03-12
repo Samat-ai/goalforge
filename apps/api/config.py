@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/goalforge"
     gemini_api_key: str = ""
     debug: bool = False
+    clerk_secret_key: str = ""
+    clerk_jwks_url: str = ""
 
 
 settings = Settings()
