@@ -22,7 +22,7 @@ from config import settings
 
 _jwks_cache: TTLCache = TTLCache(maxsize=2, ttl=600)
 _jwks_lock = asyncio.Lock()
-_bearer = HTTPBearer()
+_bearer = HTTPBearer(auto_error=False)
 
 
 async def _get_jwks() -> dict:
@@ -34,11 +34,20 @@ async def _get_jwks() -> dict:
         if "jwks" in _jwks_cache:
             return _jwks_cache["jwks"]
         if not settings.clerk_jwks_url:
-            raise RuntimeError("CLERK_JWKS_URL is not configured")
-        async with httpx.AsyncClient() as client:
-            response = await client.get(settings.clerk_jwks_url, timeout=10)
-            response.raise_for_status()
-            jwks = response.json()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Auth configuration missing",
+            )
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(settings.clerk_jwks_url, timeout=10)
+                response.raise_for_status()
+                jwks = response.json()
+        except httpx.HTTPError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Auth service unavailable",
+            ) from exc
         _jwks_cache["jwks"] = jwks
         return jwks
 
@@ -48,9 +57,14 @@ async def _get_jwks() -> dict:
 # ---------------------------------------------------------------------------
 
 async def _decode_token(
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> dict:
     """Verify the Bearer JWT and return the decoded payload."""
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
     token = credentials.credentials
     try:
         header = jwt.get_unverified_header(token)
@@ -120,5 +134,13 @@ async def get_current_user_id(payload: dict = Depends(_decode_token)) -> str:
 
 
 async def get_current_user_email(payload: dict = Depends(_decode_token)) -> str:
-    """Return the email claim from the JWT, or '' if absent."""
-    return payload.get("email", "")
+    """Return the email claim from the JWT.
+
+    Falls back to a unique placeholder derived from the sub claim to avoid
+    violating the User.email unique constraint when email is not in the token.
+    """
+    email = payload.get("email")
+    if email:
+        return email
+    sub = payload.get("sub", "unknown")
+    return f"{sub}@placeholder.goalforge.app"

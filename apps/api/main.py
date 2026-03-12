@@ -488,7 +488,9 @@ async def update_task(
         raise HTTPException(status_code=404, detail="Task not found")
     goal_result = await db.execute(select(Goal).where(Goal.id == task.goal_id))
     goal = goal_result.scalar_one_or_none()
-    if goal is None or goal.user_id != current_user_id:
+    if goal is None:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    if goal.user_id != current_user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     if task.is_completed:
         raise HTTPException(status_code=400, detail="Cannot edit a completed task")
@@ -514,7 +516,9 @@ async def delete_task(
         raise HTTPException(status_code=404, detail="Task not found")
     goal_result = await db.execute(select(Goal).where(Goal.id == task.goal_id))
     goal = goal_result.scalar_one_or_none()
-    if goal is None or goal.user_id != current_user_id:
+    if goal is None:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    if goal.user_id != current_user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     if task.is_completed:
         raise HTTPException(status_code=400, detail="Cannot delete a completed task")
