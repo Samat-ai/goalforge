@@ -138,7 +138,6 @@ function TodayBar({ goals }: { goals: Goal[] }) {
 
 // ── AddGoal (inline form) ─────────────────────────────────────────────────────
 function AddGoal({ onAdd }: { onAdd: (rawInput: string) => Promise<void> }) {
-  const [open,    setOpen]    = useState(false)
   const [raw,     setRaw]     = useState("")
   const [loading, setLoading] = useState(false)
   const [status,  setStatus]  = useState<"idle" | "thinking" | "done">("idle")
@@ -150,22 +149,8 @@ function AddGoal({ onAdd }: { onAdd: (rawInput: string) => Promise<void> }) {
     await onAdd(raw.trim())
     setStatus("done")
     setRaw("")
-    setTimeout(() => { setStatus("idle"); setOpen(false); setLoading(false) }, 700)
+    setTimeout(() => { setStatus("idle"); setLoading(false) }, 700)
   }
-
-  if (!open) return (
-    <button
-      onClick={() => setOpen(true)}
-      style={{
-        width: "100%", padding: "15px 18px", background: "transparent", cursor: "pointer",
-        border: `1.5px dashed ${T.border}`, borderRadius: 13, color: T.muted,
-        fontFamily: T.mono, fontSize: 13, display: "flex", alignItems: "center", gap: 10,
-        marginBottom: 22,
-      }}
-    >
-      <span style={{ fontSize: 18 }}>+</span> New goal — describe it in plain language
-    </button>
-  )
 
   return (
     <div style={{ background: T.card, border: `1px solid ${T.orange}55`, borderRadius: 13, padding: 18, marginBottom: 22 }}>
@@ -178,7 +163,6 @@ function AddGoal({ onAdd }: { onAdd: (rawInput: string) => Promise<void> }) {
         onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit() }}
         placeholder="e.g. get better at leetcode, run a 5k, write a novel..."
         rows={3}
-        autoFocus
         style={{
           width: "100%", background: T.surface, border: `1px solid ${T.border}`,
           borderRadius: 7, padding: "11px 13px", color: T.text, fontFamily: T.mono,
@@ -189,7 +173,6 @@ function AddGoal({ onAdd }: { onAdd: (rawInput: string) => Promise<void> }) {
       {status === "done"     && <div style={{ marginTop: 10, fontSize: 12, color: T.emerald, fontFamily: T.mono }}>✓ Goal added!</div>}
       <div style={{ display: "flex", gap: 8, marginTop: 11 }}>
         <Btn onClick={submit} loading={loading}>Create Goal →</Btn>
-        <Btn onClick={() => { setOpen(false); setRaw("") }} variant="ghost">Cancel</Btn>
       </div>
     </div>
   )
