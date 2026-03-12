@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ai_utils import generate_smart_goal, generate_sprint_tasks
+from auth import get_current_user_email, get_current_user_id
 from database import engine, get_db, Base
 from models import DailyTask, Goal, Milestone, User
 from schemas import (
@@ -145,7 +146,13 @@ async def get_or_create_user(
     "/users/{user_id}/profile",
     summary="Get user profile (star_points etc.)",
 )
-async def get_user_profile(user_id: str, db: AsyncSession = Depends(get_db)):
+async def get_user_profile(
+    user_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    if user_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:
@@ -166,10 +173,13 @@ async def get_user_profile(user_id: str, db: AsyncSession = Depends(get_db)):
 async def create_goal(
     user_id: str,
     payload: GoalCreate,
-    email: str = "unknown@example.com",
+    current_user_id: str = Depends(get_current_user_id),
+    current_user_email: str = Depends(get_current_user_email),
     db: AsyncSession = Depends(get_db),
 ):
-    user = await get_or_create_user(user_id, email, db)
+    if user_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    user = await get_or_create_user(user_id, current_user_email, db)
 
     try:
         ai_output = await generate_smart_goal(payload.raw_input)
@@ -235,7 +245,13 @@ async def create_goal(
     response_model=list[GoalResponse],
     summary="List all goals for a user",
 )
-async def list_goals(user_id: str, db: AsyncSession = Depends(get_db)):
+async def list_goals(
+    user_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    if user_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     result = await db.execute(
         select(Goal)
         .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
@@ -250,7 +266,11 @@ async def list_goals(user_id: str, db: AsyncSession = Depends(get_db)):
     response_model=GoalResponse,
     summary="Get a single goal by ID",
 )
-async def get_goal(goal_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def get_goal(
+    goal_id: uuid.UUID,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
         select(Goal)
         .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
@@ -259,6 +279,8 @@ async def get_goal(goal_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     goal = result.scalar_one_or_none()
     if goal is None:
         raise HTTPException(status_code=404, detail="Goal not found")
+    if goal.user_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     return goal
 
 
@@ -270,6 +292,7 @@ async def get_goal(goal_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 async def update_goal_status(
     goal_id: uuid.UUID,
     body: GoalStatusUpdate,
+    current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -280,6 +303,8 @@ async def update_goal_status(
     goal = result.scalar_one_or_none()
     if goal is None:
         raise HTTPException(status_code=404, detail="Goal not found")
+    if goal.user_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     old_status = goal.status
     goal.status = body.status
@@ -304,6 +329,7 @@ async def update_goal_status(
 async def update_goal_progress(
     goal_id: uuid.UUID,
     body: GoalProgressUpdate,
+    current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -314,6 +340,8 @@ async def update_goal_progress(
     goal = result.scalar_one_or_none()
     if goal is None:
         raise HTTPException(status_code=404, detail="Goal not found")
+    if goal.user_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     goal.progress = body.progress
     await db.flush()
@@ -325,11 +353,17 @@ async def update_goal_progress(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Permanently delete a goal and all its tasks",
 )
-async def delete_goal(goal_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def delete_goal(
+    goal_id: uuid.UUID,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(Goal).where(Goal.id == goal_id))
     goal = result.scalar_one_or_none()
     if goal is None:
         raise HTTPException(status_code=404, detail="Goal not found")
+    if goal.user_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     await db.delete(goal)
     await db.flush()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -347,8 +381,16 @@ async def delete_goal(goal_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 async def list_tasks(
     goal_id: uuid.UUID,
     assigned_date: date | None = None,
+    current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
+    goal_result = await db.execute(select(Goal).where(Goal.id == goal_id))
+    goal = goal_result.scalar_one_or_none()
+    if goal is None:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    if goal.user_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     query = select(DailyTask).where(DailyTask.goal_id == goal_id)
     if assigned_date:
         query = query.where(DailyTask.assigned_date == assigned_date)
@@ -361,11 +403,24 @@ async def list_tasks(
     response_model=TaskResponse,
     summary="Mark a daily task as completed and award star points",
 )
-async def complete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def complete_task(
+    task_id: uuid.UUID,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(DailyTask).where(DailyTask.id == task_id))
     task = result.scalar_one_or_none()
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
+
+    # Load goal early for ownership check and star points
+    goal_result = await db.execute(select(Goal).where(Goal.id == task.goal_id))
+    goal = goal_result.scalar_one_or_none()
+    if goal is None:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    if goal.user_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     if task.is_completed:
         raise HTTPException(status_code=400, detail="Task already completed")
 
@@ -373,14 +428,11 @@ async def complete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     task.completed_at = datetime.now(timezone.utc)
 
     # Award 10 star points to the goal's owner (atomic SQL increment avoids race conditions)
-    goal_result = await db.execute(select(Goal).where(Goal.id == task.goal_id))
-    goal = goal_result.scalar_one_or_none()
-    if goal:
-        await db.execute(
-            sql_update(User)
-            .where(User.id == goal.user_id)
-            .values(star_points=User.star_points + 10)
-        )
+    await db.execute(
+        sql_update(User)
+        .where(User.id == goal.user_id)
+        .values(star_points=User.star_points + 10)
+    )
 
     await db.flush()
 
@@ -427,12 +479,17 @@ async def complete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 async def update_task(
     task_id: uuid.UUID,
     body: TaskUpdate,
+    current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(DailyTask).where(DailyTask.id == task_id))
     task = result.scalar_one_or_none()
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
+    goal_result = await db.execute(select(Goal).where(Goal.id == task.goal_id))
+    goal = goal_result.scalar_one_or_none()
+    if goal is None or goal.user_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     if task.is_completed:
         raise HTTPException(status_code=400, detail="Cannot edit a completed task")
 
@@ -446,11 +503,19 @@ async def update_task(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a pending task",
 )
-async def delete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def delete_task(
+    task_id: uuid.UUID,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(DailyTask).where(DailyTask.id == task_id))
     task = result.scalar_one_or_none()
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
+    goal_result = await db.execute(select(Goal).where(Goal.id == task.goal_id))
+    goal = goal_result.scalar_one_or_none()
+    if goal is None or goal.user_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     if task.is_completed:
         raise HTTPException(status_code=400, detail="Cannot delete a completed task")
 
@@ -471,8 +536,17 @@ async def delete_task(task_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 async def complete_milestone(
     goal_id: uuid.UUID,
     milestone_id: uuid.UUID,
+    current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
+    # Verify goal ownership before touching milestone data
+    goal_check = await db.execute(select(Goal).where(Goal.id == goal_id))
+    goal_obj = goal_check.scalar_one_or_none()
+    if goal_obj is None:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    if goal_obj.user_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     # Load and validate milestone
     ms_result = await db.execute(
         select(Milestone)
@@ -512,9 +586,7 @@ async def complete_milestone(
             next_ms.sprint_status = "active"
 
         elif next_ms.sprint_status in ("pending", "failed"):
-            # No tasks yet — generate synchronously
-            goal_result = await db.execute(select(Goal).where(Goal.id == goal_id))
-            goal_obj = goal_result.scalar_one()
+            # No tasks yet — generate synchronously (goal_obj already loaded above)
             goal_context = f"{goal_obj.smart_title}: {goal_obj.smart_description}"
             try:
                 task_outputs = await generate_sprint_tasks(
