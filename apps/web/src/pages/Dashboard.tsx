@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useUser, useAuth } from '@clerk/react'
-import { Circle, CheckCircle2, Pencil, Trash2, X } from 'lucide-react'
+import { Circle, CheckCircle2, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import api, { setAuthToken } from '../lib/api'
 import AppHeader from '../components/AppHeader'
@@ -183,25 +183,21 @@ interface GoalCardProps {
   goal: Goal
   editingTaskId: string | null
   editingText: string
-  deletingTaskId: string | null
   setEditingText: (t: string) => void
-  setDeletingTaskId: (id: string | null) => void
   onCompleteTask:    (taskId: string) => void
   onStartEdit:       (task: Task) => void
   onCancelEdit:      () => void
   onSaveEdit:        (taskId: string, original: string) => void
-  onStartDelete:     (taskId: string) => void
-  onConfirmDelete:   (taskId: string) => void
   onDeleteGoal:           (goalId: string) => void
   onStatusChange:         (goalId: string, status: 'active' | 'achieved' | 'abandoned') => void
   onCompleteMilestone:    (goalId: string, milestoneId: string) => Promise<void>
 }
 
 function GoalCard({
-  goal, editingTaskId, editingText, deletingTaskId,
-  setEditingText, setDeletingTaskId,
+  goal, editingTaskId, editingText,
+  setEditingText,
   onCompleteTask, onStartEdit, onCancelEdit, onSaveEdit,
-  onStartDelete, onConfirmDelete, onDeleteGoal, onStatusChange, onCompleteMilestone,
+  onDeleteGoal, onStatusChange, onCompleteMilestone,
 }: GoalCardProps) {
   const [open, setOpen] = useState(false)
   const [completingMilestone, setCompletingMilestone] = useState(false)
@@ -370,7 +366,6 @@ function GoalCard({
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {todayTasks.map(task => {
               const isEditing  = editingTaskId  === task.id
-              const isDeleting = deletingTaskId === task.id
               return (
                 <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}
                   className="group">
@@ -424,47 +419,16 @@ function GoalCard({
 
                   {/* Action icons — pending tasks only */}
                   {!task.is_completed && !isEditing && (
-                    <div className={`flex items-center gap-1 shrink-0 transition-opacity ${isDeleting ? "opacity-100" : "opacity-50 sm:opacity-0 sm:group-hover:opacity-100"}`}>
-                      {isDeleting ? (
-                        <>
-                          <button
-                            onClick={() => onConfirmDelete(task.id)}
-                            style={{
-                              display: "flex", alignItems: "center", gap: 4, fontSize: 11,
-                              color: T.rose, cursor: "pointer", background: `${T.rose}15`,
-                              border: `1px solid ${T.rose}40`, borderRadius: 5, padding: "7px 10px",
-                              fontFamily: T.mono,
-                            }}
-                          >
-                            <Trash2 size={13} /> Delete
-                          </button>
-                          <button
-                            onClick={() => setDeletingTaskId(null)}
-                            style={{ color: T.dim, cursor: "pointer", background: "none", border: "none", padding: "7px 4px" }}
-                          >
-                            <X size={14} />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onMouseDown={e => e.preventDefault()}
-                            onClick={() => onStartEdit(task)}
-                            className="text-[#3f3f5c] hover:text-indigo-400 transition-colors p-1 rounded bg-transparent border-0 cursor-pointer"
-                            title="Edit task"
-                          >
-                            <Pencil size={13} />
-                          </button>
-                          <button
-                            onMouseDown={e => e.preventDefault()}
-                            onClick={() => onStartDelete(task.id)}
-                            className="text-[#3f3f5c] hover:text-rose-400 transition-colors p-1 rounded bg-transparent border-0 cursor-pointer"
-                            title="Delete task"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </>
-                      )}
+                    <div className="flex items-center shrink-0 transition-opacity opacity-50 sm:opacity-0 sm:group-hover:opacity-100">
+                      <button
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => onStartEdit(task)}
+                        className="text-[#3f3f5c] hover:text-indigo-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
+                        style={{ minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
+                        title="Edit task"
+                      >
+                        <Pencil size={13} />
+                      </button>
                     </div>
                   )}
                 </div>
@@ -666,10 +630,9 @@ export default function Dashboard() {
   const [error,   setError]   = useState<string | null>(null)
   const [filter,  setFilter]  = useState<string>("all")
 
-  // Task edit/delete state
+  // Task edit state
   const [editingTaskId,  setEditingTaskId]  = useState<string | null>(null)
   const [editingText,    setEditingText]    = useState("")
-  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null)
 
   // ── Fetch goals + star_points ──
   useEffect(() => {
@@ -751,7 +714,6 @@ export default function Dashboard() {
 
   // ── Task edit ──
   function startEdit(task: Task) {
-    setDeletingTaskId(null)
     setEditingTaskId(task.id)
     setEditingText(task.description)
   }
@@ -778,30 +740,6 @@ export default function Dashboard() {
         daily_tasks: g.daily_tasks.map(t => t.id === taskId ? { ...t, description: original } : t),
       })))
       toast.error("Could not update task.")
-    }
-  }
-
-  // ── Task delete ──
-  function startDelete(taskId: string) {
-    setEditingTaskId(null)
-    setEditingText("")
-    setDeletingTaskId(taskId)
-  }
-
-  async function confirmDelete(taskId: string) {
-    const deleted = goals.flatMap(g => g.daily_tasks).find(t => t.id === taskId)
-    setGoals(prev => prev.map(g => ({ ...g, daily_tasks: g.daily_tasks.filter(t => t.id !== taskId) })))
-    setDeletingTaskId(null)
-    try {
-      await api.delete(`/tasks/${taskId}`)
-      toast.success("Task deleted")
-    } catch {
-      if (deleted) {
-        setGoals(prev => prev.map(g =>
-          g.id === deleted.goal_id ? { ...g, daily_tasks: [...g.daily_tasks, deleted] } : g
-        ))
-      }
-      toast.error("Could not delete task.")
     }
   }
 
@@ -933,15 +871,11 @@ export default function Dashboard() {
                   goal={goal}
                   editingTaskId={editingTaskId}
                   editingText={editingText}
-                  deletingTaskId={deletingTaskId}
                   setEditingText={setEditingText}
-                  setDeletingTaskId={setDeletingTaskId}
                   onCompleteTask={completeTask}
                   onStartEdit={startEdit}
                   onCancelEdit={cancelEdit}
                   onSaveEdit={saveEdit}
-                  onStartDelete={startDelete}
-                  onConfirmDelete={confirmDelete}
                   onDeleteGoal={deleteGoal}
                   onStatusChange={changeStatus}
                   onCompleteMilestone={completeMilestone}
