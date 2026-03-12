@@ -47,13 +47,9 @@ export function streak(days: string[]): number {
   return s
 }
 
-// ── Star brightness (0–1) based on consistency and recent activity ─────────────
-export function starBrightness(days: string[], createdAt: string): number {
-  const total = Math.max(1, Math.floor((Date.now() - new Date(createdAt).getTime()) / 864e5))
-  let missed = 0
-  for (let i = 0; i < 7; i++) {
-    if (days.includes(new Date(Date.now() - i * 864e5).toISOString().split("T")[0])) break
-    missed++
-  }
-  return Math.max(0, Math.min(1, (days.length / total) * 0.6 + 0.4 - missed * 0.15))
+// ── Star brightness (0–1) — earned over 7 consecutive days ───────────────────
+// Day 1 completion = dim ember (~14%). Day 7 streak = blazing (100%).
+// Breaking the streak resets brightness. Aligns with the 7-day AI task plan.
+export function starBrightness(days: string[]): number {
+  return Math.min(1, streak(days) / 7)
 }

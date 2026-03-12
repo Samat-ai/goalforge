@@ -200,15 +200,17 @@ export function Heatmap({ days }: { days: string[] }) {
     return { date, done: days.includes(date), isToday: date === todayStr() }
   })
   return (
-    <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
-      {cells.map(({ date, done, isToday }) => (
-        <div key={date} title={date} style={{
-          width: 11, height: 11, borderRadius: 2, flexShrink: 0,
-          background: done ? T_ORANGE : T_DIM,
-          opacity: done ? 1 : 0.35,
-          border: isToday ? `1px solid ${T_ORANGE}` : "1px solid transparent",
-        }} />
-      ))}
+    <div style={{ overflowX: "auto", paddingBottom: 2 }}>
+      <div style={{ display: "flex", gap: 3, flexWrap: "nowrap" }}>
+        {cells.map(({ date, done, isToday }) => (
+          <div key={date} title={date} style={{
+            width: 11, height: 11, borderRadius: 2, flexShrink: 0,
+            background: done ? T_ORANGE : T_DIM,
+            opacity: done ? 1 : 0.35,
+            border: isToday ? `1px solid ${T_ORANGE}` : "1px solid transparent",
+          }} />
+        ))}
+      </div>
     </div>
   )
 }

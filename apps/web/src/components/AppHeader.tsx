@@ -23,7 +23,7 @@ export default function AppHeader({ pts }: AppHeaderProps) {
       position: "sticky", top: 0, zIndex: 100,
       background: `${T.bg}f0`, backdropFilter: "blur(10px)",
       borderBottom: `1px solid ${T.border}`,
-      height: 54, padding: "0 22px",
+      height: 54, padding: "0 12px",
       display: "flex", alignItems: "center", gap: 0,
     }}>
       <span style={{ fontFamily: T.serif, fontSize: 21, color: T.text, marginRight: 28, letterSpacing: "-0.3px" }}>
@@ -43,21 +43,23 @@ export default function AppHeader({ pts }: AppHeaderProps) {
         </Link>
       ))}
 
-      <div
+      <button
         onClick={() => navigate('/analytics')}
+        aria-label={`${pts} star points, stage ${stage.name}. Go to analytics.`}
         style={{
-          marginLeft: 14, display: "flex", alignItems: "center", gap: 5,
+          marginLeft: 14,
           background: `${stage.color}18`, border: `1px solid ${stage.color}40`,
           borderRadius: 18, padding: "4px 11px", cursor: "pointer",
           fontFamily: T.mono, fontSize: 11, color: stage.color,
         }}
+        className="hidden sm:flex items-center gap-[5px]"
       >
         ✦ {pts} pts · {stage.name}
-      </div>
+      </button>
 
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
         {user?.firstName && (
-          <span style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }}>{user.firstName}</span>
+          <span style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }} className="hidden sm:inline">{user.firstName}</span>
         )}
         <UserButton />
       </div>

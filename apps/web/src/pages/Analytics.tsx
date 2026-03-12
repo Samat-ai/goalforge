@@ -89,15 +89,16 @@ export default function Analytics() {
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: ${T.dim}; border-radius: 2px; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        button:focus-visible, a:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; border-radius: 4px; }
       `}</style>
 
       <AppHeader pts={pts} />
 
-      <div style={{ maxWidth: 740, margin: "0 auto", padding: "28px 22px" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }} className="px-4 py-5 sm:px-8 sm:py-7">
 
         {/* Page heading */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontFamily: T.serif, fontSize: 30, fontWeight: 400, color: T.text, marginBottom: 3 }}>
+          <h1 style={{ fontFamily: T.serif, fontWeight: 400, color: T.text, marginBottom: 3 }} className="text-[26px] sm:text-[32px] lg:text-[38px]">
             Your Companion
           </h1>
           <p style={{ fontSize: 12, color: T.muted }}>Complete tasks to evolve your star creature</p>
@@ -137,7 +138,7 @@ export default function Analytics() {
                 </div>
               </div>
 
-              <div style={{ flex: 1, minWidth: 180 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11, color: T.muted, letterSpacing: "0.1em", fontFamily: T.mono, marginBottom: 4 }}>
                   YOUR COMPANION
                 </div>
@@ -184,7 +185,7 @@ export default function Analytics() {
                     </div>
                   ))}
                 </div>
-                <div style={{ fontSize: 9, color: T.dim, fontFamily: T.mono, marginTop: 5 }}>
+                <div style={{ fontSize: 9, color: T.dim, fontFamily: T.mono, marginTop: 5, overflowWrap: "break-word" }}>
                   {STAGES.map(s => s.name).join(" → ")}
                 </div>
               </div>
@@ -229,9 +230,9 @@ export default function Analytics() {
                   const lbl  = g.raw_input.length > 26 ? g.raw_input.slice(0, 26) + "…" : g.raw_input
                   return (
                     <div key={g.id} style={{ marginBottom: 14 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                        <span style={{ fontSize: 12, color: T.textDim }}>{lbl}</span>
-                        <span style={{ fontSize: 11, color: col, fontFamily: T.mono }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, flexWrap: "wrap", gap: "2px 8px" }}>
+                        <span style={{ fontSize: 12, color: T.textDim, flexShrink: 0 }}>{lbl}</span>
+                        <span style={{ fontSize: 11, color: col, fontFamily: T.mono, flexShrink: 0 }}>
                           {Math.round(rate * 100)}% · {g.completed_days.length}d · {s}d streak
                         </span>
                       </div>
@@ -256,7 +257,7 @@ export default function Analytics() {
                 { label: "Star Points",    value: pts,                                                                                  color: stage.color },
               ].map(s => (
                 <div key={s.label} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 9, padding: "13px 15px" }}>
-                  <div style={{ fontFamily: T.serif, fontSize: 26, color: s.color }}>{s.value}</div>
+                  <div style={{ fontFamily: T.mono, fontSize: 26, color: s.color }}>{s.value}</div>
                   <div style={{ fontSize: 10, color: T.muted, fontFamily: T.mono, marginTop: 2 }}>{s.label}</div>
                 </div>
               ))}

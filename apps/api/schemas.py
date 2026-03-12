@@ -6,6 +6,25 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 # ---------------------------------------------------------------------------
+# Milestone schemas
+# ---------------------------------------------------------------------------
+
+class MilestoneResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    goal_id: uuid.UUID
+    title: str
+    position: int
+    is_final: bool
+    sprint_theme: str
+    sprint_status: str
+    is_completed: bool
+    completed_at: datetime | None
+    created_at: datetime
+
+
+# ---------------------------------------------------------------------------
 # Daily Task schemas
 # ---------------------------------------------------------------------------
 
@@ -20,6 +39,7 @@ class TaskResponse(TaskBase):
 
     id: uuid.UUID
     goal_id: uuid.UUID
+    milestone_id: uuid.UUID | None
     is_completed: bool
     completed_at: datetime | None
 
@@ -55,7 +75,7 @@ class GoalResponse(BaseModel):
     smart_description: str
     goal_type: str
     target_date: date
-    milestones: list[str]
+    milestones: list[MilestoneResponse] = []
     status: Literal["active", "achieved", "abandoned"]
     current_streak: int
     best_streak: int
@@ -74,22 +94,28 @@ class GoalResponse(BaseModel):
             if task.is_completed
         })
 
+    @computed_field
+    @property
+    def milestones_completed(self) -> int:
+        """Count of milestones marked is_completed."""
+        return sum(1 for m in self.milestones if m.is_completed)
+
+    @computed_field
+    @property
+    def milestones_total(self) -> int:
+        """Total number of milestones for this goal."""
+        return len(self.milestones)
+
 
 # ---------------------------------------------------------------------------
 # Schemas used internally by the AI layer (not exposed to clients directly)
 # ---------------------------------------------------------------------------
 
-class AIGoalOutput(BaseModel):
-    """Strict schema that Gemini must populate — mirrors the Goal + first DailyTask."""
-    smart_title: str = Field(..., description="Concise, motivating SMART goal title (≤12 words)")
-    smart_description: str = Field(..., description="2-3 sentence SMART goal description")
-    goal_type: str = Field(..., description="Category, e.g. fitness, career, learning, finance, health")
-    target_date: date = Field(..., description="Realistic ISO-8601 target completion date")
-    milestones: list[str] = Field(..., min_length=3, max_length=7, description="3-7 ordered milestone strings")
-    initial_tasks: list["AITaskOutput"] = Field(
-        ..., min_length=1, max_length=7,
-        description="Daily tasks for the first 7 days"
-    )
+class AIMilestoneConfig(BaseModel):
+    """One sprint milestone as returned by Gemini during goal creation."""
+    title: str = Field(..., description="Sprint title (≤8 words, e.g. 'Setup & Authentication')")
+    sprint_theme: str = Field(..., description="Brief phrase describing the focus of this 7-day sprint")
+    is_final: bool = Field(..., description="True only for the last milestone in the sequence")
 
 
 class AITaskOutput(BaseModel):
@@ -98,4 +124,25 @@ class AITaskOutput(BaseModel):
     assigned_date: date = Field(..., description="ISO-8601 date this task should be completed")
 
 
-AIGoalOutput.model_rebuild()
+class AISprintOutput(BaseModel):
+    """Wrapper Gemini populates when generating tasks for a future sprint."""
+    tasks: list[AITaskOutput] = Field(
+        ..., min_length=1, max_length=7,
+        description="Daily tasks for this 7-day sprint, one per day"
+    )
+
+
+class AIGoalOutput(BaseModel):
+    """Strict schema that Gemini must populate — mirrors the Goal + first sprint tasks."""
+    smart_title: str = Field(..., description="Concise, motivating SMART goal title (≤12 words)")
+    smart_description: str = Field(..., description="2-3 sentence SMART goal description")
+    goal_type: str = Field(..., description="Category, e.g. fitness, career, learning, finance, health")
+    target_date: date = Field(..., description="Realistic ISO-8601 target completion date")
+    milestones: list[AIMilestoneConfig] = Field(
+        ..., min_length=3, max_length=5,
+        description="3-5 ordered sprint milestones; set is_final=true only on the last one"
+    )
+    initial_tasks: list[AITaskOutput] = Field(
+        ..., min_length=1, max_length=7,
+        description="Daily tasks for the FIRST milestone sprint only (7 days)"
+    )
