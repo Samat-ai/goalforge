@@ -193,7 +193,8 @@ Key exports: `getStage(pts)`, `getNext(pts)`, `stagePct(pts)`, `streak(days)`, `
 ## Product & UI Philosophy
 
 - **Aesthetic**: "Obsidian Command" — dark mode, `'JetBrains Mono', monospace` for badges/stats/sprint numbers, `'Plus Jakarta Sans', sans-serif` for headings/body. Use full-screen width; avoid restrictive containers that squish the dashboard.
-- **Design token pattern**: All fonts and colors are defined in a local `const T = { ... }` object at the top of each component (`Dashboard.tsx`, `Analytics.tsx`, `AppHeader.tsx`). No central theme file — update `T` in each file that needs changing.
+- **Design token pattern**: All fonts and colors are defined in a local `const T = { ... }` object at the top of each component (`Dashboard.tsx`, `Analytics.tsx`, `AppHeader.tsx`, `LandingPage.tsx`). No central theme file — update `T` in each file that needs changing.
+- **New page conventions**: New pages should use `min-h-dvh` (not `min-h-screen`) for correct mobile viewport height, and apply `className="mesh-bg"` (defined in `index.css`) for the ambient radial gradient background.
 - **Tailwind v4**: No `tailwind.config.js` exists. Theme overrides go in a `@theme {}` block in `src/index.css`. Use `py -3` (not `python3`) on this Windows machine to run Python scripts.
 - **Responsive pattern**: Components use inline `style={}` for design tokens (color, font). Add responsive breakpoints via Tailwind `className` while keeping colors/fonts in `style`. Don't use inline `style` for padding/layout where responsive variants are needed.
 - **Anti-Cheat Mechanics**: Gamification must feel earned. Do not implement manual progress sliders. Star brightness should scale gradually based on consecutive daily task completions, not jump to 100% instantly.
