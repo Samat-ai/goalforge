@@ -3,7 +3,12 @@
     "allow": [
       "Bash(cd D:/PyCharm/goalforge && npm create vite@latest apps/web -- --template react-ts 2>&1)",
       "Bash(cd D:/PyCharm/goalforge/apps/web && npx tsc --noEmit 2>&1)",
-      "Bash(cd \"D:\\\\PyCharm\\\\goalforge\\\\apps\\\\web\" && npm install sonner 2>&1)"
+      "Bash(cd \"D:\\\\PyCharm\\\\goalforge\\\\apps\\\\web\" && npm install sonner 2>&1)",
+      "Skill(commit-commands:commit-push-pr)",
+      "Bash(py -3 D:/PyCharm/goalforge/.claude/skills/ui-ux-pro-max/scripts/search.py \"responsive mobile layout touch dashboard\" --domain ux -n 10 2>&1)",
+      "Bash(py -3 D:/PyCharm/goalforge/.claude/skills/ui-ux-pro-max/scripts/search.py \"dark mode SaaS hero landing page high converting productivity\" --domain landing -n 5 2>&1)",
+      "Bash(py -3 D:/PyCharm/goalforge/.claude/skills/ui-ux-pro-max/scripts/search.py \"hero centric SaaS conversion dark app\" --domain landing -n 3 2>&1)",
+      "Bash(cd \"D:\\\\PyCharm\\\\goalforge\\\\apps\\\\web\" && npx tsc --noEmit 2>&1)"
     ]
   }
 }

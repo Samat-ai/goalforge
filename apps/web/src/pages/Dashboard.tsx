@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useUser, useAuth } from '@clerk/react'
 import { Circle, CheckCircle2, Pencil, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -222,6 +222,43 @@ function GoalCard({
 }: GoalCardProps) {
   const [open, setOpen] = useState(false)
   const [completingMilestone, setCompletingMilestone] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmAbandon, setConfirmAbandon] = useState(false)
+  const deleteTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const abandonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current)  clearTimeout(deleteTimerRef.current)
+      if (abandonTimerRef.current) clearTimeout(abandonTimerRef.current)
+    }
+  }, [])
+
+  function handleDeleteClick() {
+    if (confirmDelete) {
+      if (deleteTimerRef.current)  clearTimeout(deleteTimerRef.current)
+      if (abandonTimerRef.current) clearTimeout(abandonTimerRef.current)
+      setConfirmDelete(false)
+      setConfirmAbandon(false)
+      onDeleteGoal(goal.id)
+    } else {
+      setConfirmDelete(true)
+      deleteTimerRef.current = setTimeout(() => setConfirmDelete(false), 3000)
+    }
+  }
+
+  function handleAbandonClick() {
+    if (confirmAbandon) {
+      if (abandonTimerRef.current) clearTimeout(abandonTimerRef.current)
+      if (deleteTimerRef.current)  clearTimeout(deleteTimerRef.current)
+      setConfirmAbandon(false)
+      setConfirmDelete(false)
+      onStatusChange(goal.id, "abandoned")
+    } else {
+      setConfirmAbandon(true)
+      abandonTimerRef.current = setTimeout(() => setConfirmAbandon(false), 3000)
+    }
+  }
 
   // Milestone-gated computed values
   const activeMilestone      = goal.milestones.find(m => m.sprint_status === "active")
@@ -498,14 +535,53 @@ function GoalCard({
               ✓ Today's Work Done
             </span>
           ) : null}
-          <Btn onClick={() => onStatusChange(goal.id, "abandoned")} variant="ghost" small>✕ Abandon</Btn>
-          <Btn onClick={() => onDeleteGoal(goal.id)} variant="danger" small>Delete</Btn>
+          <button
+            onClick={handleAbandonClick}
+            style={{
+              cursor: "pointer", minHeight: 44, minWidth: 44,
+              padding: "9px 14px", borderRadius: 8, fontFamily: T.mono,
+              fontSize: 11, fontWeight: 500, letterSpacing: "0.04em",
+              background: confirmAbandon ? `${T.amber}15` : "transparent",
+              color: confirmAbandon ? T.amber : T.muted,
+              border: confirmAbandon ? `1px solid ${T.amber}60` : `1px solid ${T.border}`,
+              transition: "background 0.15s, border-color 0.15s, color 0.15s",
+            }}
+          >
+            {confirmAbandon ? "Sure? Abandon" : "✕ Abandon"}
+          </button>
+          <button
+            onClick={handleDeleteClick}
+            style={{
+              cursor: "pointer", minHeight: 44, minWidth: 44,
+              padding: "9px 14px", borderRadius: 8, fontFamily: T.mono,
+              fontSize: 11, fontWeight: 500, letterSpacing: "0.04em",
+              background: confirmDelete ? `${T.rose}25` : "transparent",
+              color: T.rose,
+              border: confirmDelete ? `1px solid ${T.rose}80` : `1px solid ${T.rose}40`,
+              transition: "background 0.15s, border-color 0.15s",
+            }}
+          >
+            {confirmDelete ? "Sure? Delete" : "Delete"}
+          </button>
         </div>
       )}
       {(isAbandoned || isAchieved) && (
         <div style={{ padding: "0 18px 14px", display: "flex", gap: 7 }}>
           {isAbandoned && <Btn onClick={() => onStatusChange(goal.id, "active")} variant="ghost" small>▶ Revive</Btn>}
-          <Btn onClick={() => onDeleteGoal(goal.id)} variant="danger" small>Delete</Btn>
+          <button
+            onClick={handleDeleteClick}
+            style={{
+              cursor: "pointer", minHeight: 44, minWidth: 44,
+              padding: "9px 14px", borderRadius: 8, fontFamily: T.mono,
+              fontSize: 11, fontWeight: 500, letterSpacing: "0.04em",
+              background: confirmDelete ? `${T.rose}25` : "transparent",
+              color: T.rose,
+              border: confirmDelete ? `1px solid ${T.rose}80` : `1px solid ${T.rose}40`,
+              transition: "background 0.15s, border-color 0.15s",
+            }}
+          >
+            {confirmDelete ? "Sure? Delete" : "Delete"}
+          </button>
         </div>
       )}
 
