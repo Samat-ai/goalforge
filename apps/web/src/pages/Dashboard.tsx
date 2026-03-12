@@ -98,7 +98,7 @@ function Btn({ children, onClick, variant = "primary", loading = false, small = 
       disabled={loading || disabled}
       style={{
         cursor: loading || disabled ? "default" : "pointer",
-        padding: small ? "5px 12px" : "9px 18px",
+        padding: small ? "9px 14px" : "9px 18px",
         borderRadius: 8, fontFamily: T.mono, fontSize: small ? 11 : 12,
         fontWeight: 500, letterSpacing: "0.04em", opacity: disabled ? 0.4 : 1,
         ...V[variant],
@@ -412,17 +412,17 @@ function GoalCard({
                             style={{
                               display: "flex", alignItems: "center", gap: 4, fontSize: 11,
                               color: T.rose, cursor: "pointer", background: `${T.rose}15`,
-                              border: `1px solid ${T.rose}40`, borderRadius: 5, padding: "2px 7px",
+                              border: `1px solid ${T.rose}40`, borderRadius: 5, padding: "7px 10px",
                               fontFamily: T.mono,
                             }}
                           >
-                            <Trash2 size={11} /> Delete
+                            <Trash2 size={13} /> Delete
                           </button>
                           <button
                             onClick={() => setDeletingTaskId(null)}
-                            style={{ color: T.dim, cursor: "pointer", background: "none", border: "none", padding: 2 }}
+                            style={{ color: T.dim, cursor: "pointer", background: "none", border: "none", padding: "7px 4px" }}
                           >
-                            <X size={13} />
+                            <X size={14} />
                           </button>
                         </>
                       ) : (
