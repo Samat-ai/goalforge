@@ -8,6 +8,8 @@ GoalForge turns plain-language goals into structured SMART goals with milestones
 
 ---
 
+[![CI](https://github.com/Samat-ai/goalforge/actions/workflows/ci.yml/badge.svg)](https://github.com/Samat-ai/goalforge/actions/workflows/ci.yml)
+
 ![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)
