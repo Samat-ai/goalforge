@@ -167,6 +167,7 @@ Key exports: `getStage(pts)`, `getNext(pts)`, `stagePct(pts)`, `streak(days)`, `
 - **DB session**: all handlers inject `db: AsyncSession = Depends(get_db)`. Sessions auto-commit
   on success and roll back on exception.
 - **User resolution & Auth**: `get_or_create_user()` in `main.py` upserts a `User` row using the Clerk `user_id` path param. **Note:** The `user_id` is a Clerk string (e.g., `user_2...`), NOT a UUID. Email is extracted from the JWT payload; if absent, a unique placeholder `{sub}@placeholder.goalforge.app` is used to avoid violating `User.email`'s unique constraint.
+- **`settings` import in main.py**: `settings` from `config.py` is NOT imported by default — add `from config import settings` explicitly when adding `settings.*` references to `main.py`.
 - **FastAPI HTTPBearer gotcha**: Default `HTTPBearer()` returns 403 when no token is present. Always instantiate with `HTTPBearer(auto_error=False)` and raise an explicit `401` when `credentials is None`.
 - **Strict Boundaries**:
   - DO NOT refactor the Auth JWT logic unless explicitly instructed.
@@ -195,6 +196,7 @@ Key exports: `getStage(pts)`, `getNext(pts)`, `stagePct(pts)`, `streak(days)`, `
 - Commit style: Conventional Commits (`feat:`, `fix:`, `chore:`, etc.)
 - GitHub Actions: automated Claude code review and PR assistant (`.github/workflows/`)
 - Never stage `apps/api/__pycache__/` files — they always appear modified but are compiled bytecode artifacts.
+- **Windows bash paths**: Use `/d/PyCharm/goalforge/...` (Unix-style) for Bash `cd` commands — `D:\...` paths fail. Glob/Grep/Read tools accept Windows paths fine.
 
 ## Product & UI Philosophy
 

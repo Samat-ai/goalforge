@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     debug: bool = False
     clerk_secret_key: str = ""
     clerk_jwks_url: str = ""
+    cors_origins: str = "http://localhost:5173"
+    environment: str = "development"
 
 
 settings = Settings()

@@ -18,6 +18,7 @@ from sqlalchemy.orm import selectinload
 
 from ai_utils import generate_smart_goal, generate_sprint_tasks
 from auth import get_current_user_email, get_current_user_id
+from config import settings
 from database import engine, get_db, Base
 from models import DailyTask, Goal, Milestone, User
 from schemas import (
@@ -36,8 +37,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
+    allow_origins=[o.strip() for o in settings.cors_origins.split(",")],
+    allow_credentials=settings.environment == "production",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -49,8 +50,9 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def on_startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    if settings.environment != "production":
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
     logger.info("GoalForge API started.")
 
 
