@@ -193,10 +193,11 @@ export function StarIcon({ b = 0.5, size = 52 }: { b?: number; size?: number }) 
 
 // ── 18-week Heatmap ───────────────────────────────────────────────────────────
 export function Heatmap({ days }: { days: string[] }) {
+  const now = new Date()
   const cells = Array.from({ length: 18 * 7 }, (_, i) => {
     const w = 17 - Math.floor(i / 7)
     const day = i % 7
-    const date = new Date(Date.now() - (w * 7 + day) * 864e5).toISOString().split("T")[0]
+    const date = new Date(now.getTime() - (w * 7 + day) * 864e5).toISOString().split("T")[0]
     return { date, done: days.includes(date), isToday: date === todayStr() }
   })
   return (
