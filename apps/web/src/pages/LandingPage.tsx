@@ -1,13 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Show } from '@clerk/react'
 import { Target, Sparkles, Zap, ChevronRight } from 'lucide-react'
-
-const T = {
-  bg: "#07070f", surface: "#0e0e1a", card: "#12121f", border: "#1c1c30",
-  orange: "#f97316", indigo: "#818cf8", amber: "#fbbf24",
-  text: "#e8e8f0", muted: "#71717a", dim: "#3f3f5c",
-  serif: "'Plus Jakarta Sans', sans-serif", mono: "'JetBrains Mono', monospace",
-}
+import { T } from '../lib/theme'
 
 const Btn = ({ children, onClick, primary = false }: { children: React.ReactNode, onClick: () => void, primary?: boolean }) => (
   <button
