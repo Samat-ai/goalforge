@@ -254,7 +254,8 @@ function GoalCard({
   const isAbandoned = goal.status === 'abandoned'
   const isAchieved  = goal.status === 'achieved'
 
-  const days = Math.round((new Date(goal.target_date).getTime() - Date.now()) / 864e5)
+  const nowMs = new Date().getTime()
+  const days = Math.round((new Date(goal.target_date).getTime() - nowMs) / 864e5)
   const dl   = days < 0 ? "overdue" : days === 0 ? "today" : days === 1 ? "tomorrow" : `${days}d left`
 
   return (
@@ -636,7 +637,8 @@ export default function Dashboard() {
 
   // ── Fetch goals + star_points ──
   useEffect(() => {
-    if (!user?.id) return
+    const userId = user?.id
+    if (!userId) return
     let ignore = false
 
     async function load() {
@@ -644,8 +646,8 @@ export default function Dashboard() {
         const token = await getToken()
         setAuthToken(token)
         const [goalsRes, profileRes] = await Promise.all([
-          api.get<Goal[]>(`/users/${user!.id}/goals`),
-          api.get<{ star_points: number }>(`/users/${user!.id}/profile`).catch(() => ({ data: { star_points: 0 } })),
+          api.get<Goal[]>(`/users/${userId}/goals`),
+          api.get<{ star_points: number }>(`/users/${userId}/profile`).catch(() => ({ data: { star_points: 0 } })),
         ])
         if (!ignore) {
           setGoals(goalsRes.data)

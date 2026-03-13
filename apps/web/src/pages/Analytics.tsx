@@ -51,7 +51,8 @@ export default function Analytics() {
   const [error,   setError]   = useState<string | null>(null)
 
   useEffect(() => {
-    if (!user?.id) return
+    const userId = user?.id
+    if (!userId) return
     let ignore = false
 
     async function load() {
@@ -59,8 +60,8 @@ export default function Analytics() {
         const token = await getToken()
         setAuthToken(token)
         const [goalsRes, profileRes] = await Promise.all([
-          api.get<Goal[]>(`/users/${user!.id}/goals`),
-          api.get<{ star_points: number }>(`/users/${user!.id}/profile`).catch(() => ({ data: { star_points: 0 } })),
+          api.get<Goal[]>(`/users/${userId}/goals`),
+          api.get<{ star_points: number }>(`/users/${userId}/profile`).catch(() => ({ data: { star_points: 0 } })),
         ])
         if (!ignore) {
           setGoals(goalsRes.data)
