@@ -12,7 +12,9 @@
       "Bash(git checkout:*)",
       "Bash(cd D:/PyCharm/goalforge/apps/api && py -3 -c \"import ast, sys; ast.parse\\(open\\('auth.py'\\).read\\(\\)\\); print\\('auth.py: syntax OK'\\)\" 2>&1)",
       "Bash(cd D:\\\\PyCharm\\\\goalforge\\\\apps\\\\web && npx tsc --noEmit 2>&1)",
-      "Bash(cd /d/PyCharm/goalforge/apps/web && npx tsc --noEmit 2>&1)"
+      "Bash(cd /d/PyCharm/goalforge/apps/web && npx tsc --noEmit 2>&1)",
+      "Bash(cd /d/PyCharm/goalforge/apps/api && py -3 -c \"import ast; ast.parse\\(open\\('config.py'\\).read\\(\\)\\); ast.parse\\(open\\('main.py'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(py -3 -c \"import ast; ast.parse\\(open\\('main.py'\\).read\\(\\)\\); print\\('OK'\\)\")"
     ]
   }
 }
