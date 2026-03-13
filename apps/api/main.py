@@ -25,6 +25,7 @@ from slowapi.util import get_remote_address
 from ai_utils import generate_smart_goal, generate_sprint_tasks
 from auth import get_current_user_email, get_current_user_id
 from config import settings
+from exceptions import AIGenerationError
 from database import engine, get_db, Base
 from models import DailyTask, Goal, Milestone, User
 from schemas import (
@@ -130,11 +131,14 @@ async def _pre_generate_sprint(
             logger.error("Pre-gen: could not set generating status for %s: %s", milestone_id, exc)
             return
 
-        # 2. Call Gemini (outside any DB transaction)
+        # 2. Call Gemini with retry (outside any DB transaction)
         try:
             task_outputs = await generate_sprint_tasks(goal_context, sprint_theme, start_date)
-        except Exception as exc:
-            logger.error("Pre-gen: Gemini failed for milestone %s: %s", milestone_id, exc)
+        except AIGenerationError as exc:
+            logger.error(
+                "Pre-gen: AI failed for milestone %s (goal %s, theme %r, start %s): %s",
+                milestone_id, goal_id, sprint_theme, start_date, exc,
+            )
             async with db.begin():
                 await db.execute(
                     sql_update(Milestone)
@@ -229,8 +233,14 @@ async def create_goal(
 
     try:
         ai_output = await generate_smart_goal(payload.raw_input)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+    except AIGenerationError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Our AI is temporarily busy. Your goal has been saved — "
+                "we'll generate the plan shortly. Please refresh in a minute."
+            ),
+        )
 
     goal = Goal(
         id=uuid.uuid4(),

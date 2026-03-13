@@ -6,14 +6,18 @@ Structured output is enforced by passing the Pydantic schema directly to the
 `response_schema` parameter so the model is constrained to valid JSON.
 """
 
+import asyncio
 import json
 import logging
 from datetime import date, timedelta
 
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
+from pydantic import ValidationError
 
 from config import settings
+from exceptions import AIGenerationError
 from schemas import AIGoalOutput, AISprintOutput, AITaskOutput
 
 logger = logging.getLogger(__name__)
@@ -54,6 +58,35 @@ Rules:
 - Keep tips ≤20 words, motivational and explaining why it helps.
 """
 
+# Delays (in seconds) between consecutive attempts: attempt 1→2 waits 1s, 2→3 waits 2s.
+_RETRY_DELAYS = (1, 2)
+
+
+async def _with_retry(make_coro, label: str):
+    """
+    Call make_coro() up to 3 times with exponential backoff.
+
+    Retries on: APIError, JSONDecodeError, ValidationError.
+    Raises AIGenerationError on final failure.
+    """
+    last_exc: Exception | None = None
+    for attempt in range(1, 4):  # attempts 1, 2, 3
+        try:
+            return await make_coro()
+        except (genai_errors.APIError, json.JSONDecodeError, ValidationError) as exc:
+            last_exc = exc
+            if attempt < 3:
+                delay = _RETRY_DELAYS[attempt - 1]
+                logger.warning(
+                    "AI %s attempt %d/3 failed (%s: %s). Retrying in %ds…",
+                    label, attempt, type(exc).__name__, exc, delay,
+                )
+                await asyncio.sleep(delay)
+    logger.error("AI %s failed after 3 attempts. Last error: %s", label, last_exc)
+    raise AIGenerationError(
+        f"AI generation failed after 3 attempts. Last error: {type(last_exc).__name__}: {last_exc}"
+    )
+
 
 async def generate_smart_goal(raw_input: str) -> AIGoalOutput:
     """
@@ -63,36 +96,31 @@ async def generate_smart_goal(raw_input: str) -> AIGoalOutput:
     directly onto the Goal, Milestone, and DailyTask database tables.
 
     Raises:
-        ValueError: if the model returns unparseable or schema-invalid JSON.
-        google.genai.errors.APIError: on upstream API failures.
+        AIGenerationError: after 3 failed attempts (APIError, JSONDecodeError, or ValidationError).
     """
     today = date.today().isoformat()
     system_instruction = _SYSTEM_PROMPT.format(today=today)
-
     user_message = (
         f"Transform this goal into a structured SMART goal plan:\n\n{raw_input}"
     )
 
-    response = await _client.aio.models.generate_content(
-        model=_MODEL,
-        contents=user_message,
-        config=types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            response_mime_type="application/json",
-            response_schema=AIGoalOutput,
-            temperature=1.0,   # Gemini 2.5 Flash thinking works best at 1.0
-        ),
-    )
-
-    raw_json: str = response.text
-    logger.debug("Gemini raw response (goal): %s", raw_json)
-
-    try:
+    async def _call() -> AIGoalOutput:
+        response = await _client.aio.models.generate_content(
+            model=_MODEL,
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                response_mime_type="application/json",
+                response_schema=AIGoalOutput,
+                temperature=1.0,   # Gemini 2.5 Flash thinking works best at 1.0
+            ),
+        )
+        raw_json: str = response.text
+        logger.debug("Gemini raw response (goal): %s", raw_json)
         data = json.loads(raw_json)
         return AIGoalOutput.model_validate(data)
-    except Exception as exc:
-        logger.error("Failed to parse Gemini goal response: %s\nRaw: %s", exc, raw_json)
-        raise ValueError(f"AI returned invalid structured output: {exc}") from exc
+
+    return await _with_retry(_call, "generate_smart_goal")
 
 
 async def generate_sprint_tasks(
@@ -118,7 +146,7 @@ async def generate_sprint_tasks(
         list of AITaskOutput (7 items, one per day).
 
     Raises:
-        ValueError: if Gemini returns unparseable or schema-invalid JSON.
+        AIGenerationError: after 3 failed attempts (APIError, JSONDecodeError, or ValidationError).
     """
     end_date = (start_date + timedelta(days=6)).isoformat()
     system_instruction = _SPRINT_SYSTEM_PROMPT.format(
@@ -127,30 +155,26 @@ async def generate_sprint_tasks(
         start_date=start_date.isoformat(),
         end_date=end_date,
     )
-
     user_message = (
         f"Generate the 7-day task plan for this sprint: {sprint_theme}\n"
         f"Goal: {goal_context}"
     )
 
-    response = await _client.aio.models.generate_content(
-        model=_MODEL,
-        contents=user_message,
-        config=types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            response_mime_type="application/json",
-            response_schema=AISprintOutput,
-            temperature=1.0,
-        ),
-    )
-
-    raw_json: str = response.text
-    logger.debug("Gemini raw response (sprint): %s", raw_json)
-
-    try:
+    async def _call() -> list[AITaskOutput]:
+        response = await _client.aio.models.generate_content(
+            model=_MODEL,
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                response_mime_type="application/json",
+                response_schema=AISprintOutput,
+                temperature=1.0,
+            ),
+        )
+        raw_json: str = response.text
+        logger.debug("Gemini raw response (sprint): %s", raw_json)
         data = json.loads(raw_json)
         sprint = AISprintOutput.model_validate(data)
         return sprint.tasks
-    except Exception as exc:
-        logger.error("Failed to parse Gemini sprint response: %s\nRaw: %s", exc, raw_json)
-        raise ValueError(f"AI returned invalid sprint output: {exc}") from exc
+
+    return await _with_retry(_call, "generate_sprint_tasks")
