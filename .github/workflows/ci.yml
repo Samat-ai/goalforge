@@ -17,6 +17,7 @@ jobs:
       CLERK_SECRET_KEY: "dummy_clerk_key_for_testing"
       CLERK_JWKS_URL: "https://dummy.clerk.com/.well-known/jwks.json"
       DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+      RATE_LIMIT_ENABLED: "false"
 
     steps:
       - uses: actions/checkout@v4

@@ -10,11 +10,17 @@ import logging
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import Depends, FastAPI, HTTPException, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import func, select, update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from ai_utils import generate_smart_goal, generate_sprint_tasks
 from auth import get_current_user_email, get_current_user_id
@@ -42,6 +48,42 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+
+def _user_key(request: Request) -> str:
+    """Rate-limit key: Clerk user_id from path params, fall back to IP."""
+    return request.path_params.get("user_id") or get_remote_address(request)
+
+
+async def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": "Rate limit exceeded. Please slow down your requests.",
+            "limit": str(exc.detail),
+        },
+        headers={"Retry-After": "60"},
+    )
+
+
+if settings.rate_limit_enabled:
+    _limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+    app.state.limiter = _limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_middleware(SlowAPIMiddleware)
+
+    def rate_limit(limit_str: str, key_func=None):
+        kwargs = {"key_func": key_func} if key_func else {}
+        return _limiter.limit(limit_str, **kwargs)
+else:
+    def rate_limit(limit_str: str, key_func=None):  # type: ignore[misc]
+        def decorator(func):
+            return func
+        return decorator
 
 
 # ---------------------------------------------------------------------------
@@ -172,7 +214,9 @@ async def get_user_profile(
     status_code=status.HTTP_201_CREATED,
     summary="Create a SMART goal from raw user input",
 )
+@rate_limit("5/minute", key_func=_user_key)
 async def create_goal(
+    request: Request,
     user_id: str,
     payload: GoalCreate,
     current_user_id: str = Depends(get_current_user_id),
@@ -539,7 +583,9 @@ async def delete_task(
     response_model=GoalResponse,
     summary="Mark a sprint complete and unlock the next sprint",
 )
+@rate_limit("10/minute", key_func=_user_key)
 async def complete_milestone(
+    request: Request,
     goal_id: uuid.UUID,
     milestone_id: uuid.UUID,
     current_user_id: str = Depends(get_current_user_id),

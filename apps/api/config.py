@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     clerk_jwks_url: str = ""
     cors_origins: str = "http://localhost:5173"
     environment: str = "development"
+    rate_limit_enabled: bool = True
 
 
 settings = Settings()
