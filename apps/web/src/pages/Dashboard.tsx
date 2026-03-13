@@ -4,7 +4,7 @@ import { Circle, CheckCircle2, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import api, { setAuthToken } from '../lib/api'
 import AppHeader from '../components/AppHeader'
-import { StarIcon, Heatmap } from '../components/GamificationSvgs'
+import { StarIcon, Heatmap, Creature } from '../components/GamificationSvgs'
 import { todayStr, streak, starBrightness } from '../lib/gamification'
 import { T } from '../lib/theme'
 
@@ -127,18 +127,21 @@ function TodayBar({ goals }: { goals: Goal[] }) {
 }
 
 // ── AddGoal (inline form) ─────────────────────────────────────────────────────
-function AddGoal({ onAdd }: { onAdd: (rawInput: string) => Promise<void> }) {
-  const [raw,     setRaw]     = useState("")
+function AddGoal({ onAdd, value, onChange }: {
+  onAdd: (rawInput: string) => Promise<void>
+  value: string
+  onChange: (v: string) => void
+}) {
   const [loading, setLoading] = useState(false)
   const [status,  setStatus]  = useState<"idle" | "thinking" | "done">("idle")
 
   const submit = async () => {
-    if (!raw.trim() || loading) return
+    if (!value.trim() || loading) return
     setLoading(true)
     setStatus("thinking")
-    await onAdd(raw.trim())
+    await onAdd(value.trim())
     setStatus("done")
-    setRaw("")
+    onChange("")
     setTimeout(() => { setStatus("idle"); setLoading(false) }, 700)
   }
 
@@ -148,8 +151,8 @@ function AddGoal({ onAdd }: { onAdd: (rawInput: string) => Promise<void> }) {
         DESCRIBE YOUR GOAL — AI WILL REFINE IT
       </div>
       <textarea
-        value={raw}
-        onChange={e => setRaw(e.target.value)}
+        value={value}
+        onChange={e => onChange(e.target.value)}
         onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit() }}
         placeholder="e.g. get better at leetcode, run a 5k, write a novel..."
         rows={3}
@@ -610,6 +613,66 @@ function GoalCard({
   )
 }
 
+// ── EmptyState (onboarding for new users) ─────────────────────────────────────
+const EXAMPLE_GOALS = [
+  "I want to learn Spanish basics in 3 months",
+  "Get in shape — lose 10 lbs by summer",
+  "Read 12 books this year",
+]
+
+function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center",
+      textAlign: "center", padding: "40px 16px 32px",
+      animation: "fadeUp 0.5s ease both",
+    }}>
+      <div style={{ marginBottom: 20, opacity: 0.85 }}>
+        <Creature pts={0} size={96} />
+      </div>
+      <h2 style={{
+        fontFamily: T.serif, fontSize: 22, fontWeight: 600,
+        color: T.text, marginBottom: 10, lineHeight: 1.3,
+      }}>
+        Your journey starts here ✦
+      </h2>
+      <p style={{
+        fontSize: 13, color: T.textDim, fontFamily: T.mono,
+        maxWidth: 380, lineHeight: 1.7, marginBottom: 28,
+      }}>
+        Describe any goal in plain language. Our AI will turn it into a
+        step-by-step plan with daily tasks.
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", maxWidth: 480 }}>
+        {EXAMPLE_GOALS.map(text => (
+          <button
+            key={text}
+            onClick={() => onSelect(text)}
+            style={{
+              minHeight: 44, padding: "10px 16px", borderRadius: 22,
+              fontFamily: T.mono, fontSize: 12, cursor: "pointer",
+              background: `${T.indigo}12`, color: T.indigo,
+              border: `1px solid ${T.indigo}35`,
+              transition: "background 0.15s, border-color 0.15s",
+              lineHeight: 1.4, textAlign: "left",
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = `${T.indigo}22`
+              e.currentTarget.style.borderColor = `${T.indigo}60`
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = `${T.indigo}12`
+              e.currentTarget.style.borderColor = `${T.indigo}35`
+            }}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Dashboard (main page) ─────────────────────────────────────────────────────
 export default function Dashboard() {
   const { user }     = useUser()
@@ -620,6 +683,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState<string | null>(null)
   const [filter,  setFilter]  = useState<string>("all")
+  const [addGoalText, setAddGoalText] = useState("")
 
   // Task edit state
   const [editingTaskId,  setEditingTaskId]  = useState<string | null>(null)
@@ -828,51 +892,57 @@ export default function Dashboard() {
         {!loading && !error && (
           <>
             <TodayBar goals={goals} />
-            <AddGoal onAdd={addGoal} />
+            <AddGoal onAdd={addGoal} value={addGoalText} onChange={setAddGoalText} />
 
-            {/* Filter tabs */}
-            <div style={{ display: "flex", borderBottom: `1px solid ${T.border}`, marginBottom: 18, overflowX: "auto", scrollbarWidth: "none" }} className="filter-tabs">
-              {(["all", "active", "achieved", "abandoned"] as const).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  style={{
-                    background: "none", border: "none", cursor: "pointer",
-                    padding: "7px 14px", fontFamily: T.mono, fontSize: 11,
-                    letterSpacing: "0.06em", flexShrink: 0,
-                    color: filter === f ? T.text : T.muted,
-                    borderBottom: filter === f ? `2px solid ${T.orange}` : "2px solid transparent",
-                  }}
-                >
-                  {f} ({goals.filter(g => f === "all" ? true : g.status === f).length})
-                </button>
-              ))}
-            </div>
-
-            {/* Goal list */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {filtered.length === 0 && (
-                <div style={{ textAlign: "center", padding: "44px 0", color: T.muted, fontSize: 13 }}>
-                  No goals here yet.
+            {goals.length === 0 ? (
+              <EmptyState onSelect={setAddGoalText} />
+            ) : (
+              <>
+                {/* Filter tabs */}
+                <div style={{ display: "flex", borderBottom: `1px solid ${T.border}`, marginBottom: 18, overflowX: "auto", scrollbarWidth: "none" }} className="filter-tabs">
+                  {(["all", "active", "achieved", "abandoned"] as const).map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setFilter(f)}
+                      style={{
+                        background: "none", border: "none", cursor: "pointer",
+                        padding: "7px 14px", fontFamily: T.mono, fontSize: 11,
+                        letterSpacing: "0.06em", flexShrink: 0,
+                        color: filter === f ? T.text : T.muted,
+                        borderBottom: filter === f ? `2px solid ${T.orange}` : "2px solid transparent",
+                      }}
+                    >
+                      {f} ({goals.filter(g => f === "all" ? true : g.status === f).length})
+                    </button>
+                  ))}
                 </div>
-              )}
-              {filtered.map(goal => (
-                <GoalCard
-                  key={goal.id}
-                  goal={goal}
-                  editingTaskId={editingTaskId}
-                  editingText={editingText}
-                  setEditingText={setEditingText}
-                  onCompleteTask={completeTask}
-                  onStartEdit={startEdit}
-                  onCancelEdit={cancelEdit}
-                  onSaveEdit={saveEdit}
-                  onDeleteGoal={deleteGoal}
-                  onStatusChange={changeStatus}
-                  onCompleteMilestone={completeMilestone}
-                />
-              ))}
-            </div>
+
+                {/* Goal list */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {filtered.length === 0 && (
+                    <div style={{ textAlign: "center", padding: "44px 0", color: T.muted, fontSize: 13 }}>
+                      No goals here yet.
+                    </div>
+                  )}
+                  {filtered.map(goal => (
+                    <GoalCard
+                      key={goal.id}
+                      goal={goal}
+                      editingTaskId={editingTaskId}
+                      editingText={editingText}
+                      setEditingText={setEditingText}
+                      onCompleteTask={completeTask}
+                      onStartEdit={startEdit}
+                      onCancelEdit={cancelEdit}
+                      onSaveEdit={saveEdit}
+                      onDeleteGoal={deleteGoal}
+                      onStatusChange={changeStatus}
+                      onCompleteMilestone={completeMilestone}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
