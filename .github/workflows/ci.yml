@@ -12,6 +12,11 @@ jobs:
     defaults:
       run:
         working-directory: apps/api
+    env:
+      GEMINI_API_KEY: "dummy_gemini_key_for_testing"
+      CLERK_SECRET_KEY: "dummy_clerk_key_for_testing"
+      CLERK_JWKS_URL: "https://dummy.clerk.com/.well-known/jwks.json"
+      DATABASE_URL: "sqlite+aiosqlite:///:memory:"
 
     steps:
       - uses: actions/checkout@v4

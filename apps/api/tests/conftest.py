@@ -31,7 +31,7 @@ OTHER_USER_ID = "user_other_xyz789"
 
 
 # ---------------------------------------------------------------------------
-# Mock AI output — used by the autouse mock_ai fixture
+# Mock AI output
 # ---------------------------------------------------------------------------
 
 def _make_mock_goal_output() -> AIGoalOutput:
