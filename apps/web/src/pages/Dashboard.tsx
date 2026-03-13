@@ -664,10 +664,9 @@ export default function Dashboard() {
 
   // ── Add Goal ──
   async function addGoal(rawInput: string) {
-    const email = user?.primaryEmailAddress?.emailAddress ?? "unknown@example.com"
     try {
       const { data } = await api.post<Goal>(
-        `/users/${user!.id}/goals?email=${encodeURIComponent(email)}`,
+        `/users/${user!.id}/goals`,
         { raw_input: rawInput },
       )
       setGoals(prev => [data, ...prev])

@@ -10,7 +10,9 @@
       "Bash(py -3 D:/PyCharm/goalforge/.claude/skills/ui-ux-pro-max/scripts/search.py \"hero centric SaaS conversion dark app\" --domain landing -n 3 2>&1)",
       "Bash(cd \"D:\\\\PyCharm\\\\goalforge\\\\apps\\\\web\" && npx tsc --noEmit 2>&1)",
       "Bash(git checkout:*)",
-      "Bash(cd D:/PyCharm/goalforge/apps/api && py -3 -c \"import ast, sys; ast.parse\\(open\\('auth.py'\\).read\\(\\)\\); print\\('auth.py: syntax OK'\\)\" 2>&1)"
+      "Bash(cd D:/PyCharm/goalforge/apps/api && py -3 -c \"import ast, sys; ast.parse\\(open\\('auth.py'\\).read\\(\\)\\); print\\('auth.py: syntax OK'\\)\" 2>&1)",
+      "Bash(cd D:\\\\PyCharm\\\\goalforge\\\\apps\\\\web && npx tsc --noEmit 2>&1)",
+      "Bash(cd /d/PyCharm/goalforge/apps/web && npx tsc --noEmit 2>&1)"
     ]
   }
 }
