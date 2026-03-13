@@ -185,6 +185,8 @@ Key exports: `getStage(pts)`, `getNext(pts)`, `stagePct(pts)`, `streak(days)`, `
 
 ## Preferred Coding Patterns
 
+- **ESLint impure render**: Never call `Date.now()` or `new Date()` inline inside JSX/map — hoist to a stable `const` at the top of the component render to satisfy the no-impure-functions rule.
+- **useEffect + optional chaining**: When `user?.id` is in the dep array, extract `const userId = user?.id` at the top of the effect body and use `userId` inside — avoids `react-hooks/exhaustive-deps` warnings from `user!.id` non-null assertions.
 - **FastAPI / SQLAlchemy**: Strictly use asynchronous patterns (`async def`, `AsyncSession`).
 - **Queries**: Always prefer SQLAlchemy 2.0 `select()` statements over legacy `.query()`.
 - **Execution**: Never use `Session.execute` without an `await`.

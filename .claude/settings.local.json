@@ -15,7 +15,11 @@
       "Bash(cd /d/PyCharm/goalforge/apps/web && npx tsc --noEmit 2>&1)",
       "Bash(cd /d/PyCharm/goalforge/apps/api && py -3 -c \"import ast; ast.parse\\(open\\('config.py'\\).read\\(\\)\\); ast.parse\\(open\\('main.py'\\).read\\(\\)\\); print\\('OK'\\)\")",
       "Bash(py -3 -c \"import ast; ast.parse\\(open\\('main.py'\\).read\\(\\)\\); print\\('OK'\\)\")",
-      "Bash(cd /d/PyCharm/goalforge/apps/web && npm run lint 2>&1)"
+      "Bash(cd /d/PyCharm/goalforge/apps/web && npm run lint 2>&1)",
+      "Bash(cd /d/PyCharm/goalforge/apps/api && py -3 -m pytest tests/ -v 2>&1)",
+      "Bash(cd /d/PyCharm/goalforge/apps/api && py -3 -m pip install pytest pytest-asyncio httpx aiosqlite 2>&1 | tail -5)",
+      "Bash(py -3 -m pytest tests/ -v 2>&1)",
+      "Bash(py -3 -m pip install -r requirements.txt 2>&1 | tail -5 && py -3 -m pytest tests/ -v 2>&1)"
     ]
   }
 }
