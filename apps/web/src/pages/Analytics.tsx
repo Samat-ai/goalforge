@@ -71,6 +71,8 @@ export default function Analytics() {
     return () => { ignore = true }
   }, [user?.id, getToken, retryCount])
 
+  useEffect(() => { document.title = 'Analytics — GoalForge' }, [])
+
   const stage   = getStage(pts)
   const next    = getNext(pts)
   const pct     = stagePct(pts)
@@ -88,7 +90,7 @@ export default function Analytics() {
 
       <AppHeader pts={pts} />
 
-      <div style={{ maxWidth: 1100, margin: "0 auto" }} className="px-4 py-5 sm:px-8 sm:py-7">
+      <main id="main-content" style={{ maxWidth: 1100, margin: "0 auto" }} className="px-4 py-5 sm:px-8 sm:py-7">
 
         {/* Page heading */}
         <div style={{ marginBottom: 24 }}>
@@ -121,7 +123,7 @@ export default function Analytics() {
         )}
 
         {loading && (
-          <div style={{ display: "flex", justifyContent: "center", padding: "80px 0" }}>
+          <div role="status" aria-label="Loading analytics" style={{ display: "flex", justifyContent: "center", padding: "80px 0" }}>
             <div style={{
               width: 28, height: 28, borderRadius: "50%",
               border: `2px solid ${T.dim}`, borderTop: `2px solid ${T.orange}`,
@@ -369,7 +371,7 @@ export default function Analytics() {
             </div>
           </>
         )}
-      </div>
+      </main>
     </div>
   )
 }

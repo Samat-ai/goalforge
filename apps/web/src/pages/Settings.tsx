@@ -56,6 +56,8 @@ export default function Settings() {
   const [timezone,    setTimezone]    = useState('UTC')
   const [displayName, setDisplayName] = useState('')
 
+  useEffect(() => { document.title = 'Settings — GoalForge' }, [])
+
   useEffect(() => {
     const userId = user?.id
     if (!userId) return
@@ -114,7 +116,7 @@ export default function Settings() {
 
       <AppHeader pts={pts} />
 
-      <div style={{ maxWidth: 640, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
+      <main id="main-content" style={{ maxWidth: 640, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
 
         {/* Page heading */}
         <div style={{ marginBottom: 28 }}>
@@ -126,7 +128,7 @@ export default function Settings() {
 
         {/* Loading */}
         {loading && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
+          <div role="status" aria-label="Loading settings" style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
             <div style={{
               width: 28, height: 28, borderRadius: '50%',
               border: `2px solid ${T.dim}`, borderTop: `2px solid ${T.orange}`,
@@ -221,7 +223,7 @@ export default function Settings() {
 
           </div>
         )}
-      </div>
+      </main>
     </div>
   )
 }

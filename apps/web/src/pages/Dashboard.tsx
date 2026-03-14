@@ -88,6 +88,8 @@ export default function Dashboard() {
   const [editingTaskId,  setEditingTaskId]  = useState<string | null>(null)
   const [editingText,    setEditingText]    = useState('')
 
+  useEffect(() => { document.title = 'Dashboard — GoalForge' }, [])
+
   // ── Fetch goals + star_points ──
   useEffect(() => {
     const userId = user?.id
@@ -254,7 +256,7 @@ export default function Dashboard() {
 
       <AppHeader pts={pts} />
 
-      <div style={{ maxWidth: 1100, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
+      <main id="main-content" style={{ maxWidth: 1100, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
 
         {/* Page heading */}
         <div style={{ marginBottom: 24 }}>
@@ -268,7 +270,7 @@ export default function Dashboard() {
 
         {/* Loading */}
         {loading && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
+          <div role="status" aria-label="Loading goals" style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
             <div style={{
               width: 28, height: 28, borderRadius: '50%',
               border: `2px solid ${T.dim}`, borderTop: `2px solid ${T.orange}`,
@@ -330,7 +332,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Goal list */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div aria-live="polite" aria-label="Goal list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {filtered.length === 0 && (
                     <div style={{ textAlign: 'center', padding: '44px 0', color: T.muted, fontSize: 13 }}>
                       No goals here yet.
@@ -357,7 +359,7 @@ export default function Dashboard() {
             )}
           </>
         )}
-      </div>
+      </main>
     </div>
   )
 }

@@ -13,10 +13,14 @@ export default function TodayBar({ goals }: TodayBarProps) {
   if (!active.length || !todayAll.length) return null
 
   return (
-    <div style={{
-      background: T.surface, border: `1px solid ${T.border}`, borderRadius: 11,
-      padding: '13px 17px', marginBottom: 19, display: 'flex', alignItems: 'center', gap: 15,
-    }}>
+    <div
+      role="status"
+      aria-label={`Today's progress: ${doneCnt} of ${todayAll.length} tasks done`}
+      style={{
+        background: T.surface, border: `1px solid ${T.border}`, borderRadius: 11,
+        padding: '13px 17px', marginBottom: 19, display: 'flex', alignItems: 'center', gap: 15,
+      }}
+    >
       <div>
         <div style={{ fontSize: 10, color: T.muted, fontFamily: T.mono, marginBottom: 2 }}>TODAY</div>
         <div style={{ fontFamily: T.serif, fontSize: 19, color: T.text }}>{doneCnt} / {todayAll.length} done</div>
