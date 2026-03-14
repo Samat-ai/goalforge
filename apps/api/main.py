@@ -7,8 +7,12 @@ Start with:
 
 import asyncio
 import logging
+import time
 import uuid
+from contextvars import ContextVar
 from datetime import date, datetime, timedelta, timezone
+
+from pythonjsonlogger import jsonlogger
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,7 +38,43 @@ from schemas import (
     UserProfileResponse, UserSettingsUpdate,
 )
 
-logging.basicConfig(level=logging.INFO)
+# ---------------------------------------------------------------------------
+# Structured logging
+# ---------------------------------------------------------------------------
+
+request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
+
+
+class _RequestIdFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.request_id = request_id_var.get()
+        return True
+
+
+def _configure_logging() -> None:
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    if root.handlers:
+        root.handlers.clear()
+
+    handler = logging.StreamHandler()
+    handler.addFilter(_RequestIdFilter())
+
+    if settings.environment == "production":
+        formatter = jsonlogger.JsonFormatter(
+            fmt="%(asctime)s %(levelname)s %(name)s %(request_id)s %(message)s"
+        )
+    else:
+        formatter = logging.Formatter(
+            fmt="%(asctime)s [%(levelname)s] %(name)s rid=%(request_id)s — %(message)s",
+            datefmt="%H:%M:%S",
+        )
+
+    handler.setFormatter(formatter)
+    root.addHandler(handler)
+
+
+_configure_logging()
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
@@ -50,6 +90,31 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------------------------------------------------------------------------
+# Request-ID middleware
+# ---------------------------------------------------------------------------
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    rid = str(uuid.uuid4())
+    request_id_var.set(rid)
+    start = time.monotonic()
+    response = await call_next(request)
+    duration_ms = round((time.monotonic() - start) * 1000)
+    logger.info(
+        "request",
+        extra={
+            "request_id": rid,
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+            "duration_ms": duration_ms,
+        },
+    )
+    response.headers["X-Request-ID"] = rid
+    return response
 
 
 # ---------------------------------------------------------------------------
