@@ -2,6 +2,14 @@ import { useState } from 'react'
 import { T } from '../lib/theme'
 import Btn from './ui/Btn'
 
+const TEMPLATES = [
+  { label: '🏋️ Get fit',         prompt: 'I want to build a consistent workout habit and lose 15 pounds over the next 3 months' },
+  { label: '📚 Learn something',  prompt: 'I want to learn the basics of Python programming in 6 weeks' },
+  { label: '💰 Financial goal',   prompt: 'Save $5,000 for an emergency fund by the end of the year' },
+  { label: '✍️ Creative project', prompt: 'Write the first draft of my novel — 50,000 words in 2 months' },
+  { label: '🧘 Wellness',         prompt: 'Build a daily meditation practice, starting with 5 minutes and working up to 20' },
+]
+
 interface AddGoalProps {
   onAdd: (rawInput: string) => Promise<void>
   value: string
@@ -44,6 +52,34 @@ export default function AddGoal({ onAdd, value, onChange }: AddGoalProps) {
           fontSize: 13, resize: 'none', outline: 'none', boxSizing: 'border-box',
         }}
       />
+      {!value && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 10 }}>
+          {TEMPLATES.map(t => (
+            <button
+              key={t.label}
+              onClick={() => onChange(t.prompt)}
+              style={{
+                cursor: 'pointer', minHeight: 44, padding: '8px 13px', borderRadius: 20,
+                fontFamily: T.mono, fontSize: 11, letterSpacing: '0.03em',
+                background: `${T.indigo}12`, color: T.indigo,
+                border: `1px solid ${T.indigo}35`,
+                transition: 'background 0.15s, border-color 0.15s',
+                lineHeight: 1.3,
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = `${T.indigo}22`
+                e.currentTarget.style.borderColor = `${T.indigo}60`
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = `${T.indigo}12`
+                e.currentTarget.style.borderColor = `${T.indigo}35`
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
       {status === 'thinking' && <div style={{ marginTop: 10, fontSize: 12, color: T.orange, fontFamily: T.mono }}>◉ AI is forging your plan···</div>}
       {status === 'done'     && <div style={{ marginTop: 10, fontSize: 12, color: T.emerald, fontFamily: T.mono }}>✓ Goal added!</div>}
       {status === 'error'    && <div style={{ marginTop: 10, fontSize: 12, color: T.rose, fontFamily: T.mono }}>✕ Could not create goal — check your connection and try again.</div>}
