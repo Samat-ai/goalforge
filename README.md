@@ -19,7 +19,27 @@ GoalForge turns plain-language goals into structured SMART goals with milestones
 
 ---
 
-## Quick Start
+## Docker Quickstart
+
+The fastest way to get the full stack running locally:
+
+```bash
+cp apps/api/.env.example apps/api/.env   # fill in GEMINI_API_KEY and CLERK_* vars
+docker compose up --build
+```
+
+| Service | URL |
+|---------|-----|
+| API | http://localhost:8000 |
+| Frontend | http://localhost:5173 |
+| PostgreSQL | localhost:5432 |
+
+> **Note:** The `DATABASE_URL` in `apps/api/.env` should point to the compose db service:
+> `postgresql+asyncpg://postgres:postgres@db:5432/goalforge`
+
+---
+
+## Quick Start (without Docker)
 
 ### Backend
 
