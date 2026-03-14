@@ -108,6 +108,25 @@ class GoalResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# User settings schemas
+# ---------------------------------------------------------------------------
+
+class UserProfileResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    email: str
+    star_points: int
+    timezone: str
+    display_name: str | None
+
+
+class UserSettingsUpdate(BaseModel):
+    timezone: str | None = None
+    display_name: str | None = Field(default=None, max_length=60)
+
+
+# ---------------------------------------------------------------------------
 # Paginated response wrappers
 # ---------------------------------------------------------------------------
 
