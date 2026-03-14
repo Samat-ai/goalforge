@@ -252,7 +252,7 @@ User (1) ──→ (N) Goal (1) ──→ (N) Milestone
 
 ### 6.4 Issues Found
 
-1. **`current_streak` and `best_streak` on Goal** are model fields but are never updated by backend logic. The frontend calculates streaks independently from `completed_days`. These fields appear to be dead code.
+1. **`current_streak` and `best_streak` on Goal** are model fields but are never updated by backend logic. The frontend calculates streaks independently of `completed_days`. These fields appear to be dead code.
 
 2. **`vitality` field on Goal** (default 50) is never read or updated anywhere in the codebase. This is dead code.
 
