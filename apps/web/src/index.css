@@ -56,6 +56,34 @@ body {
   animation: companion-pulse 2.8s ease-in-out infinite;
 }
 
+/* ── Skip-to-content link ── */
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.skip-link:focus {
+  left: 12px;
+  top: 12px;
+  width: auto;
+  height: auto;
+  z-index: 200;
+  padding: 8px 14px;
+  background: #1a1a2e;
+  color: #f1f5f9;
+  border: 2px solid #818cf8;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  text-decoration: none;
+  overflow: visible;
+}
+
 /* ── Task row hover ── */
 
 .task-row {

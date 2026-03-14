@@ -95,7 +95,12 @@ export default function GoalCard({
 
       {/* ── Header row (click to expand) ── */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        aria-label={`${goal.smart_title} — click to ${open ? 'collapse' : 'expand'}`}
         onClick={() => setOpen(o => !o)}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o) } }}
         style={{ padding: '16px 18px', cursor: 'pointer', display: 'flex', gap: 14, alignItems: 'flex-start' }}
       >
         <StarIcon b={b} size={52} />
@@ -200,15 +205,22 @@ export default function GoalCard({
                   className="group">
 
                   {/* Complete toggle */}
-                  <span
-                    style={{ marginTop: 1, flexShrink: 0, cursor: !task.is_completed && !isEditing ? 'pointer' : 'default' }}
+                  <button
+                    aria-label={task.is_completed ? 'Task completed' : 'Mark task complete'}
+                    aria-pressed={task.is_completed}
+                    disabled={task.is_completed || isEditing}
                     onClick={() => !task.is_completed && !isEditing && onCompleteTask(task.id)}
+                    style={{
+                      marginTop: 1, flexShrink: 0, background: 'none', border: 'none', padding: 0,
+                      cursor: !task.is_completed && !isEditing ? 'pointer' : 'default',
+                      display: 'flex', alignItems: 'center',
+                    }}
                   >
                     {task.is_completed
                       ? <CheckCircle2 size={16} color={T.emerald} />
                       : <Circle size={16} color={T.dim} />
                     }
-                  </span>
+                  </button>
 
                   {/* Description */}
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -252,9 +264,9 @@ export default function GoalCard({
                       <button
                         onMouseDown={e => e.preventDefault()}
                         onClick={() => onStartEdit(task)}
+                        aria-label="Edit task"
                         className="text-[#3f3f5c] hover:text-indigo-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
                         style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        title="Edit task"
                       >
                         <Pencil size={13} />
                       </button>
@@ -313,6 +325,7 @@ export default function GoalCard({
           ) : null}
           <button
             onClick={handleAbandonClick}
+            aria-label={confirmAbandon ? 'Confirm abandon goal' : 'Abandon goal'}
             style={{
               cursor: 'pointer', minHeight: 44, minWidth: 44,
               padding: '9px 14px', borderRadius: 8, fontFamily: T.mono,
@@ -327,6 +340,7 @@ export default function GoalCard({
           </button>
           <button
             onClick={handleDeleteClick}
+            aria-label={confirmDelete ? 'Confirm delete goal' : 'Delete goal'}
             style={{
               cursor: 'pointer', minHeight: 44, minWidth: 44,
               padding: '9px 14px', borderRadius: 8, fontFamily: T.mono,
@@ -346,6 +360,7 @@ export default function GoalCard({
           {isAbandoned && <Btn onClick={() => onStatusChange(goal.id, 'active')} variant="ghost" small>▶ Revive</Btn>}
           <button
             onClick={handleDeleteClick}
+            aria-label={confirmDelete ? 'Confirm delete goal' : 'Delete goal'}
             style={{
               cursor: 'pointer', minHeight: 44, minWidth: 44,
               padding: '9px 14px', borderRadius: 8, fontFamily: T.mono,

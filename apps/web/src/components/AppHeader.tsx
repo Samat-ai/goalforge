@@ -14,6 +14,8 @@ export default function AppHeader({ pts }: AppHeaderProps) {
   const stage     = getStage(pts)
 
   return (
+    <>
+    <a href="#main-content" className="skip-link">Skip to content</a>
     <div style={{
       position: "sticky", top: 0, zIndex: 100,
       background: `${T.bg}f0`, backdropFilter: "blur(10px)",
@@ -59,5 +61,6 @@ export default function AppHeader({ pts }: AppHeaderProps) {
         <UserButton />
       </div>
     </div>
+    </>
   )
 }
