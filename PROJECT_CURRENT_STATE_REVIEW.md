@@ -1,8 +1,8 @@
 # GoalForge — Current State Review Report
 
-Date: 2026-03-14  
-Reviewer roles: **Lead Product Manager** + **Senior Software Engineer**  
-Prior review date: 2026-03-13 (PR #24)
+**Date:** 2026-03-14  
+**Reviewer roles:** Lead Product Manager + Senior Software Engineer  
+**Prior review date:** 2026-03-13 (PR #24)
 
 ## Scope Reviewed
 
@@ -22,13 +22,13 @@ The following areas have changed or been updated since the prior agent session:
 - **Dashboard.tsx remains monolithic** — 951 lines with no decomposition.
 - **No pagination added** — Goals listing API still returns all records without limits.
 
-New findings discovered in this review are identified with 🆕 below.
+New findings discovered in this review are identified with [NEW] below.
 
 ---
 
 ## 1) Lead Product Manager Review
 
-### Product strengths
+### Product Strengths
 
 1. **Clear core value proposition**  
    GoalForge has a differentiated loop: AI-generated SMART goals + sprint tasks + gamification (`README.md`, dashboard/analytics UX).
@@ -39,10 +39,10 @@ New findings discovered in this review are identified with 🆕 below.
 3. **Foundational user journey exists**  
    Sign-in/sign-up, dashboard, analytics, and protected routes are in place (`apps/web/src/App.tsx`).
 
-4. **Active dependency maintenance** 🆕  
+4. **[NEW] Active dependency maintenance**  
    Frontend dependencies are kept current (React 19, Vite 7, TypeScript 5.9), signaling an actively maintained project with low technical debt accumulation in the dependency layer.
 
-### Product risks / gaps
+### Product Risks / Gaps
 
 1. **High feature concentration in one UI file slows iteration velocity**  
    Dashboard behavior and rendering are concentrated in one large page component (`apps/web/src/pages/Dashboard.tsx`, 951 lines), increasing regression risk for roadmap delivery.
@@ -56,10 +56,10 @@ New findings discovered in this review are identified with 🆕 below.
 4. **Operational reliability mismatch between local and CI defaults**  
    Local backend tests can fail unless rate limiting is disabled via env override, while CI explicitly sets `RATE_LIMIT_ENABLED=false` (`.github/workflows/ci.yml`).
 
-5. **Silent sprint generation failure on milestone advance** 🆕  
+5. **[NEW] Silent sprint generation failure on milestone advance**  
    In `complete_milestone` (`apps/api/main.py`, line 657), synchronous sprint task generation catches `ValueError` but `generate_sprint_tasks` raises `AIGenerationError`. This mismatch means AI generation errors during milestone advancement bubble up as unhandled 500 responses rather than actionable 502 error messages, creating silent failure UX.
 
-### PM priority recommendations (without removing shipped features)
+### PM Priority Recommendations (without removing shipped features)
 
 - **P0 (next sprint):**
   - Fix the wrong exception class in `complete_milestone` (catches `ValueError` instead of `AIGenerationError`) to restore correct error messaging when sprint generation fails.
@@ -76,12 +76,12 @@ New findings discovered in this review are identified with 🆕 below.
 
 ## 2) Senior Software Engineer Review
 
-### Engineering strengths
+### Engineering Strengths
 
 1. **Clean backend layering and typed contracts**  
    Good separation of concerns across `main.py`, `auth.py`, `ai_utils.py`, `schemas.py`, and `models.py`.
 
-2. **Improved auth exception specificity** 🆕  
+2. **[NEW] Improved auth exception specificity**  
    `_decode_token` in `auth.py` now explicitly catches `jwt.ExpiredSignatureError` and `jwt.InvalidTokenError`, enabling differentiated error responses and improved observability compared to the prior fully-broad catch.
 
 3. **Reasonable security foundations**
@@ -95,18 +95,18 @@ New findings discovered in this review are identified with 🆕 below.
 5. **Backend test suite is healthy**  
    API integration tests in `apps/api/tests` cover key goal/task/milestone flows — 23 tests, all passing.
 
-6. **CI pipeline is comprehensive** 🆕  
+6. **[NEW] CI pipeline is comprehensive**  
    The CI workflow runs backend tests plus frontend lint, TypeScript type check, and build (`apps/web`) on every push and PR.
 
-### Engineering issues and improvement opportunities
+### Engineering Issues and Improvement Opportunities
 
-1. **Bug: wrong exception caught in `complete_milestone`** 🆕  
+1. **[NEW] Bug: wrong exception caught in `complete_milestone`**  
    At `apps/api/main.py` line 657, `except ValueError as exc:` should be `except AIGenerationError as exc:`. The `generate_sprint_tasks` function raises `AIGenerationError` (defined in `exceptions.py`), never `ValueError`. The current code means sync generation failures during milestone advancement are not caught and propagate as unhandled 500 Internal Server Error responses instead of the intended 502.
 
 2. **`auth.py` retains broad fallback exception in token decode path**  
-   While specific handlers for `jwt.ExpiredSignatureError` and `jwt.InvalidTokenError` have been added, a final broad `except Exception` fallback remains in `_decode_token` (`apps/api/auth.py`, lines 105–109). This still masks unexpected failures and reduces observability. It should be replaced with structured logging before re-raising.
+   While specific handlers for `jwt.ExpiredSignatureError` and `jwt.InvalidTokenError` have been added, a final broad `except Exception` fallback remains in `_decode_token` (`apps/api/auth.py`, lines 105-109). This still masks unexpected failures and reduces observability. It should be replaced with structured logging before re-raising.
 
-3. **Deprecated FastAPI startup event handler** 🆕  
+3. **[NEW] Deprecated FastAPI startup event handler**  
    `@app.on_event("startup")` in `apps/api/main.py` (line 94) is deprecated in FastAPI and emits a `DeprecationWarning` visible in test output. The recommended replacement is the `lifespan` context manager pattern passed to the `FastAPI()` constructor.
 
 4. **Rate-limit keying strategy can cause noisy-neighbor effects**  
@@ -125,10 +125,10 @@ New findings discovered in this review are identified with 🆕 below.
    - Backend has tests; frontend has none.
    - CI runs lint/type-check/build for web and tests for API, which is good, but frontend behavior regressions remain largely unguarded.
 
-### Recommended technical roadmap
+### Recommended Technical Roadmap
 
 - **P0 hardening (immediate)**
-  - Fix `complete_milestone`: change `except ValueError` → `except AIGenerationError` to restore correct error handling.
+  - Fix `complete_milestone`: change `except ValueError` to `except AIGenerationError` to restore correct error handling.
   - Remove or scope the remaining broad `except Exception` fallback in `_decode_token`; add structured logging.
   - Add frontend tests for highest-risk interactions (goal creation, task completion, milestone advance).
 - **P1 architecture**
@@ -147,16 +147,16 @@ Commands executed in this review (2026-03-14):
 
 - Frontend baseline:
   - `npm ci`
-  - `npm run lint` — ✅ pass (0 warnings)
-  - `npx tsc --noEmit` — ✅ pass
-  - `npm run build` — ✅ pass (323 KB JS bundle, gzip 97 KB)
+  - `npm run lint` — pass (0 warnings)
+  - `npx tsc --noEmit` — pass
+  - `npm run build` — pass (323 KB JS bundle, gzip 97 KB)
 - Backend baseline:
   - `python -m pytest tests/ -v` (with `RATE_LIMIT_ENABLED=false GEMINI_API_KEY=dummy DATABASE_URL=sqlite+aiosqlite:///:memory:`)
 
 Observed status:
 
-- Frontend lint/type-check/build: ✅ pass
-- Backend tests: ✅ 23/23 passed (2 deprecation warnings — `on_event` startup handler)
+- Frontend lint/type-check/build: PASS
+- Backend tests: 23/23 passed (2 deprecation warnings — `on_event` startup handler)
 
 ---
 
