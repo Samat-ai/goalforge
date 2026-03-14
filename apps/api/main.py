@@ -743,5 +743,10 @@ async def complete_milestone(
 # ---------------------------------------------------------------------------
 
 @app.get("/health", include_in_schema=False)
-async def health():
-    return {"status": "ok"}
+async def health(db: AsyncSession = Depends(get_db)):
+    try:
+        await db.execute(select(1))
+        return {"status": "ok", "database": "connected"}
+    except Exception as exc:
+        logger.error("Health check DB error: %s", exc)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database connection failed")
