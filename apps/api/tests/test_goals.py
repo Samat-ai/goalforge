@@ -31,7 +31,25 @@ async def test_list_goals(client):
 
     resp = await client.get(f"/users/{TEST_USER_ID}/goals")
     assert resp.status_code == 200
-    assert len(resp.json()) == 2
+    data = resp.json()
+    assert data["total"] == 2
+    assert len(data["items"]) == 2
+    assert data["limit"] == 20
+    assert data["offset"] == 0
+
+
+async def test_list_goals_pagination(client):
+    await create_test_goal(client)
+    await create_test_goal(client)
+    await create_test_goal(client)
+
+    resp = await client.get(f"/users/{TEST_USER_ID}/goals?limit=1&offset=1")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 3
+    assert len(data["items"]) == 1
+    assert data["limit"] == 1
+    assert data["offset"] == 1
 
 
 async def test_list_goals_forbidden_for_other_user(client):

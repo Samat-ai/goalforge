@@ -108,6 +108,17 @@ class GoalResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Paginated response wrappers
+# ---------------------------------------------------------------------------
+
+class PaginatedGoalsResponse(BaseModel):
+    items: list[GoalResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+# ---------------------------------------------------------------------------
 # Schemas used internally by the AI layer (not exposed to clients directly)
 # ---------------------------------------------------------------------------
 

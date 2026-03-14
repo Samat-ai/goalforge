@@ -98,11 +98,11 @@ export default function Dashboard() {
         const token = await getToken()
         setAuthToken(token)
         const [goalsRes, profileRes] = await Promise.all([
-          api.get<Goal[]>(`/users/${userId}/goals`),
+          api.get<{ items: Goal[]; total: number; limit: number; offset: number }>(`/users/${userId}/goals?limit=20&offset=0`),
           api.get<{ star_points: number }>(`/users/${userId}/profile`).catch(() => ({ data: { star_points: 0 } })),
         ])
         if (!ignore) {
-          setGoals(goalsRes.data)
+          setGoals(goalsRes.data.items)
           setPts(profileRes.data.star_points)
         }
       } catch {
