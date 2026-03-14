@@ -25,7 +25,7 @@ export default function AppHeader({ pts }: AppHeaderProps) {
         Goal<span style={{ color: T.orange }}>Forge</span>
       </span>
 
-      {(["dashboard", "analytics"] as const).map(v => (
+      {(["dashboard", "analytics", "settings"] as const).map(v => (
         <Link key={v} to={`/${v}`} style={{
           background: "none", border: "none", cursor: "pointer",
           height: 54, padding: "0 14px", fontFamily: T.mono, fontSize: 12,

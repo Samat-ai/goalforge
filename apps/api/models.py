@@ -24,6 +24,8 @@ class User(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     star_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    timezone: Mapped[str] = mapped_column(String, default="UTC", nullable=False, server_default="UTC")
+    display_name: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
