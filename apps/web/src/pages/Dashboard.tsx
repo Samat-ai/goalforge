@@ -80,6 +80,7 @@ export default function Dashboard() {
   const [pts,    setPts]    = useState(0)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
   const [filter,  setFilter]  = useState<string>('all')
   const [addGoalText, setAddGoalText] = useState('')
 
@@ -106,27 +107,25 @@ export default function Dashboard() {
           setPts(profileRes.data.star_points)
         }
       } catch {
-        if (!ignore) setError('Failed to load goals. Please refresh.')
+        if (!ignore) setError('Failed to load goals.')
       } finally {
         if (!ignore) setLoading(false)
       }
     }
 
+    setLoading(true)
+    setError(null)
     load()
     return () => { ignore = true }
-  }, [user?.id, getToken])
+  }, [user?.id, getToken, retryCount])
 
   // ── Add Goal ──
   async function addGoal(rawInput: string) {
-    try {
-      const { data } = await api.post<Goal>(
-        `/users/${user!.id}/goals`,
-        { raw_input: rawInput },
-      )
-      setGoals(prev => [data, ...prev])
-    } catch {
-      toast.error('Could not create goal. Please try again.')
-    }
+    const { data } = await api.post<Goal>(
+      `/users/${user!.id}/goals`,
+      { raw_input: rawInput },
+    )
+    setGoals(prev => [data, ...prev])
   }
 
   // ── Complete task (optimistic) ──
@@ -281,8 +280,24 @@ export default function Dashboard() {
 
         {/* Error */}
         {!loading && error && (
-          <div style={{ padding: '14px 18px', background: `${T.rose}10`, border: `1px solid ${T.rose}30`, borderRadius: 10, color: T.rose, fontSize: 13 }}>
-            {error}
+          <div style={{
+            padding: '20px 22px', background: `${T.rose}10`, border: `1px solid ${T.rose}30`,
+            borderRadius: 12, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, color: T.rose, fontFamily: T.mono, marginBottom: 3 }}>{error}</div>
+              <div style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }}>Check your connection and try again.</div>
+            </div>
+            <button
+              onClick={() => setRetryCount(c => c + 1)}
+              style={{
+                cursor: 'pointer', padding: '7px 16px', borderRadius: 8, flexShrink: 0,
+                fontFamily: T.mono, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
+                background: `${T.rose}20`, color: T.rose, border: `1px solid ${T.rose}50`,
+              }}
+            >
+              Try again
+            </button>
           </div>
         )}
 

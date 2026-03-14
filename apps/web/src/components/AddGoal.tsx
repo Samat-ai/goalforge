@@ -10,16 +10,21 @@ interface AddGoalProps {
 
 export default function AddGoal({ onAdd, value, onChange }: AddGoalProps) {
   const [loading, setLoading] = useState(false)
-  const [status,  setStatus]  = useState<'idle' | 'thinking' | 'done'>('idle')
+  const [status,  setStatus]  = useState<'idle' | 'thinking' | 'done' | 'error'>('idle')
 
   const submit = async () => {
     if (!value.trim() || loading) return
     setLoading(true)
     setStatus('thinking')
-    await onAdd(value.trim())
-    setStatus('done')
-    onChange('')
-    setTimeout(() => { setStatus('idle'); setLoading(false) }, 700)
+    try {
+      await onAdd(value.trim())
+      setStatus('done')
+      onChange('')
+      setTimeout(() => { setStatus('idle'); setLoading(false) }, 700)
+    } catch {
+      setStatus('error')
+      setLoading(false)
+    }
   }
 
   return (
@@ -41,6 +46,7 @@ export default function AddGoal({ onAdd, value, onChange }: AddGoalProps) {
       />
       {status === 'thinking' && <div style={{ marginTop: 10, fontSize: 12, color: T.orange, fontFamily: T.mono }}>◉ AI is forging your plan···</div>}
       {status === 'done'     && <div style={{ marginTop: 10, fontSize: 12, color: T.emerald, fontFamily: T.mono }}>✓ Goal added!</div>}
+      {status === 'error'    && <div style={{ marginTop: 10, fontSize: 12, color: T.rose, fontFamily: T.mono }}>✕ Could not create goal — check your connection and try again.</div>}
       <div style={{ display: 'flex', gap: 8, marginTop: 11 }}>
         <Btn onClick={submit} loading={loading}>Create Goal →</Btn>
       </div>

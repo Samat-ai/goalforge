@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Analytics from './pages/Analytics'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
+import ErrorBoundary from './components/ErrorBoundary'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   return (
@@ -20,13 +21,15 @@ export default function App() {
   return (
     <BrowserRouter>
       <Toaster theme="dark" position="bottom-right" richColors />
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/sign-in/*" element={<SignInPage />} />
-        <Route path="/sign-up/*" element={<SignUpPage />} />
-        <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
-        <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
-      </Routes>
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/sign-in/*" element={<SignInPage />} />
+          <Route path="/sign-up/*" element={<SignUpPage />} />
+          <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
+          <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
+        </Routes>
+      </ErrorBoundary>
     </BrowserRouter>
   )
 }
