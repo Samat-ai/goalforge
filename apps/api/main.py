@@ -10,7 +10,7 @@ import logging
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select, update as sql_update
@@ -30,7 +30,7 @@ from database import engine, get_db, Base
 from models import DailyTask, Goal, Milestone, User
 from schemas import (
     GoalCreate, GoalProgressUpdate, GoalResponse, GoalStatusUpdate,
-    MilestoneResponse, TaskResponse, TaskUpdate,
+    MilestoneResponse, PaginatedGoalsResponse, TaskResponse, TaskUpdate,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -298,23 +298,32 @@ async def create_goal(
 
 @app.get(
     "/users/{user_id}/goals",
-    response_model=list[GoalResponse],
+    response_model=PaginatedGoalsResponse,
     summary="List all goals for a user",
 )
 async def list_goals(
     user_id: str,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     if user_id != current_user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    total_result = await db.execute(
+        select(func.count(Goal.id)).where(Goal.user_id == user_id)
+    )
+    total = total_result.scalar_one()
     result = await db.execute(
         select(Goal)
         .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
         .where(Goal.user_id == user_id)
         .order_by(Goal.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
-    return result.scalars().all()
+    items = result.scalars().all()
+    return PaginatedGoalsResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @app.get(
