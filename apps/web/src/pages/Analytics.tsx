@@ -39,6 +39,7 @@ export default function Analytics() {
   const [pts,     setPts]     = useState(0)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     const userId = user?.id
@@ -58,15 +59,17 @@ export default function Analytics() {
           setPts(profileRes.data.star_points)
         }
       } catch {
-        if (!ignore) setError("Failed to load data. Please refresh.")
+        if (!ignore) setError('Failed to load data.')
       } finally {
         if (!ignore) setLoading(false)
       }
     }
 
+    setLoading(true)
+    setError(null)
     load()
     return () => { ignore = true }
-  }, [user?.id, getToken])
+  }, [user?.id, getToken, retryCount])
 
   const stage   = getStage(pts)
   const next    = getNext(pts)
@@ -96,8 +99,24 @@ export default function Analytics() {
         </div>
 
         {error && (
-          <div style={{ padding: "14px 18px", background: `${T.rose}10`, border: `1px solid ${T.rose}30`, borderRadius: 10, color: T.rose, fontSize: 13 }}>
-            {error}
+          <div style={{
+            padding: '20px 22px', background: `${T.rose}10`, border: `1px solid ${T.rose}30`,
+            borderRadius: 12, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 20,
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, color: T.rose, fontFamily: T.mono, marginBottom: 3 }}>{error}</div>
+              <div style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }}>Check your connection and try again.</div>
+            </div>
+            <button
+              onClick={() => setRetryCount(c => c + 1)}
+              style={{
+                cursor: 'pointer', padding: '7px 16px', borderRadius: 8, flexShrink: 0,
+                fontFamily: T.mono, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
+                background: `${T.rose}20`, color: T.rose, border: `1px solid ${T.rose}50`,
+              }}
+            >
+              Try again
+            </button>
           </div>
         )}
 
