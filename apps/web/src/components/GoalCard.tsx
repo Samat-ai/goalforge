@@ -260,7 +260,7 @@ export default function GoalCard({
 
                   {/* Action icons — pending tasks only */}
                   {!task.is_completed && !isEditing && (
-                    <div className="flex items-center shrink-0 transition-opacity opacity-50 sm:opacity-0 sm:group-hover:opacity-100">
+                    <div className="flex items-center shrink-0 transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
                       <button
                         onMouseDown={e => e.preventDefault()}
                         onClick={() => onStartEdit(task)}
