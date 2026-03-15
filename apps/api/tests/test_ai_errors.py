@@ -10,7 +10,7 @@ from tests.conftest import TEST_USER_ID
 async def test_create_goal_returns_503_on_ai_failure(client: AsyncClient):
     """generate_smart_goal raising AIGenerationError → 503 with exact message."""
     with patch(
-        "main.generate_smart_goal",
+        "routes.goals.generate_smart_goal",
         new=AsyncMock(side_effect=AIGenerationError()),
     ):
         resp = await client.post(
