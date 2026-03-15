@@ -9,6 +9,7 @@ import asyncio
 import logging
 import time
 import uuid
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from datetime import date, datetime, timedelta, timezone
 
@@ -77,10 +78,20 @@ def _configure_logging() -> None:
 _configure_logging()
 logger = logging.getLogger(__name__)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if settings.environment != "production":
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    logger.info("GoalForge API started.")
+    yield
+
+
 app = FastAPI(
     title="GoalForge API",
     version="0.1.0",
     description="AI-powered goal-tracking backend",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -151,18 +162,6 @@ else:
         def decorator(func):
             return func
         return decorator
-
-
-# ---------------------------------------------------------------------------
-# Startup / shutdown
-# ---------------------------------------------------------------------------
-
-@app.on_event("startup")
-async def on_startup():
-    if settings.environment != "production":
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-    logger.info("GoalForge API started.")
 
 
 # ---------------------------------------------------------------------------
@@ -774,7 +773,7 @@ async def complete_milestone(
                 task_outputs = await generate_sprint_tasks(
                     goal_context, next_ms.sprint_theme, today
                 )
-            except ValueError as exc:
+            except AIGenerationError as exc:
                 raise HTTPException(status_code=502, detail=str(exc))
             for i, task_data in enumerate(task_outputs):
                 db.add(DailyTask(
