@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     environment: str = "development"
     rate_limit_enabled: bool = True
+    jobs_api_key: str = ""  # if empty, auth is skipped (dev convenience)
     db_pool_size: int = 10
     db_max_overflow: int = 20
     db_pool_timeout: int = 30
