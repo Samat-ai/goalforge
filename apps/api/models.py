@@ -3,9 +3,11 @@ from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -35,6 +37,10 @@ class User(Base):
 
 class Goal(Base):
     __tablename__ = "goals"
+    __table_args__ = (
+        CheckConstraint("status IN ('active', 'achieved', 'abandoned')", name="ck_goal_status"),
+        Index("idx_goal_user_created", "user_id", "created_at"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -70,6 +76,12 @@ class Goal(Base):
 
 class Milestone(Base):
     __tablename__ = "milestones"
+    __table_args__ = (
+        CheckConstraint(
+            "sprint_status IN ('pending', 'generating', 'ready', 'active', 'completed', 'failed')",
+            name="ck_milestone_sprint_status",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -101,6 +113,9 @@ class Milestone(Base):
 
 class DailyTask(Base):
     __tablename__ = "daily_tasks"
+    __table_args__ = (
+        Index("idx_task_goal_assigned", "goal_id", "assigned_date"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
