@@ -1,0 +1,114 @@
+"""Milestone advancement routes."""
+
+import uuid
+from datetime import date, datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from ai_utils import generate_sprint_tasks
+from auth import get_current_user_id
+from database import get_db
+from exceptions import AIGenerationError
+from models import DailyTask, Goal, Milestone
+from rate_limiting import _user_key, rate_limit
+from schemas import GoalResponse
+
+router = APIRouter()
+
+
+@router.post(
+    "/goals/{goal_id}/milestones/{milestone_id}/complete",
+    response_model=GoalResponse,
+    summary="Mark a sprint complete and unlock the next sprint",
+)
+@rate_limit("10/minute", key_func=_user_key)
+async def complete_milestone(
+    request: Request,
+    goal_id: uuid.UUID,
+    milestone_id: uuid.UUID,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    # Verify goal ownership before touching milestone data
+    goal_check = await db.execute(select(Goal).where(Goal.id == goal_id))
+    goal_obj = goal_check.scalar_one_or_none()
+    if goal_obj is None:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    if goal_obj.user_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    # Load and validate milestone
+    ms_result = await db.execute(
+        select(Milestone)
+        .where(Milestone.id == milestone_id, Milestone.goal_id == goal_id)
+    )
+    milestone = ms_result.scalar_one_or_none()
+    if milestone is None:
+        raise HTTPException(status_code=404, detail="Milestone not found")
+    if milestone.is_completed:
+        raise HTTPException(status_code=400, detail="Milestone already completed")
+
+    # Mark current milestone complete
+    milestone.is_completed = True
+    milestone.completed_at = datetime.now(timezone.utc)
+    milestone.sprint_status = "completed"
+    await db.flush()
+
+    # Find and activate next milestone (if any)
+    next_ms_result = await db.execute(
+        select(Milestone)
+        .where(Milestone.goal_id == goal_id, Milestone.position == milestone.position + 1)
+    )
+    next_ms = next_ms_result.scalar_one_or_none()
+
+    if next_ms:
+        today = date.today()
+
+        if next_ms.sprint_status == "ready":
+            # Pre-gen succeeded — shift task dates to start from today
+            tasks_result = await db.execute(
+                select(DailyTask)
+                .where(DailyTask.milestone_id == next_ms.id)
+                .order_by(DailyTask.assigned_date)
+            )
+            for i, t in enumerate(tasks_result.scalars().all()):
+                t.assigned_date = today + timedelta(days=i)
+            next_ms.sprint_status = "active"
+
+        elif next_ms.sprint_status in ("pending", "failed"):
+            # No tasks yet — generate synchronously (goal_obj already loaded above)
+            goal_context = f"{goal_obj.smart_title}: {goal_obj.smart_description}"
+            try:
+                task_outputs = await generate_sprint_tasks(
+                    goal_context, next_ms.sprint_theme, today
+                )
+            except AIGenerationError as exc:
+                raise HTTPException(status_code=502, detail=str(exc))
+            for i, task_data in enumerate(task_outputs):
+                db.add(DailyTask(
+                    id=uuid.uuid4(),
+                    goal_id=goal_id,
+                    milestone_id=next_ms.id,
+                    description=task_data.description,
+                    tip=task_data.tip,
+                    assigned_date=today + timedelta(days=i),
+                ))
+            next_ms.sprint_status = "active"
+
+        elif next_ms.sprint_status == "generating":
+            # Still in flight — mark active so frontend shows the sprint; tasks
+            # will appear once the background task commits them.
+            next_ms.sprint_status = "active"
+
+        await db.flush()
+
+    # Return full goal with updated milestones and tasks
+    result = await db.execute(
+        select(Goal)
+        .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
+        .where(Goal.id == goal_id)
+    )
+    return result.scalar_one()
