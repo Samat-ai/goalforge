@@ -8,6 +8,7 @@ Dependency tree (FastAPI caches _decode_token per request):
 """
 
 import asyncio
+import logging
 import httpx
 import jwt
 from cachetools import TTLCache
@@ -15,6 +16,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from config import settings
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # JWKS cache — refreshed every 10 minutes so key rotations propagate quickly
@@ -102,7 +105,8 @@ async def _decode_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid token: {exc}",
         )
-    except Exception:
+    except Exception as exc:
+        logger.error("Unexpected error validating token: %s", exc, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",

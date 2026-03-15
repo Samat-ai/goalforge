@@ -164,8 +164,8 @@ class AISprintOutput(BaseModel):
 
 class AIGoalOutput(BaseModel):
     """Strict schema that Gemini must populate — mirrors the Goal + first sprint tasks."""
-    smart_title: str = Field(..., description="Concise, motivating SMART goal title (≤12 words)")
-    smart_description: str = Field(..., description="2-3 sentence SMART goal description")
+    smart_title: str = Field(..., max_length=200, description="Concise, motivating SMART goal title (≤12 words)")
+    smart_description: str = Field(..., max_length=500, description="2-3 sentence SMART goal description")
     goal_type: str = Field(..., description="Category, e.g. fitness, career, learning, finance, health")
     target_date: date = Field(..., description="Realistic ISO-8601 target completion date")
     milestones: list[AIMilestoneConfig] = Field(

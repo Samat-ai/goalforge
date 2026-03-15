@@ -97,7 +97,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in settings.cors_origins.split(",")],
-    allow_credentials=settings.environment == "production",
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -162,6 +162,16 @@ else:
         def decorator(func):
             return func
         return decorator
+
+
+# ---------------------------------------------------------------------------
+# Background task helpers
+# ---------------------------------------------------------------------------
+
+def _log_task_exception(task: asyncio.Task) -> None:
+    """Done-callback: log any unhandled exception from a background asyncio task."""
+    if not task.cancelled() and (exc := task.exception()) is not None:
+        logger.error("Background task %r raised an unhandled exception: %s", task.get_name(), exc, exc_info=exc)
 
 
 # ---------------------------------------------------------------------------
@@ -635,13 +645,14 @@ async def complete_task(
 
                 if next_ms and goal:
                     goal_context = f"{goal.smart_title}: {goal.smart_description}"
-                    asyncio.create_task(_pre_generate_sprint(
+                    _t = asyncio.create_task(_pre_generate_sprint(
                         milestone_id=next_ms.id,
                         goal_id=goal.id,
                         goal_context=goal_context,
                         sprint_theme=next_ms.sprint_theme,
                         start_date=date.today() + timedelta(days=1),
                     ))
+                    _t.add_done_callback(_log_task_exception)
 
     return task
 

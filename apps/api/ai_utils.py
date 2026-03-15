@@ -62,18 +62,21 @@ Rules:
 _RETRY_DELAYS = (1, 2)
 
 
+_AI_TIMEOUT = 30.0  # seconds per Gemini call attempt
+
+
 async def _with_retry(make_coro, label: str):
     """
     Call make_coro() up to 3 times with exponential backoff.
 
-    Retries on: APIError, JSONDecodeError, ValidationError.
+    Retries on: APIError, JSONDecodeError, ValidationError, TimeoutError.
     Raises AIGenerationError on final failure.
     """
     last_exc: Exception | None = None
     for attempt in range(1, 4):  # attempts 1, 2, 3
         try:
-            return await make_coro()
-        except (genai_errors.APIError, json.JSONDecodeError, ValidationError) as exc:
+            return await asyncio.wait_for(make_coro(), timeout=_AI_TIMEOUT)
+        except (genai_errors.APIError, json.JSONDecodeError, ValidationError, asyncio.TimeoutError) as exc:
             last_exc = exc
             if attempt < 3:
                 delay = _RETRY_DELAYS[attempt - 1]
