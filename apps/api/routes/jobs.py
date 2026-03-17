@@ -1,5 +1,6 @@
 """Background job trigger routes."""
 
+from collections import defaultdict
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Header, status
@@ -9,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config import settings
 from database import get_db
 from models import DailyTask, Goal, User
-from services.email_service import send_reminder_email
+from services.email_service import TaskDigestItem, send_reminder_digest
 
 router = APIRouter()
 
@@ -25,12 +26,12 @@ def _verify_api_key(x_api_key: str | None = Header(default=None)) -> None:
 
 @router.post(
     "/trigger-reminders",
-    summary="Send daily reminder emails for all pending tasks due today",
+    summary="Send daily reminder digest for all pending tasks due today",
     dependencies=[Depends(_verify_api_key)],
 )
 async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
     result = await db.execute(
-        select(DailyTask, User.email)
+        select(DailyTask, User.email, User.display_name, Goal.smart_title)
         .join(Goal, DailyTask.goal_id == Goal.id)
         .join(User, Goal.user_id == User.id)
         .where(DailyTask.assigned_date == date.today())
@@ -38,7 +39,18 @@ async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
     )
     rows = result.all()
 
-    for task, email in rows:
-        await send_reminder_email(email, task.description)
+    # Group tasks by user (email, display_name)
+    user_tasks: dict[tuple[str, str | None], list[TaskDigestItem]] = defaultdict(list)
+    for task, email, display_name, goal_title in rows:
+        user_tasks[(email, display_name)].append(
+            TaskDigestItem(
+                description=task.description,
+                tip=task.tip,
+                goal_title=goal_title,
+            )
+        )
 
-    return {"sent": len(rows)}
+    for (email, display_name), tasks in user_tasks.items():
+        await send_reminder_digest(email, display_name, tasks)
+
+    return {"sent": len(user_tasks)}
