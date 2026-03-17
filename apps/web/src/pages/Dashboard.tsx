@@ -138,7 +138,6 @@ export default function Dashboard() {
       if (!goal.daily_tasks.some(t => t.id === taskId)) return goal
       return {
         ...goal,
-        vitality:       Math.min(100, goal.vitality + 10),
         daily_tasks:    goal.daily_tasks.map(t => t.id === taskId ? { ...t, is_completed: true } : t),
         completed_days: goal.completed_days.includes(today) ? goal.completed_days : [...goal.completed_days, today],
       }
@@ -155,7 +154,6 @@ export default function Dashboard() {
         )
         return {
           ...goal,
-          vitality:    Math.max(0, goal.vitality - 10),
           daily_tasks: goal.daily_tasks.map(t => t.id === taskId ? { ...t, is_completed: false } : t),
           completed_days: otherTaskDoneToday
             ? goal.completed_days

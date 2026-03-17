@@ -77,9 +77,6 @@ class GoalResponse(BaseModel):
     target_date: date
     milestones: list[MilestoneResponse] = []
     status: Literal["active", "achieved", "abandoned"]
-    current_streak: int
-    best_streak: int
-    vitality: int
     progress: int
     created_at: datetime
     daily_tasks: list[TaskResponse] = []

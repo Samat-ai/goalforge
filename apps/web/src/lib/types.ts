@@ -36,9 +36,6 @@ export interface Goal {
   milestones_completed: number
   milestones_total: number
   status: 'active' | 'achieved' | 'abandoned'
-  current_streak: number
-  best_streak: number
-  vitality: number
   progress: number
   created_at: string
   daily_tasks: Task[]

@@ -54,9 +54,6 @@ class Goal(Base):
     goal_type: Mapped[str] = mapped_column(String, nullable=False)
     target_date: Mapped[datetime] = mapped_column(Date, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, default="active")
-    current_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    best_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    vitality: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
     progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
