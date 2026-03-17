@@ -87,11 +87,14 @@ export default function GoalCard({
   const dl    = days < 0 ? 'overdue' : days === 0 ? 'today' : days === 1 ? 'tomorrow' : `${days}d left`
 
   return (
-    <div style={{
-      background: T.card, borderRadius: 14, overflow: 'hidden', marginBottom: 1,
-      border: `1px solid ${isAbandoned ? T.dim + '40' : open ? T.borderHi : T.border}`,
-      opacity: isAbandoned ? 0.5 : 1,
-    }}>
+    <div
+      className={isAchieved ? 'goal-achieved' : undefined}
+      style={{
+        background: T.card, borderRadius: 14, overflow: 'hidden', marginBottom: 1,
+        border: `1px solid ${isAbandoned ? T.dim + '40' : open ? T.borderHi : T.border}`,
+        opacity: isAbandoned ? 0.5 : 1,
+      }}
+    >
 
       {/* ── Header row (click to expand) ── */}
       <div

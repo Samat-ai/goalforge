@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import api, { setAuthToken } from '../lib/api'
 import { T } from '../lib/theme'
 import { todayStr } from '../lib/gamification'
+import { triggerCelebration } from '../lib/celebrations'
 import type { Goal, Task } from '../lib/types'
 import AppHeader from '../components/AppHeader'
 import { Creature } from '../components/GamificationSvgs'
@@ -144,6 +145,7 @@ export default function Dashboard() {
     }))
     setPts(p => p + 10)
     toast.success('Task completed! +10 pts', { icon: '⚡' })
+    triggerCelebration('task')
 
     api.patch(`/tasks/${taskId}/complete`).catch(() => {
       setGoals(prev => prev.map(goal => {
@@ -215,6 +217,7 @@ export default function Dashboard() {
       const { data } = await api.post<Goal>(`/goals/${goalId}/milestones/${milestoneId}/complete`)
       setGoals(prev => prev.map(g => g.id === goalId ? data : g))
       toast.success('Sprint complete! Next sprint unlocked. ✦')
+      triggerCelebration('sprint')
     } catch {
       toast.error('Could not complete sprint. Please try again.')
     }
@@ -227,6 +230,7 @@ export default function Dashboard() {
     if (newStatus === 'achieved' && prev_status !== 'achieved') {
       setPts(p => p + 100)
       toast.success('Goal achieved! +100 pts 🏆')
+      triggerCelebration('goal')
     }
     try {
       await api.patch(`/goals/${goalId}`, { status: newStatus })
