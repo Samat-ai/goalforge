@@ -22,8 +22,6 @@ interface Goal {
   target_date: string
   milestones: string[]
   status: 'active' | 'achieved' | 'abandoned'
-  current_streak: number
-  best_streak: number
   progress: number
   created_at: string
   daily_tasks: Task[]
