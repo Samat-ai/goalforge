@@ -84,6 +84,26 @@ body {
   overflow: visible;
 }
 
+/* ── Achieved goal glow ── */
+
+@keyframes achieved-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 8px  rgba(251, 191, 36, 0.25),
+      0 0 24px rgba(251, 191, 36, 0.10);
+  }
+  50% {
+    box-shadow:
+      0 0 12px rgba(251, 191, 36, 0.40),
+      0 0 36px rgba(251, 191, 36, 0.18);
+  }
+}
+
+.goal-achieved {
+  animation: achieved-glow 3s ease-in-out infinite;
+  border-color: rgba(251, 191, 36, 0.35) !important;
+}
+
 /* ── Task row hover ── */
 
 .task-row {
