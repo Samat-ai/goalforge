@@ -47,9 +47,22 @@ export function streak(days: string[]): number {
   return s
 }
 
-// ── Star brightness (0–1) — earned over 7 consecutive days ───────────────────
-// Day 1 completion = dim ember (~14%). Day 7 streak = blazing (100%).
-// Breaking the streak resets brightness. Aligns with the 7-day AI task plan.
+// ── Star brightness (0–1) — rolling 7-day strength with gradual decay ────────
+// Looks at a 7-day window ending today. Each day is weighted so recent days
+// matter more (recency-weighted): day 0 (today) = 7, day -1 = 6, … day -6 = 1.
+// Total possible weight = 28.  Missing a single day costs ~15-25% depending on
+// recency, rather than resetting to 0.  Rewards sustained effort while forgiving
+// the occasional off day.
 export function starBrightness(days: string[]): number {
-  return Math.min(1, streak(days) / 7)
+  const today = todayStr()
+  const set = new Set(days.filter(d => d <= today))
+  if (set.size === 0) return 0
+
+  let score = 0
+  const totalWeight = 28 // 7+6+5+4+3+2+1
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(new Date(today).getTime() - i * 864e5).toISOString().split("T")[0]
+    if (set.has(d)) score += 7 - i // today = 7, yesterday = 6, … 6 days ago = 1
+  }
+  return Math.min(1, score / totalWeight)
 }
