@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     environment: str = "development"
     rate_limit_enabled: bool = True
     jobs_api_key: str = ""  # if empty, auth is skipped (dev convenience)
+    resend_api_key: str = ""  # if empty, emails are logged instead of sent
+    dev_email_override: str | None = None  # if set, all emails route here (dev/testing only)
     db_pool_size: int = 10
     db_max_overflow: int = 20
     db_pool_timeout: int = 30
