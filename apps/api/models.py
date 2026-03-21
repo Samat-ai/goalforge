@@ -126,6 +126,7 @@ class DailyTask(Base):
     description: Mapped[str] = mapped_column(String, nullable=False)
     tip: Mapped[str] = mapped_column(String, nullable=False)
     assigned_date: Mapped[datetime] = mapped_column(Date, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     is_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

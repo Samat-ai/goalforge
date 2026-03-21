@@ -7,6 +7,7 @@ export interface Task {
   description: string
   tip: string
   assigned_date: string
+  position: number
   is_completed: boolean
   completed_at: string | null
 }

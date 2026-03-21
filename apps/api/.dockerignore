@@ -7,4 +7,3 @@ __pycache__
 .gitignore
 *.pyc
 tests/
-alembic/versions/

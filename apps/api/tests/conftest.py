@@ -126,10 +126,13 @@ async def client(engine):
     mock_goal = _make_mock_goal_output()
     mock_tasks = _make_mock_sprint_tasks()
 
+    mock_regen = AITaskOutput(description="Regenerated task", tip="Fresh motivation", assigned_date=date.today())
+
     with (
         patch("routes.goals.generate_smart_goal", new=AsyncMock(return_value=mock_goal)),
         patch("routes.milestones.generate_sprint_tasks", new=AsyncMock(return_value=mock_tasks)),
         patch("services.task_service._pre_generate_sprint", new=AsyncMock()),
+        patch("routes.tasks.regenerate_single_task", new=AsyncMock(return_value=mock_regen)),
     ):
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
@@ -165,10 +168,13 @@ async def other_client(engine):
     mock_goal = _make_mock_goal_output()
     mock_tasks = _make_mock_sprint_tasks()
 
+    mock_regen = AITaskOutput(description="Regenerated task", tip="Fresh motivation", assigned_date=date.today())
+
     with (
         patch("routes.goals.generate_smart_goal", new=AsyncMock(return_value=mock_goal)),
         patch("routes.milestones.generate_sprint_tasks", new=AsyncMock(return_value=mock_tasks)),
         patch("services.task_service._pre_generate_sprint", new=AsyncMock()),
+        patch("routes.tasks.regenerate_single_task", new=AsyncMock(return_value=mock_regen)),
     ):
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"

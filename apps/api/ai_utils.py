@@ -181,3 +181,62 @@ async def generate_sprint_tasks(
         return sprint.tasks
 
     return await _with_retry(_call, "generate_sprint_tasks")
+
+
+_REGEN_SYSTEM_PROMPT = """\
+You are GoalForge AI regenerating a single daily task.
+
+Goal context: {goal_context}
+Sprint theme: {sprint_theme}
+Task date: {assigned_date}
+Current task (DO NOT repeat): {current_description}
+
+Rules:
+- Generate exactly ONE new task that is DIFFERENT from the current task.
+- The new task must serve the sprint theme and overall goal.
+- Keep description ≤20 words, actionable and specific.
+- Keep tip ≤20 words, motivational and explaining why it helps.
+- Use the same assigned_date: {assigned_date}.
+"""
+
+
+async def regenerate_single_task(
+    goal_context: str,
+    sprint_theme: str,
+    assigned_date: date,
+    current_description: str,
+) -> AITaskOutput:
+    """
+    Call Gemini to generate a single replacement task different from the current one.
+
+    Raises:
+        AIGenerationError: after 3 failed attempts.
+    """
+    system_instruction = _REGEN_SYSTEM_PROMPT.format(
+        goal_context=goal_context,
+        sprint_theme=sprint_theme,
+        assigned_date=assigned_date.isoformat(),
+        current_description=current_description,
+    )
+    user_message = (
+        f"Generate a replacement task for: {current_description}\n"
+        f"Sprint theme: {sprint_theme}\nGoal: {goal_context}"
+    )
+
+    async def _call() -> AITaskOutput:
+        response = await _client.aio.models.generate_content(
+            model=_MODEL,
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                response_mime_type="application/json",
+                response_schema=AITaskOutput,
+                temperature=1.0,
+            ),
+        )
+        raw_json: str = response.text
+        logger.debug("Gemini raw response (regen): %s", raw_json)
+        data = json.loads(raw_json)
+        return AITaskOutput.model_validate(data)
+
+    return await _with_retry(_call, "regenerate_single_task")
