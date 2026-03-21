@@ -26,7 +26,15 @@ export function stagePct(p: number): number {
 }
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
-export const todayStr = () => new Date().toISOString().split("T")[0]
+export const todayStr = () => new Intl.DateTimeFormat('en-CA').format(new Date())
+
+// Returns the date N days before dateStr in the browser's local timezone.
+// Uses noon-anchor to avoid DST midnight ambiguity.
+const daysAgo = (dateStr: string, n: number): string => {
+  const d = new Date(dateStr + "T12:00:00")
+  d.setDate(d.getDate() - n)
+  return new Intl.DateTimeFormat('en-CA').format(d)
+}
 
 // ── Streak (consecutive completed days ending today) ──────────────────────────
 export function streak(days: string[]): number {
@@ -39,7 +47,7 @@ export function streak(days: string[]): number {
   for (const d of [...past].sort().reverse()) {
     if (d === cur) {
       s++
-      cur = new Date(new Date(cur).getTime() - 864e5).toISOString().split("T")[0]
+      cur = daysAgo(cur, 1)
     } else {
       break
     }
@@ -61,7 +69,7 @@ export function starBrightness(days: string[]): number {
   let score = 0
   const totalWeight = 28 // 7+6+5+4+3+2+1
   for (let i = 0; i < 7; i++) {
-    const d = new Date(new Date(today).getTime() - i * 864e5).toISOString().split("T")[0]
+    const d = daysAgo(today, i)
     if (set.has(d)) score += 7 - i // today = 7, yesterday = 6, … 6 days ago = 1
   }
   return Math.min(1, score / totalWeight)

@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 # Background task helpers
 # ---------------------------------------------------------------------------
 
+# Strong references to in-flight background tasks — prevents CPython from
+# garbage-collecting a running task before it completes (asyncio spec only
+# guarantees a weak reference from the event loop).
+_background_tasks: set[asyncio.Task] = set()
+
+
 def _log_task_exception(task: asyncio.Task) -> None:
     """Done-callback: log any unhandled exception from a background asyncio task."""
     if not task.cancelled() and (exc := task.exception()) is not None:
@@ -147,4 +153,6 @@ async def complete_task_and_award_points(
                         sprint_theme=next_ms.sprint_theme,
                         start_date=date.today() + timedelta(days=1),
                     ))
+                    _background_tasks.add(_t)
                     _t.add_done_callback(_log_task_exception)
+                    _t.add_done_callback(_background_tasks.discard)
