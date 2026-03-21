@@ -1,16 +1,12 @@
 import { useState, useEffect } from 'react'
-import { useUser, useAuth } from '@clerk/react'
-import { toast } from 'sonner'
-import api, { setAuthToken } from '../lib/api'
+import { useUser } from '@clerk/react'
 import { T } from '../lib/theme'
-import { todayStr } from '../lib/gamification'
-import { triggerCelebration } from '../lib/celebrations'
-import type { Goal, Task } from '../lib/types'
 import AppHeader from '../components/AppHeader'
 import { Creature } from '../components/GamificationSvgs'
 import TodayBar from '../components/TodayBar'
 import AddGoal from '../components/AddGoal'
 import GoalCard from '../components/GoalCard'
+import { useGoalsQuery, useProfileQuery, useGoalMutations } from '../hooks'
 
 // ── EmptyState (onboarding for new users) ─────────────────────────────────────
 const EXAMPLE_GOALS = [
@@ -74,222 +70,19 @@ function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
 
 // ── Dashboard (main page) ─────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { user }     = useUser()
-  const { getToken } = useAuth()
+  const { user } = useUser()
+  const userId = user?.id
 
-  const [goals,  setGoals]  = useState<Goal[]>([])
-  const [pts,    setPts]    = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState<string | null>(null)
-  const [retryCount, setRetryCount] = useState(0)
-  const [filter,  setFilter]  = useState<string>('all')
+  const { goals, isLoading: loading, isError, refetch } = useGoalsQuery(userId)
+  const { pts } = useProfileQuery(userId)
+  const mutations = useGoalMutations(userId ?? '')
+
+  const [filter, setFilter] = useState<string>('all')
   const [addGoalText, setAddGoalText] = useState('')
-
-  // Task edit state
-  const [editingTaskId,  setEditingTaskId]  = useState<string | null>(null)
-  const [editingText,    setEditingText]    = useState('')
 
   useEffect(() => { document.title = 'Dashboard — GoalForge' }, [])
 
-  // ── Fetch goals + star_points ──
-  useEffect(() => {
-    const userId = user?.id
-    if (!userId) return
-    let ignore = false
-
-    async function load() {
-      try {
-        const token = await getToken()
-        setAuthToken(token)
-        const [goalsRes, profileRes] = await Promise.all([
-          api.get<{ items: Goal[]; total: number; limit: number; offset: number }>(`/users/${userId}/goals?limit=20&offset=0`),
-          api.get<{ star_points: number }>(`/users/${userId}/profile`).catch(() => ({ data: { star_points: 0 } })),
-        ])
-        if (!ignore) {
-          setGoals(goalsRes.data.items)
-          setPts(profileRes.data.star_points)
-        }
-      } catch {
-        if (!ignore) setError('Failed to load goals.')
-      } finally {
-        if (!ignore) setLoading(false)
-      }
-    }
-
-    setLoading(true)
-    setError(null)
-    load()
-    return () => { ignore = true }
-  }, [user?.id, getToken, retryCount])
-
-  // ── Add Goal ──
-  async function addGoal(rawInput: string) {
-    const { data } = await api.post<Goal>(
-      `/users/${user!.id}/goals`,
-      { raw_input: rawInput },
-    )
-    setGoals(prev => [data, ...prev])
-  }
-
-  // ── Complete task (optimistic) ──
-  function completeTask(taskId: string) {
-    const today = todayStr()
-    setGoals(prev => prev.map(goal => {
-      if (!goal.daily_tasks.some(t => t.id === taskId)) return goal
-      return {
-        ...goal,
-        daily_tasks:    goal.daily_tasks.map(t => t.id === taskId ? { ...t, is_completed: true } : t),
-        completed_days: goal.completed_days.includes(today) ? goal.completed_days : [...goal.completed_days, today],
-      }
-    }))
-    setPts(p => p + 10)
-    toast.success('Task completed! +10 pts', { icon: '⚡' })
-    triggerCelebration('task')
-
-    api.patch(`/tasks/${taskId}/complete`).catch(() => {
-      setGoals(prev => prev.map(goal => {
-        if (!goal.daily_tasks.some(t => t.id === taskId)) return goal
-        const otherTaskDoneToday = goal.daily_tasks.some(
-          t => t.id !== taskId && t.is_completed && t.assigned_date === today
-        )
-        return {
-          ...goal,
-          daily_tasks: goal.daily_tasks.map(t => t.id === taskId ? { ...t, is_completed: false } : t),
-          completed_days: otherTaskDoneToday
-            ? goal.completed_days
-            : goal.completed_days.filter(d => d !== today),
-        }
-      }))
-      setPts(p => p - 10)
-      toast.error('Could not save task. Please try again.')
-    })
-  }
-
-  // ── Task edit ──
-  function startEdit(task: Task) {
-    setEditingTaskId(task.id)
-    setEditingText(task.description)
-  }
-
-  function cancelEdit() {
-    setEditingTaskId(null)
-    setEditingText('')
-  }
-
-  async function saveEdit(taskId: string, original: string) {
-    const trimmed = editingText.trim()
-    if (!trimmed || trimmed === original) { cancelEdit(); return }
-    setGoals(prev => prev.map(g => ({
-      ...g,
-      daily_tasks: g.daily_tasks.map(t => t.id === taskId ? { ...t, description: trimmed } : t),
-    })))
-    cancelEdit()
-    try {
-      await api.patch(`/tasks/${taskId}`, { description: trimmed })
-      toast.success('Task updated')
-    } catch {
-      setGoals(prev => prev.map(g => ({
-        ...g,
-        daily_tasks: g.daily_tasks.map(t => t.id === taskId ? { ...t, description: original } : t),
-      })))
-      toast.error('Could not update task.')
-    }
-  }
-
-  // ── Delete goal ──
-  async function deleteGoal(goalId: string) {
-    const deleted = goals.find(g => g.id === goalId)
-    setGoals(prev => prev.filter(g => g.id !== goalId))
-    try {
-      await api.delete(`/goals/${goalId}`)
-      toast.success('Goal deleted')
-    } catch {
-      if (deleted) setGoals(prev => [...prev, deleted])
-      toast.error('Could not delete goal.')
-    }
-  }
-
-  // ── Complete sprint milestone ──
-  async function completeMilestone(goalId: string, milestoneId: string) {
-    try {
-      const { data } = await api.post<Goal>(`/goals/${goalId}/milestones/${milestoneId}/complete`)
-      setGoals(prev => prev.map(g => g.id === goalId ? data : g))
-      toast.success('Sprint complete! Next sprint unlocked. ✦')
-      triggerCelebration('sprint')
-    } catch {
-      toast.error('Could not complete sprint. Please try again.')
-    }
-  }
-
-  // ── Status change ──
-  async function changeStatus(goalId: string, newStatus: 'active' | 'achieved' | 'abandoned') {
-    const prev_status = goals.find(g => g.id === goalId)?.status
-    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, status: newStatus } : g))
-    if (newStatus === 'achieved' && prev_status !== 'achieved') {
-      setPts(p => p + 100)
-      toast.success('Goal achieved! +100 pts 🏆')
-      triggerCelebration('goal')
-    }
-    try {
-      await api.patch(`/goals/${goalId}`, { status: newStatus })
-    } catch {
-      setGoals(prev => prev.map(g => g.id === goalId ? { ...g, status: prev_status ?? 'active' } : g))
-      if (newStatus === 'achieved' && prev_status !== 'achieved') setPts(p => p - 100)
-      toast.error('Could not update goal status.')
-    }
-  }
-
-  // ── Add custom task ──
-  async function addTask(goalId: string, milestoneId: string | null, description: string) {
-    try {
-      const { data } = await api.post<Task>(`/goals/${goalId}/tasks`, {
-        description,
-        milestone_id: milestoneId,
-        assigned_date: todayStr(),
-      })
-      setGoals(prev => prev.map(g =>
-        g.id === goalId ? { ...g, daily_tasks: [...g.daily_tasks, data] } : g
-      ))
-      toast.success('Task added')
-    } catch {
-      toast.error('Could not add task.')
-    }
-  }
-
-  // ── Regenerate task via AI ──
-  async function regenerateTask(taskId: string) {
-    try {
-      const { data } = await api.post<Task>(`/tasks/${taskId}/regenerate`)
-      setGoals(prev => prev.map(g => ({
-        ...g,
-        daily_tasks: g.daily_tasks.map(t => t.id === taskId ? data : t),
-      })))
-      toast.success('Task regenerated')
-    } catch {
-      toast.error('Could not regenerate task. Please try again.')
-    }
-  }
-
-  // ── Reorder tasks (optimistic) ──
-  function reorderTasks(goalId: string, taskPositions: { id: string; position: number }[]) {
-    const posMap = new Map(taskPositions.map(t => [t.id, t.position]))
-    const snapshot = goals
-    setGoals(prev => prev.map(g => {
-      if (g.id !== goalId) return g
-      return {
-        ...g,
-        daily_tasks: g.daily_tasks.map(t => {
-          const newPos = posMap.get(t.id)
-          return newPos !== undefined ? { ...t, position: newPos } : t
-        }),
-      }
-    }))
-    api.put(`/goals/${goalId}/tasks/reorder`, { tasks: taskPositions }).catch(() => {
-      setGoals(snapshot)
-      toast.error('Could not reorder tasks.')
-    })
-  }
-
+  const error = isError ? 'Failed to load goals.' : null
   const filtered = filter === 'all' ? goals : goals.filter(g => g.status === filter)
 
   // ── Render ──
@@ -344,7 +137,7 @@ export default function Dashboard() {
               <div style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }}>Check your connection and try again.</div>
             </div>
             <button
-              onClick={() => setRetryCount(c => c + 1)}
+              onClick={() => refetch()}
               style={{
                 cursor: 'pointer', padding: '7px 16px', borderRadius: 8, flexShrink: 0,
                 fontFamily: T.mono, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
@@ -359,7 +152,7 @@ export default function Dashboard() {
         {!loading && !error && (
           <>
             <TodayBar goals={goals} />
-            <AddGoal onAdd={addGoal} value={addGoalText} onChange={setAddGoalText} />
+            <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} />
 
             {goals.length === 0 ? (
               <EmptyState onSelect={setAddGoalText} />
@@ -392,23 +185,7 @@ export default function Dashboard() {
                     </div>
                   )}
                   {filtered.map(goal => (
-                    <GoalCard
-                      key={goal.id}
-                      goal={goal}
-                      editingTaskId={editingTaskId}
-                      editingText={editingText}
-                      setEditingText={setEditingText}
-                      onCompleteTask={completeTask}
-                      onStartEdit={startEdit}
-                      onCancelEdit={cancelEdit}
-                      onSaveEdit={saveEdit}
-                      onDeleteGoal={deleteGoal}
-                      onStatusChange={changeStatus}
-                      onCompleteMilestone={completeMilestone}
-                      onAddTask={addTask}
-                      onRegenerateTask={regenerateTask}
-                      onReorderTasks={reorderTasks}
-                    />
+                    <GoalCard key={goal.id} goal={goal} />
                   ))}
                 </div>
               </>

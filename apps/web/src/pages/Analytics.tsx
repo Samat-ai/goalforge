@@ -1,73 +1,19 @@
-import { useState, useEffect } from 'react'
-import { useUser, useAuth } from '@clerk/react'
-import api, { setAuthToken } from '../lib/api'
+import { useState, useEffect, useCallback } from 'react'
+import { useUser } from '@clerk/react'
 import AppHeader from '../components/AppHeader'
 import { Creature } from '../components/GamificationSvgs'
 import { STAGES, getStage, getNext, stagePct, streak } from '../lib/gamification'
 import { T } from '../lib/theme'
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-interface Task {
-  id: string
-  assigned_date: string
-  is_completed: boolean
-}
-
-interface Goal {
-  id: string
-  raw_input: string
-  smart_title: string
-  smart_description: string
-  goal_type: string
-  target_date: string
-  milestones: string[]
-  status: 'active' | 'achieved' | 'abandoned'
-  progress: number
-  created_at: string
-  daily_tasks: Task[]
-  completed_days: string[]
-}
+import { useAllGoalsQuery, useProfileQuery } from '../hooks'
 
 // ── Analytics page ────────────────────────────────────────────────────────────
 export default function Analytics() {
-  const { user }     = useUser()
-  const { getToken } = useAuth()
+  const { user } = useUser()
 
-  const [goals,   setGoals]   = useState<Goal[]>([])
-  const [pts,     setPts]     = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState<string | null>(null)
-  const [retryCount, setRetryCount] = useState(0)
+  const { goals, isLoading: loading, isError, refetch } = useAllGoalsQuery(user?.id)
+  const { pts } = useProfileQuery(user?.id)
 
-  useEffect(() => {
-    const userId = user?.id
-    if (!userId) return
-    let ignore = false
-
-    async function load() {
-      try {
-        const token = await getToken()
-        setAuthToken(token)
-        const [goalsRes, profileRes] = await Promise.all([
-          api.get<{ items: Goal[]; total: number; limit: number; offset: number }>(`/users/${userId}/goals?limit=100&offset=0`),
-          api.get<{ star_points: number }>(`/users/${userId}/profile`).catch(() => ({ data: { star_points: 0 } })),
-        ])
-        if (!ignore) {
-          setGoals(goalsRes.data.items)
-          setPts(profileRes.data.star_points)
-        }
-      } catch {
-        if (!ignore) setError('Failed to load data.')
-      } finally {
-        if (!ignore) setLoading(false)
-      }
-    }
-
-    setLoading(true)
-    setError(null)
-    load()
-    return () => { ignore = true }
-  }, [user?.id, getToken, retryCount])
+  const error = isError ? 'Failed to load data.' : null
 
   useEffect(() => { document.title = 'Analytics — GoalForge' }, [])
 
@@ -75,6 +21,17 @@ export default function Analytics() {
   const next    = getNext(pts)
   const pct     = stagePct(pts)
   const achieved = goals.filter(g => g.status === 'achieved')
+
+  // Compute completion rates outside render (Date.now is impure)
+  const computeRates = useCallback(() => {
+    const now = Date.now()
+    return new Map(goals.map(g => [
+      g.id,
+      g.completed_days.length / Math.max(1, Math.floor((now - new Date(g.created_at).getTime()) / 864e5)),
+    ]))
+  }, [goals])
+  const [goalRates, setGoalRates] = useState(() => new Map<string, number>())
+  useEffect(() => { setGoalRates(computeRates()) }, [computeRates])
 
   return (
     <div style={{ minHeight: "100vh", background: T.bg, color: T.text, fontFamily: T.mono }}>
@@ -108,7 +65,7 @@ export default function Analytics() {
               <div style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }}>Check your connection and try again.</div>
             </div>
             <button
-              onClick={() => setRetryCount(c => c + 1)}
+              onClick={() => refetch()}
               style={{
                 cursor: 'pointer', padding: '7px 16px', borderRadius: 8, flexShrink: 0,
                 fontFamily: T.mono, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
@@ -233,8 +190,7 @@ export default function Analytics() {
                   COMPLETION RATE BY GOAL
                 </div>
                 {goals.filter(g => g.status !== 'abandoned').map(g => {
-                  const daysElapsed = Math.max(1, Math.floor((Date.now() - new Date(g.created_at).getTime()) / 864e5))
-                  const rate = g.completed_days.length / daysElapsed
+                  const rate = goalRates.get(g.id) ?? 0
                   const s    = streak(g.completed_days)
                   const col  = g.status === 'achieved' ? T.amber : T.orange
                   const lbl  = g.raw_input.length > 26 ? g.raw_input.slice(0, 26) + "…" : g.raw_input
