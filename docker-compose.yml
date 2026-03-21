@@ -21,7 +21,7 @@ services:
   web:
     build: ./apps/web
     ports:
-      - "5173:5173"
+      - "5173:8080"
     depends_on:
       - api
 
