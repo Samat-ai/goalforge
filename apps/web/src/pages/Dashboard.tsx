@@ -239,6 +239,57 @@ export default function Dashboard() {
     }
   }
 
+  // ── Add custom task ──
+  async function addTask(goalId: string, milestoneId: string | null, description: string) {
+    try {
+      const { data } = await api.post<Task>(`/goals/${goalId}/tasks`, {
+        description,
+        milestone_id: milestoneId,
+        assigned_date: todayStr(),
+      })
+      setGoals(prev => prev.map(g =>
+        g.id === goalId ? { ...g, daily_tasks: [...g.daily_tasks, data] } : g
+      ))
+      toast.success('Task added')
+    } catch {
+      toast.error('Could not add task.')
+    }
+  }
+
+  // ── Regenerate task via AI ──
+  async function regenerateTask(taskId: string) {
+    try {
+      const { data } = await api.post<Task>(`/tasks/${taskId}/regenerate`)
+      setGoals(prev => prev.map(g => ({
+        ...g,
+        daily_tasks: g.daily_tasks.map(t => t.id === taskId ? data : t),
+      })))
+      toast.success('Task regenerated')
+    } catch {
+      toast.error('Could not regenerate task. Please try again.')
+    }
+  }
+
+  // ── Reorder tasks (optimistic) ──
+  function reorderTasks(goalId: string, taskPositions: { id: string; position: number }[]) {
+    const posMap = new Map(taskPositions.map(t => [t.id, t.position]))
+    const snapshot = goals
+    setGoals(prev => prev.map(g => {
+      if (g.id !== goalId) return g
+      return {
+        ...g,
+        daily_tasks: g.daily_tasks.map(t => {
+          const newPos = posMap.get(t.id)
+          return newPos !== undefined ? { ...t, position: newPos } : t
+        }),
+      }
+    }))
+    api.put(`/goals/${goalId}/tasks/reorder`, { tasks: taskPositions }).catch(() => {
+      setGoals(snapshot)
+      toast.error('Could not reorder tasks.')
+    })
+  }
+
   const filtered = filter === 'all' ? goals : goals.filter(g => g.status === filter)
 
   // ── Render ──
@@ -354,6 +405,9 @@ export default function Dashboard() {
                       onDeleteGoal={deleteGoal}
                       onStatusChange={changeStatus}
                       onCompleteMilestone={completeMilestone}
+                      onAddTask={addTask}
+                      onRegenerateTask={regenerateTask}
+                      onReorderTasks={reorderTasks}
                     />
                   ))}
                 </div>

@@ -1,5 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
-import { Circle, CheckCircle2, Pencil } from 'lucide-react'
+import { Circle, CheckCircle2, GripVertical, Pencil, Plus, RefreshCw } from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { T } from '../lib/theme'
 import { todayStr, streak, starBrightness } from '../lib/gamification'
 import { StarIcon, Heatmap } from './GamificationSvgs'
@@ -19,18 +34,159 @@ export interface GoalCardProps {
   onDeleteGoal:         (goalId: string) => void
   onStatusChange:       (goalId: string, status: 'active' | 'achieved' | 'abandoned') => void
   onCompleteMilestone:  (goalId: string, milestoneId: string) => Promise<void>
+  onAddTask:            (goalId: string, milestoneId: string | null, description: string) => Promise<void>
+  onRegenerateTask:     (taskId: string) => Promise<void>
+  onReorderTasks:       (goalId: string, tasks: { id: string; position: number }[]) => void
 }
 
+// ── Sortable task row ────────────────────────────────────────────────────────
+function SortableTaskRow({
+  task, isEditing, editingText, setEditingText,
+  onComplete, onStartEdit, onCancelEdit, onSaveEdit,
+  regeneratingId, onRegenerate,
+}: {
+  task: Task
+  isEditing: boolean
+  editingText: string
+  setEditingText: (t: string) => void
+  onComplete: (id: string) => void
+  onStartEdit: (t: Task) => void
+  onCancelEdit: () => void
+  onSaveEdit: (id: string, orig: string) => void
+  regeneratingId: string | null
+  onRegenerate: (id: string) => void
+}) {
+  const {
+    attributes, listeners, setNodeRef, setActivatorNodeRef,
+    transform, transition, isDragging,
+  } = useSortable({ id: task.id, disabled: task.is_completed })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    display: 'flex', alignItems: 'flex-start', gap: 10,
+  }
+  const isRegen = regeneratingId === task.id
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} className="group">
+      {/* Drag handle — pending tasks only */}
+      {!task.is_completed ? (
+        <button
+          ref={setActivatorNodeRef}
+          {...listeners}
+          aria-label="Drag to reorder"
+          style={{
+            flexShrink: 0, background: 'none', border: 'none', padding: 0,
+            cursor: 'grab', display: 'flex', alignItems: 'center', marginTop: 2,
+            touchAction: 'none',
+          }}
+        >
+          <GripVertical size={14} color={T.dim} />
+        </button>
+      ) : (
+        <div style={{ width: 14, flexShrink: 0 }} />
+      )}
+
+      {/* Complete toggle */}
+      <button
+        aria-label={task.is_completed ? 'Task completed' : 'Mark task complete'}
+        aria-pressed={task.is_completed}
+        disabled={task.is_completed || isEditing}
+        onClick={() => !task.is_completed && !isEditing && onComplete(task.id)}
+        style={{
+          marginTop: 1, flexShrink: 0, background: 'none', border: 'none', padding: 0,
+          cursor: !task.is_completed && !isEditing ? 'pointer' : 'default',
+          display: 'flex', alignItems: 'center',
+        }}
+      >
+        {task.is_completed
+          ? <CheckCircle2 size={16} color={T.emerald} />
+          : <Circle size={16} color={T.dim} />
+        }
+      </button>
+
+      {/* Description */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {isEditing ? (
+          <input
+            autoFocus
+            value={editingText}
+            onChange={e => setEditingText(e.target.value)}
+            onBlur={() => onSaveEdit(task.id, task.description)}
+            onKeyDown={e => {
+              if (e.key === 'Enter')  onSaveEdit(task.id, task.description)
+              if (e.key === 'Escape') onCancelEdit()
+            }}
+            style={{
+              width: '100%', fontSize: 13, background: T.surface,
+              border: `1px solid ${T.orange}80`, borderRadius: 5,
+              padding: '2px 7px', color: T.text, outline: 'none', fontFamily: T.mono,
+            }}
+          />
+        ) : (
+          <>
+            <p style={{
+              fontSize: 13, color: task.is_completed ? T.dim : T.text,
+              textDecoration: task.is_completed ? 'line-through' : 'none',
+              lineHeight: 1.5, fontFamily: T.mono, margin: 0,
+            }}>
+              {task.description}
+            </p>
+            {!task.is_completed && task.tip && (
+              <p style={{ fontSize: 11, color: T.orange, fontFamily: T.mono, fontStyle: 'italic', margin: '2px 0 0' }}>
+                "{task.tip}"
+              </p>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Action icons — pending tasks only */}
+      {!task.is_completed && !isEditing && (
+        <div className="flex items-center gap-0 shrink-0 transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+          <button
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => onRegenerate(task.id)}
+            disabled={isRegen}
+            aria-label="Regenerate task via AI"
+            className="text-[#3f3f5c] hover:text-indigo-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
+            style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <RefreshCw size={13} style={isRegen ? { animation: 'spin 1s linear infinite' } : undefined} />
+          </button>
+          <button
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => onStartEdit(task)}
+            aria-label="Edit task"
+            className="text-[#3f3f5c] hover:text-indigo-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
+            style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Pencil size={13} />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── GoalCard ─────────────────────────────────────────────────────────────────
 export default function GoalCard({
   goal, editingTaskId, editingText,
   setEditingText,
   onCompleteTask, onStartEdit, onCancelEdit, onSaveEdit,
   onDeleteGoal, onStatusChange, onCompleteMilestone,
+  onAddTask, onRegenerateTask, onReorderTasks,
 }: GoalCardProps) {
   const [open, setOpen] = useState(false)
   const [completingMilestone, setCompletingMilestone] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmAbandon, setConfirmAbandon] = useState(false)
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
+  const [showAddTask, setShowAddTask] = useState(false)
+  const [addTaskText, setAddTaskText] = useState('')
+  const [addingTask, setAddingTask] = useState(false)
   const deleteTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abandonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -40,6 +196,11 @@ export default function GoalCard({
       if (abandonTimerRef.current) clearTimeout(abandonTimerRef.current)
     }
   }, [])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  )
 
   function handleDeleteClick() {
     if (confirmDelete) {
@@ -67,6 +228,44 @@ export default function GoalCard({
     }
   }
 
+  async function handleRegenerate(taskId: string) {
+    setRegeneratingId(taskId)
+    try { await onRegenerateTask(taskId) }
+    finally { setRegeneratingId(null) }
+  }
+
+  async function handleAddTask() {
+    const trimmed = addTaskText.trim()
+    if (!trimmed || addingTask) return
+    setAddingTask(true)
+    try {
+      await onAddTask(goal.id, activeMilestone?.id ?? null, trimmed)
+      setAddTaskText('')
+      setShowAddTask(false)
+    } finally {
+      setAddingTask(false)
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = todayTasks.findIndex(t => t.id === active.id)
+    const newIndex = todayTasks.findIndex(t => t.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    // Build new position list
+    const reordered = [...todayTasks]
+    const [moved] = reordered.splice(oldIndex, 1)
+    reordered.splice(newIndex, 0, moved)
+
+    onReorderTasks(
+      goal.id,
+      reordered.map((t, i) => ({ id: t.id, position: i })),
+    )
+  }
+
   // Milestone-gated computed values
   const activeMilestone      = goal.milestones.find(m => m.sprint_status === 'active')
   const nextMilestone        = activeMilestone ? goal.milestones.find(m => m.position === activeMilestone.position + 1) : undefined
@@ -75,7 +274,9 @@ export default function GoalCard({
   const allMilestonesComplete = goal.milestones.length > 0 && goal.milestones.every(m => m.is_completed)
   const milestonesProgress   = goal.milestones_total > 0 ? Math.round((goal.milestones_completed / goal.milestones_total) * 100) : 0
 
-  const todayTasks  = goal.daily_tasks.filter(t => t.assigned_date === todayStr())
+  const todayTasks  = goal.daily_tasks
+    .filter(t => t.assigned_date === todayStr())
+    .sort((a, b) => a.position - b.position)
   const doneToday   = todayTasks.length > 0 && todayTasks.every(t => t.is_completed)
   const s           = streak(goal.completed_days)
   const b           = goal.status === 'achieved' ? 1 : starBrightness(goal.completed_days)
@@ -195,90 +396,81 @@ export default function GoalCard({
       )}
 
       {/* ── Today's tasks ── */}
-      {!isAbandoned && !isAchieved && todayTasks.length > 0 && (
+      {!isAbandoned && !isAchieved && (todayTasks.length > 0 || activeMilestone) && (
         <div style={{ margin: '0 18px 14px', padding: '13px 15px', background: T.surface, borderRadius: 9, border: `1px solid ${T.border}` }}>
           <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 9 }}>
             TODAY'S TASKS
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {todayTasks.map(task => {
-              const isEditing = editingTaskId === task.id
-              return (
-                <div key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}
-                  className="group">
 
-                  {/* Complete toggle */}
-                  <button
-                    aria-label={task.is_completed ? 'Task completed' : 'Mark task complete'}
-                    aria-pressed={task.is_completed}
-                    disabled={task.is_completed || isEditing}
-                    onClick={() => !task.is_completed && !isEditing && onCompleteTask(task.id)}
-                    style={{
-                      marginTop: 1, flexShrink: 0, background: 'none', border: 'none', padding: 0,
-                      cursor: !task.is_completed && !isEditing ? 'pointer' : 'default',
-                      display: 'flex', alignItems: 'center',
-                    }}
-                  >
-                    {task.is_completed
-                      ? <CheckCircle2 size={16} color={T.emerald} />
-                      : <Circle size={16} color={T.dim} />
-                    }
-                  </button>
-
-                  {/* Description */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {isEditing ? (
-                      <input
-                        autoFocus
-                        value={editingText}
-                        onChange={e => setEditingText(e.target.value)}
-                        onBlur={() => onSaveEdit(task.id, task.description)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter')  onSaveEdit(task.id, task.description)
-                          if (e.key === 'Escape') onCancelEdit()
-                        }}
-                        style={{
-                          width: '100%', fontSize: 13, background: T.surface,
-                          border: `1px solid ${T.orange}80`, borderRadius: 5,
-                          padding: '2px 7px', color: T.text, outline: 'none', fontFamily: T.mono,
-                        }}
-                      />
-                    ) : (
-                      <>
-                        <p style={{
-                          fontSize: 13, color: task.is_completed ? T.dim : T.text,
-                          textDecoration: task.is_completed ? 'line-through' : 'none',
-                          lineHeight: 1.5, fontFamily: T.mono, margin: 0,
-                        }}>
-                          {task.description}
-                        </p>
-                        {!task.is_completed && task.tip && (
-                          <p style={{ fontSize: 11, color: T.orange, fontFamily: T.mono, fontStyle: 'italic', margin: '2px 0 0' }}>
-                            "{task.tip}"
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </div>
-
-                  {/* Action icons — pending tasks only */}
-                  {!task.is_completed && !isEditing && (
-                    <div className="flex items-center shrink-0 transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
-                      <button
-                        onMouseDown={e => e.preventDefault()}
-                        onClick={() => onStartEdit(task)}
-                        aria-label="Edit task"
-                        className="text-[#3f3f5c] hover:text-indigo-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
-                        style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        <Pencil size={13} />
-                      </button>
-                    </div>
-                  )}
+          {todayTasks.length > 0 && (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={todayTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {todayTasks.map(task => (
+                    <SortableTaskRow
+                      key={task.id}
+                      task={task}
+                      isEditing={editingTaskId === task.id}
+                      editingText={editingText}
+                      setEditingText={setEditingText}
+                      onComplete={onCompleteTask}
+                      onStartEdit={onStartEdit}
+                      onCancelEdit={onCancelEdit}
+                      onSaveEdit={onSaveEdit}
+                      regeneratingId={regeneratingId}
+                      onRegenerate={handleRegenerate}
+                    />
+                  ))}
                 </div>
-              )
-            })}
-          </div>
+              </SortableContext>
+            </DndContext>
+          )}
+
+          {/* ── Add Task ── */}
+          {showAddTask ? (
+            <div style={{ marginTop: todayTasks.length > 0 ? 8 : 0, display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                autoFocus
+                value={addTaskText}
+                onChange={e => setAddTaskText(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleAddTask()
+                  if (e.key === 'Escape') { setShowAddTask(false); setAddTaskText('') }
+                }}
+                placeholder="Describe your task..."
+                disabled={addingTask}
+                style={{
+                  flex: 1, fontSize: 13, background: T.surface,
+                  border: `1px solid ${T.orange}80`, borderRadius: 5,
+                  padding: '5px 9px', color: T.text, outline: 'none', fontFamily: T.mono,
+                }}
+              />
+              <button
+                onClick={handleAddTask}
+                disabled={addingTask || !addTaskText.trim()}
+                style={{
+                  cursor: addingTask || !addTaskText.trim() ? 'default' : 'pointer',
+                  padding: '4px 12px', borderRadius: 6, fontFamily: T.mono, fontSize: 11,
+                  background: `${T.orange}20`, color: T.orange, border: `1px solid ${T.orange}50`,
+                  opacity: addingTask || !addTaskText.trim() ? 0.5 : 1,
+                }}
+              >
+                {addingTask ? '···' : 'Add'}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowAddTask(true)}
+              style={{
+                marginTop: todayTasks.length > 0 ? 8 : 0,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+                background: 'none', border: 'none', padding: '3px 0',
+                fontFamily: T.mono, fontSize: 11, color: T.muted,
+              }}
+            >
+              <Plus size={13} /> Add Task
+            </button>
+          )}
         </div>
       )}
 

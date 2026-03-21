@@ -32,6 +32,7 @@ class TaskBase(BaseModel):
     description: str
     tip: str
     assigned_date: date
+    position: int = 0
 
 
 class TaskResponse(TaskBase):
@@ -44,8 +45,24 @@ class TaskResponse(TaskBase):
     completed_at: datetime | None
 
 
+class TaskCreate(BaseModel):
+    description: str = Field(..., min_length=1, max_length=500)
+    milestone_id: uuid.UUID | None = None
+    assigned_date: date | None = None
+    tip: str = ""
+
+
 class TaskUpdate(BaseModel):
     description: str = Field(..., min_length=1, max_length=500)
+
+
+class TaskReorderItem(BaseModel):
+    id: uuid.UUID
+    position: int = Field(..., ge=0)
+
+
+class TaskReorderRequest(BaseModel):
+    tasks: list[TaskReorderItem] = Field(..., min_length=1)
 
 
 # ---------------------------------------------------------------------------
