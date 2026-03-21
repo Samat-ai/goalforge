@@ -4,8 +4,6 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
-logger = logging.getLogger(__name__)
-
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +18,7 @@ from rate_limiting import _user_key, rate_limit
 from schemas import GoalResponse
 from utils import user_today
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 

@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select, update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from ai_utils import generate_sprint_tasks
 from database import engine
 from exceptions import AIGenerationError
 from models import DailyTask, Goal, Milestone, User
+from utils import user_today
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +36,9 @@ def _log_task_exception(task: asyncio.Task) -> None:
 async def _pre_generate_sprint(
     milestone_id: uuid.UUID,
     goal_id: uuid.UUID,
+    user_id: str,
     goal_context: str,
     sprint_theme: str,
-    start_date: date,
 ) -> None:
     """
     Background coroutine: call Gemini to generate tasks for the next sprint
@@ -48,6 +49,11 @@ async def _pre_generate_sprint(
     The milestone advance endpoint handles "failed" by regenerating synchronously.
     """
     async with AsyncSession(engine) as db:
+        # 0. Resolve start_date using the user's local timezone
+        user_result = await db.execute(select(User).where(User.id == user_id))
+        user_obj = user_result.scalar_one_or_none()
+        start_date = user_today(user_obj.timezone if user_obj else "UTC") + timedelta(days=1)
+
         # 1. Mark as generating (own commit so the frontend sees it immediately)
         try:
             async with db.begin():
@@ -149,9 +155,9 @@ async def complete_task_and_award_points(
                     _t = asyncio.create_task(_pre_generate_sprint(
                         milestone_id=next_ms.id,
                         goal_id=goal.id,
+                        user_id=goal.user_id,
                         goal_context=goal_context,
                         sprint_theme=next_ms.sprint_theme,
-                        start_date=date.today() + timedelta(days=1),
                     ))
                     _background_tasks.add(_t)
                     _t.add_done_callback(_log_task_exception)
