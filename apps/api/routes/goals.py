@@ -17,6 +17,7 @@ from schemas import (
     GoalCreate, GoalProgressUpdate, GoalResponse, GoalStatusUpdate,
     PaginatedGoalsResponse,
 )
+from utils import user_today
 
 router = APIRouter()
 
@@ -55,7 +56,7 @@ async def create_goal(
     user = await get_or_create_user(user_id, current_user_email, db)
 
     try:
-        ai_output = await generate_smart_goal(payload.raw_input)
+        ai_output = await generate_smart_goal(payload.raw_input, today=user_today(user.timezone))
     except AIGenerationError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

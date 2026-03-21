@@ -91,9 +91,13 @@ async def _with_retry(make_coro, label: str):
     )
 
 
-async def generate_smart_goal(raw_input: str) -> AIGoalOutput:
+async def generate_smart_goal(raw_input: str, today: date | None = None) -> AIGoalOutput:
     """
     Call Gemini 2.5 Flash with a user's raw goal string.
+
+    Args:
+        raw_input: The user's plain-language goal description.
+        today:     The user's local calendar date. Defaults to server date if omitted.
 
     Returns a validated AIGoalOutput Pydantic model whose fields map
     directly onto the Goal, Milestone, and DailyTask database tables.
@@ -101,8 +105,8 @@ async def generate_smart_goal(raw_input: str) -> AIGoalOutput:
     Raises:
         AIGenerationError: after 3 failed attempts (APIError, JSONDecodeError, or ValidationError).
     """
-    today = date.today().isoformat()
-    system_instruction = _SYSTEM_PROMPT.format(today=today)
+    today_str = (today or date.today()).isoformat()
+    system_instruction = _SYSTEM_PROMPT.format(today=today_str)
     user_message = (
         f"Transform this goal into a structured SMART goal plan:\n\n{raw_input}"
     )

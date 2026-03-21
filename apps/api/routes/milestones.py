@@ -1,7 +1,8 @@
 """Milestone advancement routes."""
 
+import logging
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
@@ -12,10 +13,12 @@ from ai_utils import generate_sprint_tasks
 from auth import get_current_user_id
 from database import get_db
 from exceptions import AIGenerationError
-from models import DailyTask, Goal, Milestone
+from models import DailyTask, Goal, Milestone, User
 from rate_limiting import _user_key, rate_limit
 from schemas import GoalResponse
+from utils import user_today
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -65,7 +68,11 @@ async def complete_milestone(
     next_ms = next_ms_result.scalar_one_or_none()
 
     if next_ms:
-        today = date.today()
+        user_result = await db.execute(select(User).where(User.id == current_user_id))
+        user_obj = user_result.scalar_one_or_none()
+        if user_obj is None:
+            logger.warning("complete_milestone: user row not found for %s, defaulting to UTC", current_user_id)
+        today = user_today(user_obj.timezone if user_obj else "UTC")
 
         if next_ms.sprint_status == "ready":
             # Pre-gen succeeded — shift task dates to start from today
