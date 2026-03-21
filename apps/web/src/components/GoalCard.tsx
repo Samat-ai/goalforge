@@ -1,192 +1,26 @@
 import { useState, useEffect, useRef } from 'react'
-import { Circle, CheckCircle2, GripVertical, Pencil, Plus, RefreshCw } from 'lucide-react'
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 import { T } from '../lib/theme'
 import { todayStr, streak, starBrightness } from '../lib/gamification'
-import { StarIcon, Heatmap } from './GamificationSvgs'
+import { StarIcon } from './GamificationSvgs'
 import Badge from './ui/Badge'
 import Btn from './ui/Btn'
-import type { Goal, Task } from '../lib/types'
+import SprintRail from './SprintRail'
+import DailyTaskList from './DailyTaskList'
+import GoalHeatmap from './GoalHeatmap'
+import { useGoalMutations } from '../hooks'
+import type { Goal } from '../lib/types'
 
 export interface GoalCardProps {
   goal: Goal
-  editingTaskId: string | null
-  editingText: string
-  setEditingText: (t: string) => void
-  onCompleteTask:       (taskId: string) => void
-  onStartEdit:          (task: Task) => void
-  onCancelEdit:         () => void
-  onSaveEdit:           (taskId: string, original: string) => void
-  onDeleteGoal:         (goalId: string) => void
-  onStatusChange:       (goalId: string, status: 'active' | 'achieved' | 'abandoned') => void
-  onCompleteMilestone:  (goalId: string, milestoneId: string) => Promise<void>
-  onAddTask:            (goalId: string, milestoneId: string | null, description: string) => Promise<void>
-  onRegenerateTask:     (taskId: string) => Promise<void>
-  onReorderTasks:       (goalId: string, tasks: { id: string; position: number }[]) => void
 }
 
-// ── Sortable task row ────────────────────────────────────────────────────────
-function SortableTaskRow({
-  task, isEditing, editingText, setEditingText,
-  onComplete, onStartEdit, onCancelEdit, onSaveEdit,
-  regeneratingId, onRegenerate,
-}: {
-  task: Task
-  isEditing: boolean
-  editingText: string
-  setEditingText: (t: string) => void
-  onComplete: (id: string) => void
-  onStartEdit: (t: Task) => void
-  onCancelEdit: () => void
-  onSaveEdit: (id: string, orig: string) => void
-  regeneratingId: string | null
-  onRegenerate: (id: string) => void
-}) {
-  const {
-    attributes, listeners, setNodeRef, setActivatorNodeRef,
-    transform, transition, isDragging,
-  } = useSortable({ id: task.id, disabled: task.is_completed })
+export default function GoalCard({ goal }: GoalCardProps) {
+  const mutations = useGoalMutations(goal.user_id)
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    display: 'flex', alignItems: 'flex-start', gap: 10,
-  }
-  const isRegen = regeneratingId === task.id
-
-  return (
-    <div ref={setNodeRef} style={style} {...attributes} className="group">
-      {/* Drag handle — pending tasks only */}
-      {!task.is_completed ? (
-        <button
-          ref={setActivatorNodeRef}
-          {...listeners}
-          aria-label="Drag to reorder"
-          style={{
-            flexShrink: 0, background: 'none', border: 'none', padding: 0,
-            cursor: 'grab', display: 'flex', alignItems: 'center', marginTop: 2,
-            touchAction: 'none',
-          }}
-        >
-          <GripVertical size={14} color={T.dim} />
-        </button>
-      ) : (
-        <div style={{ width: 14, flexShrink: 0 }} />
-      )}
-
-      {/* Complete toggle */}
-      <button
-        aria-label={task.is_completed ? 'Task completed' : 'Mark task complete'}
-        aria-pressed={task.is_completed}
-        disabled={task.is_completed || isEditing}
-        onClick={() => !task.is_completed && !isEditing && onComplete(task.id)}
-        style={{
-          marginTop: 1, flexShrink: 0, background: 'none', border: 'none', padding: 0,
-          cursor: !task.is_completed && !isEditing ? 'pointer' : 'default',
-          display: 'flex', alignItems: 'center',
-        }}
-      >
-        {task.is_completed
-          ? <CheckCircle2 size={16} color={T.emerald} />
-          : <Circle size={16} color={T.dim} />
-        }
-      </button>
-
-      {/* Description */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {isEditing ? (
-          <input
-            autoFocus
-            value={editingText}
-            onChange={e => setEditingText(e.target.value)}
-            onBlur={() => onSaveEdit(task.id, task.description)}
-            onKeyDown={e => {
-              if (e.key === 'Enter')  onSaveEdit(task.id, task.description)
-              if (e.key === 'Escape') onCancelEdit()
-            }}
-            style={{
-              width: '100%', fontSize: 13, background: T.surface,
-              border: `1px solid ${T.orange}80`, borderRadius: 5,
-              padding: '2px 7px', color: T.text, outline: 'none', fontFamily: T.mono,
-            }}
-          />
-        ) : (
-          <>
-            <p style={{
-              fontSize: 13, color: task.is_completed ? T.dim : T.text,
-              textDecoration: task.is_completed ? 'line-through' : 'none',
-              lineHeight: 1.5, fontFamily: T.mono, margin: 0,
-            }}>
-              {task.description}
-            </p>
-            {!task.is_completed && task.tip && (
-              <p style={{ fontSize: 11, color: T.orange, fontFamily: T.mono, fontStyle: 'italic', margin: '2px 0 0' }}>
-                "{task.tip}"
-              </p>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Action icons — pending tasks only */}
-      {!task.is_completed && !isEditing && (
-        <div className="flex items-center gap-0 shrink-0 transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
-          <button
-            onMouseDown={e => e.preventDefault()}
-            onClick={() => onRegenerate(task.id)}
-            disabled={isRegen}
-            aria-label="Regenerate task via AI"
-            className="text-[#3f3f5c] hover:text-indigo-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
-            style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <RefreshCw size={13} style={isRegen ? { animation: 'spin 1s linear infinite' } : undefined} />
-          </button>
-          <button
-            onMouseDown={e => e.preventDefault()}
-            onClick={() => onStartEdit(task)}
-            aria-label="Edit task"
-            className="text-[#3f3f5c] hover:text-indigo-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
-            style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Pencil size={13} />
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── GoalCard ─────────────────────────────────────────────────────────────────
-export default function GoalCard({
-  goal, editingTaskId, editingText,
-  setEditingText,
-  onCompleteTask, onStartEdit, onCancelEdit, onSaveEdit,
-  onDeleteGoal, onStatusChange, onCompleteMilestone,
-  onAddTask, onRegenerateTask, onReorderTasks,
-}: GoalCardProps) {
   const [open, setOpen] = useState(false)
   const [completingMilestone, setCompletingMilestone] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmAbandon, setConfirmAbandon] = useState(false)
-  const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
-  const [showAddTask, setShowAddTask] = useState(false)
-  const [addTaskText, setAddTaskText] = useState('')
-  const [addingTask, setAddingTask] = useState(false)
   const deleteTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abandonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -197,18 +31,13 @@ export default function GoalCard({
     }
   }, [])
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
-  )
-
   function handleDeleteClick() {
     if (confirmDelete) {
       if (deleteTimerRef.current)  clearTimeout(deleteTimerRef.current)
       if (abandonTimerRef.current) clearTimeout(abandonTimerRef.current)
       setConfirmDelete(false)
       setConfirmAbandon(false)
-      onDeleteGoal(goal.id)
+      mutations.deleteGoal(goal.id)
     } else {
       setConfirmDelete(true)
       deleteTimerRef.current = setTimeout(() => setConfirmDelete(false), 3000)
@@ -221,49 +50,11 @@ export default function GoalCard({
       if (deleteTimerRef.current)  clearTimeout(deleteTimerRef.current)
       setConfirmAbandon(false)
       setConfirmDelete(false)
-      onStatusChange(goal.id, 'abandoned')
+      mutations.changeStatus(goal.id, 'abandoned')
     } else {
       setConfirmAbandon(true)
       abandonTimerRef.current = setTimeout(() => setConfirmAbandon(false), 3000)
     }
-  }
-
-  async function handleRegenerate(taskId: string) {
-    setRegeneratingId(taskId)
-    try { await onRegenerateTask(taskId) }
-    finally { setRegeneratingId(null) }
-  }
-
-  async function handleAddTask() {
-    const trimmed = addTaskText.trim()
-    if (!trimmed || addingTask) return
-    setAddingTask(true)
-    try {
-      await onAddTask(goal.id, activeMilestone?.id ?? null, trimmed)
-      setAddTaskText('')
-      setShowAddTask(false)
-    } finally {
-      setAddingTask(false)
-    }
-  }
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-
-    const oldIndex = todayTasks.findIndex(t => t.id === active.id)
-    const newIndex = todayTasks.findIndex(t => t.id === over.id)
-    if (oldIndex === -1 || newIndex === -1) return
-
-    // Build new position list
-    const reordered = [...todayTasks]
-    const [moved] = reordered.splice(oldIndex, 1)
-    reordered.splice(newIndex, 0, moved)
-
-    onReorderTasks(
-      goal.id,
-      reordered.map((t, i) => ({ id: t.id, position: i })),
-    )
   }
 
   // Milestone-gated computed values
@@ -334,46 +125,11 @@ export default function GoalCard({
 
       {/* ── Sprint Rail ── */}
       {!isAbandoned && !isAchieved && goal.milestones.length > 0 && (
-        <div style={{ margin: '0 18px 12px', padding: '10px 14px', background: `${T.indigo}08`, borderRadius: 9, border: `1px solid ${T.indigo}20` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 9, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 10, color: T.indigo, fontFamily: T.mono, letterSpacing: '0.1em', flexShrink: 0 }}>
-              SPRINT {activeMilestone?.position ?? '—'} OF {goal.milestones_total}
-            </span>
-            {activeMilestone?.sprint_status === 'generating' ? (
-              <span style={{ fontSize: 10, color: T.muted, fontFamily: T.mono, animation: 'pulse 1.5s ease-in-out infinite' }}>
-                ◉ AI forging next sprint···
-              </span>
-            ) : activeMilestone ? (
-              <span style={{ fontSize: 11, color: T.textDim, fontFamily: T.mono, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>— {activeMilestone.title}</span>
-            ) : null}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            {goal.milestones.flatMap((m, i) => {
-              const isActive = m.sprint_status === 'active' || m.sprint_status === 'generating'
-              const dot = (
-                <div key={m.id} style={{
-                  width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 9, fontFamily: T.mono,
-                  background: m.is_completed ? `${T.emerald}20` : isActive ? `${T.indigo}25` : `${T.dim}15`,
-                  border: m.is_completed ? `1.5px solid ${T.emerald}60` : isActive ? `1.5px solid ${T.indigo}70` : `1.5px solid ${T.dim}`,
-                  color: m.is_completed ? T.emerald : isActive ? T.indigo : T.muted,
-                }}>
-                  {m.is_completed ? '✓' : m.position}
-                </div>
-              )
-              if (i === 0) return [dot]
-              const line = (
-                <div key={`line-${i}`} style={{
-                  flex: 1, height: 1, minWidth: 8,
-                  background: m.is_completed ? T.emerald : i <= (activeMilestone?.position ?? 1) - 1 ? T.indigo : T.dim,
-                  opacity: 0.35,
-                }} />
-              )
-              return [line, dot]
-            })}
-          </div>
-        </div>
+        <SprintRail
+          milestones={goal.milestones}
+          activeMilestone={activeMilestone}
+          milestonesTotal={goal.milestones_total}
+        />
       )}
 
       {/* ── Abandoned banner ── */}
@@ -382,7 +138,7 @@ export default function GoalCard({
           <div style={{ fontSize: 12, color: T.muted, fontFamily: T.mono, marginBottom: 8 }}>
             ✦ Star faded — goal abandoned.
           </div>
-          <Btn onClick={() => onStatusChange(goal.id, 'active')} variant="ghost" small>Revive goal</Btn>
+          <Btn onClick={() => mutations.changeStatus(goal.id, 'active')} variant="ghost" small>Revive goal</Btn>
         </div>
       )}
 
@@ -397,81 +153,16 @@ export default function GoalCard({
 
       {/* ── Today's tasks ── */}
       {!isAbandoned && !isAchieved && (todayTasks.length > 0 || activeMilestone) && (
-        <div style={{ margin: '0 18px 14px', padding: '13px 15px', background: T.surface, borderRadius: 9, border: `1px solid ${T.border}` }}>
-          <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 9 }}>
-            TODAY'S TASKS
-          </div>
-
-          {todayTasks.length > 0 && (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={todayTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {todayTasks.map(task => (
-                    <SortableTaskRow
-                      key={task.id}
-                      task={task}
-                      isEditing={editingTaskId === task.id}
-                      editingText={editingText}
-                      setEditingText={setEditingText}
-                      onComplete={onCompleteTask}
-                      onStartEdit={onStartEdit}
-                      onCancelEdit={onCancelEdit}
-                      onSaveEdit={onSaveEdit}
-                      regeneratingId={regeneratingId}
-                      onRegenerate={handleRegenerate}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
-
-          {/* ── Add Task ── */}
-          {showAddTask ? (
-            <div style={{ marginTop: todayTasks.length > 0 ? 8 : 0, display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input
-                autoFocus
-                value={addTaskText}
-                onChange={e => setAddTaskText(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleAddTask()
-                  if (e.key === 'Escape') { setShowAddTask(false); setAddTaskText('') }
-                }}
-                placeholder="Describe your task..."
-                disabled={addingTask}
-                style={{
-                  flex: 1, fontSize: 13, background: T.surface,
-                  border: `1px solid ${T.orange}80`, borderRadius: 5,
-                  padding: '5px 9px', color: T.text, outline: 'none', fontFamily: T.mono,
-                }}
-              />
-              <button
-                onClick={handleAddTask}
-                disabled={addingTask || !addTaskText.trim()}
-                style={{
-                  cursor: addingTask || !addTaskText.trim() ? 'default' : 'pointer',
-                  padding: '4px 12px', borderRadius: 6, fontFamily: T.mono, fontSize: 11,
-                  background: `${T.orange}20`, color: T.orange, border: `1px solid ${T.orange}50`,
-                  opacity: addingTask || !addTaskText.trim() ? 0.5 : 1,
-                }}
-              >
-                {addingTask ? '···' : 'Add'}
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowAddTask(true)}
-              style={{
-                marginTop: todayTasks.length > 0 ? 8 : 0,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-                background: 'none', border: 'none', padding: '3px 0',
-                fontFamily: T.mono, fontSize: 11, color: T.muted,
-              }}
-            >
-              <Plus size={13} /> Add Task
-            </button>
-          )}
-        </div>
+        <DailyTaskList
+          goalId={goal.id}
+          tasks={todayTasks}
+          activeMilestoneId={activeMilestone?.id ?? null}
+          onCompleteTask={mutations.completeTask}
+          onSaveEdit={mutations.saveEdit}
+          onAddTask={mutations.addTask}
+          onRegenerateTask={mutations.regenerateTask}
+          onReorderTasks={mutations.reorderTasks}
+        />
       )}
 
       {/* ── Status actions ── */}
@@ -479,7 +170,7 @@ export default function GoalCard({
         <div style={{ padding: '0 18px 14px', display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
           {allMilestonesComplete ? (
             <button
-              onClick={() => onStatusChange(goal.id, 'achieved')}
+              onClick={() => mutations.changeStatus(goal.id, 'achieved')}
               style={{
                 cursor: 'pointer', padding: '5px 14px', borderRadius: 8,
                 fontFamily: T.mono, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
@@ -493,7 +184,7 @@ export default function GoalCard({
             <button
               onClick={async () => {
                 setCompletingMilestone(true)
-                await onCompleteMilestone(goal.id, activeMilestone.id)
+                await mutations.completeMilestone(goal.id, activeMilestone.id)
                 setCompletingMilestone(false)
               }}
               disabled={completingMilestone}
@@ -552,7 +243,7 @@ export default function GoalCard({
       )}
       {(isAbandoned || isAchieved) && (
         <div style={{ padding: '0 18px 14px', display: 'flex', gap: 7 }}>
-          {isAbandoned && <Btn onClick={() => onStatusChange(goal.id, 'active')} variant="ghost" small>▶ Revive</Btn>}
+          {isAbandoned && <Btn onClick={() => mutations.changeStatus(goal.id, 'active')} variant="ghost" small>▶ Revive</Btn>}
           <button
             onClick={handleDeleteClick}
             aria-label={confirmDelete ? 'Confirm delete goal' : 'Delete goal'}
@@ -646,12 +337,7 @@ export default function GoalCard({
           </div>
 
           {/* Heatmap */}
-          <div>
-            <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 9 }}>
-              COMPLETION HISTORY — {goal.completed_days.length} days
-            </div>
-            <Heatmap days={goal.completed_days} />
-          </div>
+          <GoalHeatmap completedDays={goal.completed_days} />
         </div>
       )}
     </div>

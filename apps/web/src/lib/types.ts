@@ -1,5 +1,20 @@
 // Shared data interfaces used across Dashboard and its sub-components
 
+export interface PaginatedGoalsResponse {
+  items: Goal[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface UserSettings {
+  id: string
+  email: string
+  star_points: number
+  timezone: string
+  display_name: string | null
+}
+
 export interface Task {
   id: string
   goal_id: string
