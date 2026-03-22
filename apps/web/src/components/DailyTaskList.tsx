@@ -30,11 +30,13 @@ interface DailyTaskListProps {
   onReorderTasks:   (goalId: string, tasks: { id: string; position: number }[]) => void
 }
 
-// ── Sortable task row ────────────────────────────────────────────────────────
-function SortableTaskRow({
+// ── Unified task row (sortable or overdue) ────────────────────────────────────
+function TaskRow({
   task, isEditing, editingText, setEditingText,
   onComplete, onStartEdit, onCancelEdit, onSaveEdit,
   regeneratingId, onRegenerate,
+  draggable = true,
+  dateLabel,
 }: {
   task: Task
   isEditing: boolean
@@ -46,11 +48,13 @@ function SortableTaskRow({
   onSaveEdit: (id: string, orig: string) => void
   regeneratingId: string | null
   onRegenerate: (id: string) => void
+  draggable?: boolean
+  dateLabel?: string
 }) {
   const {
     attributes, listeners, setNodeRef, setActivatorNodeRef,
     transform, transition, isDragging,
-  } = useSortable({ id: task.id, disabled: task.is_completed })
+  } = useSortable({ id: task.id, disabled: !draggable || task.is_completed })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -59,11 +63,12 @@ function SortableTaskRow({
     display: 'flex', alignItems: 'flex-start', gap: 10,
   }
   const isRegen = regeneratingId === task.id
+  const pendingCircleColor = draggable ? T.dim : T.amber
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} className="group">
-      {/* Drag handle — pending tasks only */}
-      {!task.is_completed ? (
+      {/* Drag handle (draggable + pending) or spacer */}
+      {draggable && !task.is_completed ? (
         <button
           ref={setActivatorNodeRef}
           {...listeners}
@@ -94,7 +99,7 @@ function SortableTaskRow({
       >
         {task.is_completed
           ? <CheckCircle2 size={16} color={T.emerald} />
-          : <Circle size={16} color={T.dim} />
+          : <Circle size={16} color={pendingCircleColor} />
         }
       </button>
 
@@ -125,120 +130,22 @@ function SortableTaskRow({
             }}>
               {task.description}
             </p>
-            {!task.is_completed && task.tip && (
-              <p style={{ fontSize: 11, color: T.orange, fontFamily: T.mono, fontStyle: 'italic', margin: '2px 0 0' }}>
-                "{task.tip}"
+            {dateLabel ? (
+              <p style={{ fontSize: 10, color: T.amber, fontFamily: T.mono, margin: '1px 0 0', opacity: 0.7 }}>
+                {dateLabel}
               </p>
+            ) : (
+              !task.is_completed && task.tip && (
+                <p style={{ fontSize: 11, color: T.orange, fontFamily: T.mono, fontStyle: 'italic', margin: '2px 0 0' }}>
+                  "{task.tip}"
+                </p>
+              )
             )}
           </>
         )}
       </div>
 
       {/* Action icons — pending tasks only */}
-      {!task.is_completed && !isEditing && (
-        <div className="flex items-center gap-0 shrink-0 transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
-          <button
-            onMouseDown={e => e.preventDefault()}
-            onClick={() => onRegenerate(task.id)}
-            disabled={isRegen}
-            aria-label="Regenerate task via AI"
-            className="text-[#3f3f5c] hover:text-indigo-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
-            style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <RefreshCw size={13} style={isRegen ? { animation: 'spin 1s linear infinite' } : undefined} />
-          </button>
-          <button
-            onMouseDown={e => e.preventDefault()}
-            onClick={() => onStartEdit(task)}
-            aria-label="Edit task"
-            className="text-[#3f3f5c] hover:text-indigo-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
-            style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Pencil size={13} />
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Overdue task row (no drag, shows date label) ─────────────────────────────
-function OverdueTaskRow({
-  task, isEditing, editingText, setEditingText,
-  onComplete, onStartEdit, onCancelEdit, onSaveEdit,
-  regeneratingId, onRegenerate,
-}: {
-  task: Task
-  isEditing: boolean
-  editingText: string
-  setEditingText: (t: string) => void
-  onComplete: (id: string) => void
-  onStartEdit: (t: Task) => void
-  onCancelEdit: () => void
-  onSaveEdit: (id: string, orig: string) => void
-  regeneratingId: string | null
-  onRegenerate: (id: string) => void
-}) {
-  const isRegen = regeneratingId === task.id
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }} className="group">
-      {/* No drag handle — spacer for alignment */}
-      <div style={{ width: 14, flexShrink: 0 }} />
-
-      {/* Complete toggle */}
-      <button
-        aria-label={task.is_completed ? 'Task completed' : 'Mark task complete'}
-        aria-pressed={task.is_completed}
-        disabled={task.is_completed || isEditing}
-        onClick={() => !task.is_completed && !isEditing && onComplete(task.id)}
-        style={{
-          marginTop: 1, flexShrink: 0, background: 'none', border: 'none', padding: 0,
-          cursor: !task.is_completed && !isEditing ? 'pointer' : 'default',
-          display: 'flex', alignItems: 'center',
-        }}
-      >
-        {task.is_completed
-          ? <CheckCircle2 size={16} color={T.emerald} />
-          : <Circle size={16} color={T.amber} />
-        }
-      </button>
-
-      {/* Description + date label */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {isEditing ? (
-          <input
-            autoFocus
-            value={editingText}
-            onChange={e => setEditingText(e.target.value)}
-            onBlur={() => onSaveEdit(task.id, task.description)}
-            onKeyDown={e => {
-              if (e.key === 'Enter')  onSaveEdit(task.id, task.description)
-              if (e.key === 'Escape') onCancelEdit()
-            }}
-            style={{
-              width: '100%', fontSize: 13, background: T.surface,
-              border: `1px solid ${T.orange}80`, borderRadius: 5,
-              padding: '2px 7px', color: T.text, outline: 'none', fontFamily: T.mono,
-            }}
-          />
-        ) : (
-          <>
-            <p style={{
-              fontSize: 13, color: task.is_completed ? T.dim : T.text,
-              textDecoration: task.is_completed ? 'line-through' : 'none',
-              lineHeight: 1.5, fontFamily: T.mono, margin: 0,
-            }}>
-              {task.description}
-            </p>
-            <p style={{ fontSize: 10, color: T.amber, fontFamily: T.mono, margin: '1px 0 0', opacity: 0.7 }}>
-              from {task.assigned_date}
-            </p>
-          </>
-        )}
-      </div>
-
-      {/* Action icons */}
       {!task.is_completed && !isEditing && (
         <div className="flex items-center gap-0 shrink-0 transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
           <button
@@ -349,7 +256,7 @@ export default function DailyTaskList({
           <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {tasks.map(task => (
-                <SortableTaskRow
+                <TaskRow
                   key={task.id}
                   task={task}
                   isEditing={editingTaskId === task.id}
@@ -389,21 +296,27 @@ export default function DailyTaskList({
 
           {showCatchUp && (
             <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {overdueTasks.map(task => (
-                <OverdueTaskRow
-                  key={task.id}
-                  task={task}
-                  isEditing={editingTaskId === task.id}
-                  editingText={editingText}
-                  setEditingText={setEditingText}
-                  onComplete={onCompleteTask}
-                  onStartEdit={startEdit}
-                  onCancelEdit={cancelEdit}
-                  onSaveEdit={handleSaveEdit}
-                  regeneratingId={regeneratingId}
-                  onRegenerate={handleRegenerate}
-                />
-              ))}
+              <DndContext>
+                <SortableContext items={overdueTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                  {overdueTasks.map(task => (
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      draggable={false}
+                      dateLabel={`from ${task.assigned_date}`}
+                      isEditing={editingTaskId === task.id}
+                      editingText={editingText}
+                      setEditingText={setEditingText}
+                      onComplete={onCompleteTask}
+                      onStartEdit={startEdit}
+                      onCancelEdit={cancelEdit}
+                      onSaveEdit={handleSaveEdit}
+                      regeneratingId={regeneratingId}
+                      onRegenerate={handleRegenerate}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
               <p style={{ fontSize: 10, color: T.amber, fontFamily: T.mono, opacity: 0.6, margin: '2px 0 0', paddingLeft: 24 }}>
                 Completing these still earns you +10 pts each.
               </p>
