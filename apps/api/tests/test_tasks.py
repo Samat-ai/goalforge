@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from auth import get_current_user_id
 from main import app
 from tests.conftest import OTHER_USER_ID, TEST_USER_ID, create_test_goal
@@ -117,6 +119,36 @@ async def test_create_custom_task_auto_position(client):
     pos2 = resp2.json()["position"]
 
     assert pos2 > pos1
+
+
+async def test_create_custom_task_position_scoped_to_milestone(client):
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+    milestone_one = goal["milestones"][0]["id"]
+    milestone_two = goal["milestones"][1]["id"]
+    assigned_date = (date.today() + timedelta(days=30)).isoformat()
+
+    resp1 = await client.post(
+        f"/goals/{goal_id}/tasks",
+        json={
+            "description": "Milestone 1 custom task",
+            "milestone_id": milestone_one,
+            "assigned_date": assigned_date,
+        },
+    )
+    assert resp1.status_code == 201
+    assert resp1.json()["position"] == 0
+
+    resp2 = await client.post(
+        f"/goals/{goal_id}/tasks",
+        json={
+            "description": "Milestone 2 custom task",
+            "milestone_id": milestone_two,
+            "assigned_date": assigned_date,
+        },
+    )
+    assert resp2.status_code == 201
+    assert resp2.json()["position"] == 0
 
 
 async def test_create_custom_task_forbidden(client):

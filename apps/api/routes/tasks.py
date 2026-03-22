@@ -4,7 +4,7 @@ import uuid
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -163,9 +163,20 @@ async def create_task(
     assigned = body.assigned_date or date.today()
 
     # Compute next position for tasks with same milestone + date
+    milestone_match = (
+        DailyTask.milestone_id.is_(None)
+        if milestone_id is None
+        else DailyTask.milestone_id == milestone_id
+    )
     max_pos = (await db.execute(
         select(func.coalesce(func.max(DailyTask.position), -1))
-        .where(DailyTask.goal_id == goal_id, DailyTask.assigned_date == assigned)
+        .where(
+            and_(
+                DailyTask.goal_id == goal_id,
+                DailyTask.assigned_date == assigned,
+                milestone_match,
+            )
+        )
     )).scalar_one()
 
     task = DailyTask(
