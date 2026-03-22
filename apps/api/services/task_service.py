@@ -82,9 +82,14 @@ async def _pre_generate_sprint(
                 )
             return
 
-        # 3. Persist tasks and mark ready
+        # 3. Persist tasks and mark ready (guard against overwriting 'active')
         try:
             async with db.begin():
+                ms_row = (await db.execute(
+                    select(Milestone).where(Milestone.id == milestone_id)
+                )).scalar_one_or_none()
+                already_active = ms_row is not None and ms_row.sprint_status == "active"
+
                 for task_data in task_outputs:
                     db.add(DailyTask(
                         id=uuid.uuid4(),
@@ -94,13 +99,33 @@ async def _pre_generate_sprint(
                         tip=task_data.tip,
                         assigned_date=task_data.assigned_date,
                     ))
-                await db.execute(
-                    sql_update(Milestone)
-                    .where(Milestone.id == milestone_id)
-                    .values(sprint_status="ready")
-                )
+
+                if already_active:
+                    logger.info(
+                        "Pre-gen: milestone %s already advanced to active; "
+                        "tasks written but status left as active",
+                        milestone_id,
+                    )
+                else:
+                    await db.execute(
+                        sql_update(Milestone)
+                        .where(Milestone.id == milestone_id)
+                        .values(sprint_status="ready")
+                    )
         except Exception as exc:
             logger.error("Pre-gen: DB write failed for milestone %s: %s", milestone_id, exc)
+            try:
+                async with db.begin():
+                    await db.execute(
+                        sql_update(Milestone)
+                        .where(Milestone.id == milestone_id)
+                        .values(sprint_status="failed")
+                    )
+            except Exception as inner_exc:
+                logger.error(
+                    "Pre-gen: could not write failed status for milestone %s: %s",
+                    milestone_id, inner_exc,
+                )
 
 
 # ---------------------------------------------------------------------------

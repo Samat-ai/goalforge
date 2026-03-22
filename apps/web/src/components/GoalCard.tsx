@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { T } from '../lib/theme'
-import { todayStr, streak, starBrightness } from '../lib/gamification'
+import { todayStr, streak, starBrightness, lastStreakLength } from '../lib/gamification'
 import { StarIcon } from './GamificationSvgs'
 import Badge from './ui/Badge'
 import Btn from './ui/Btn'
@@ -59,6 +59,11 @@ export default function GoalCard({ goal }: GoalCardProps) {
 
   // Milestone-gated computed values
   const activeMilestone      = goal.milestones.find(m => m.sprint_status === 'active')
+  const failedMilestone      = goal.milestones.find(m => m.sprint_status === 'failed')
+    ?? goal.milestones.find(m =>
+      m.sprint_status === 'active' && !m.is_completed &&
+      goal.daily_tasks.filter(t => t.milestone_id === m.id).length === 0
+    )
   const nextMilestone        = activeMilestone ? goal.milestones.find(m => m.position === activeMilestone.position + 1) : undefined
   const currentSprintTasks   = activeMilestone ? goal.daily_tasks.filter(t => t.milestone_id === activeMilestone.id) : []
   const allSprintTasksDone   = currentSprintTasks.length > 0 && currentSprintTasks.every(t => t.is_completed)
@@ -70,12 +75,18 @@ export default function GoalCard({ goal }: GoalCardProps) {
     .sort((a, b) => a.position - b.position)
   const doneToday   = todayTasks.length > 0 && todayTasks.every(t => t.is_completed)
   const s           = streak(goal.completed_days)
+  const lastStreak  = lastStreakLength(goal.completed_days)
   const b           = goal.status === 'achieved' ? 1 : starBrightness(goal.completed_days)
   const isAbandoned = goal.status === 'abandoned'
   const isAchieved  = goal.status === 'achieved'
+  const today       = todayStr()
+  const overdueTasks = activeMilestone
+    ? goal.daily_tasks
+        .filter(t => t.milestone_id === activeMilestone.id && !t.is_completed && t.assigned_date < today)
+        .sort((x, y) => x.assigned_date.localeCompare(y.assigned_date) || x.position - y.position)
+    : []
 
-  const nowMs = new Date().getTime()
-  const days  = Math.round((new Date(goal.target_date).getTime() - nowMs) / 864e5)
+  const days  = Math.round((new Date(goal.target_date).getTime() - new Date(today).getTime()) / 864e5)
   const dl    = days < 0 ? 'overdue' : days === 0 ? 'today' : days === 1 ? 'tomorrow' : `${days}d left`
 
   return (
@@ -107,6 +118,7 @@ export default function GoalCard({ goal }: GoalCardProps) {
             {isAchieved   && <Badge color={T.amber}>✦ achieved</Badge>}
             {doneToday && !isAbandoned && !isAchieved && <Badge color={T.emerald}>✓ done today</Badge>}
             {s > 0 && !isAbandoned && <Badge color={T.amber}>{s}d streak</Badge>}
+            {s === 0 && lastStreak >= 2 && !isAbandoned && !isAchieved && <Badge color={T.dim}>last streak: {lastStreak}d</Badge>}
             {goal.target_date && <Badge color={days < 0 ? T.rose : T.muted}>{dl}</Badge>}
           </div>
           <div style={{ fontSize: 15, color: isAbandoned ? T.muted : T.text, fontFamily: T.serif, lineHeight: 1.45, marginBottom: 3 }}>
@@ -129,6 +141,9 @@ export default function GoalCard({ goal }: GoalCardProps) {
           milestones={goal.milestones}
           activeMilestone={activeMilestone}
           milestonesTotal={goal.milestones_total}
+          failedMilestone={failedMilestone}
+          onRetryGeneration={(milestoneId) => mutations.retrySprintGeneration(goal.id, milestoneId)}
+          isRetrying={mutations.isRetryingSprintGeneration}
         />
       )}
 
@@ -152,10 +167,11 @@ export default function GoalCard({ goal }: GoalCardProps) {
       )}
 
       {/* ── Today's tasks ── */}
-      {!isAbandoned && !isAchieved && (todayTasks.length > 0 || activeMilestone) && (
+      {!isAbandoned && !isAchieved && (todayTasks.length > 0 || activeMilestone || overdueTasks.length > 0) && (
         <DailyTaskList
           goalId={goal.id}
           tasks={todayTasks}
+          overdueTasks={overdueTasks}
           activeMilestoneId={activeMilestone?.id ?? null}
           onCompleteTask={mutations.completeTask}
           onSaveEdit={mutations.saveEdit}
@@ -288,25 +304,29 @@ export default function GoalCard({ goal }: GoalCardProps) {
             <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 9 }}>MILESTONES</div>
             {goal.milestones.map(m => {
               const isActive = m.sprint_status === 'active' || m.sprint_status === 'generating'
+              const isFailed = m.sprint_status === 'failed'
               return (
                 <div key={m.id} style={{ display: 'flex', gap: 9, alignItems: 'center', marginBottom: 7 }}>
                   <div style={{
                     width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 9, fontFamily: T.mono,
-                    background: m.is_completed ? `${T.emerald}20` : isActive ? `${T.indigo}25` : `${T.dim}15`,
-                    border: m.is_completed ? `1.5px solid ${T.emerald}60` : isActive ? `1.5px solid ${T.indigo}70` : `1.5px solid ${T.dim}`,
-                    color: m.is_completed ? T.emerald : isActive ? T.indigo : T.muted,
+                    background: m.is_completed ? `${T.emerald}20` : isActive ? `${T.indigo}25` : isFailed ? `${T.rose}20` : `${T.dim}15`,
+                    border: m.is_completed ? `1.5px solid ${T.emerald}60` : isActive ? `1.5px solid ${T.indigo}70` : isFailed ? `1.5px solid ${T.rose}60` : `1.5px solid ${T.dim}`,
+                    color: m.is_completed ? T.emerald : isActive ? T.indigo : isFailed ? T.rose : T.muted,
                   }}>
-                    {m.is_completed ? '✓' : m.position}
+                    {m.is_completed ? '✓' : isFailed ? '✕' : m.position}
                   </div>
-                  <span style={{ fontSize: 12, color: m.is_completed ? T.emerald : isActive ? T.text : T.textDim, flex: 1 }}>
+                  <span style={{ fontSize: 12, color: m.is_completed ? T.emerald : isActive ? T.text : isFailed ? T.rose : T.textDim, flex: 1 }}>
                     {m.title}
                   </span>
                   {m.sprint_status === 'generating' && (
                     <span style={{ fontSize: 10, color: T.muted, fontFamily: T.mono, animation: 'pulse 1.5s ease-in-out infinite' }}>
                       generating···
                     </span>
+                  )}
+                  {m.sprint_status === 'failed' && (
+                    <span style={{ fontSize: 10, color: T.rose, fontFamily: T.mono }}>failed</span>
                   )}
                   {m.sprint_status === 'ready' && (
                     <span style={{ fontSize: 10, color: T.indigo, fontFamily: T.mono }}>ready</span>
