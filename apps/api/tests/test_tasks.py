@@ -126,7 +126,8 @@ async def test_create_custom_task_position_scoped_to_milestone(client):
     goal_id = goal["id"]
     milestone_one = goal["milestones"][0]["id"]
     milestone_two = goal["milestones"][1]["id"]
-    assigned_date = (date.today() + timedelta(days=30)).isoformat()
+    latest_goal_date = max(date.fromisoformat(t["assigned_date"]) for t in goal["daily_tasks"])
+    assigned_date = (latest_goal_date + timedelta(days=1)).isoformat()
 
     resp1 = await client.post(
         f"/goals/{goal_id}/tasks",
@@ -137,7 +138,8 @@ async def test_create_custom_task_position_scoped_to_milestone(client):
         },
     )
     assert resp1.status_code == 201
-    assert resp1.json()["position"] == 0
+    pos1 = resp1.json()["position"]
+    assert pos1 == 0
 
     resp2 = await client.post(
         f"/goals/{goal_id}/tasks",
@@ -148,7 +150,8 @@ async def test_create_custom_task_position_scoped_to_milestone(client):
         },
     )
     assert resp2.status_code == 201
-    assert resp2.json()["position"] == 0
+    pos2 = resp2.json()["position"]
+    assert pos2 == 0
 
 
 async def test_create_custom_task_forbidden(client):
