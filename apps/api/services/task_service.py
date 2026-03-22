@@ -18,6 +18,32 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Sprint task creation helper
+# ---------------------------------------------------------------------------
+
+async def create_sprint_tasks(
+    db: AsyncSession,
+    goal_id: uuid.UUID,
+    milestone_id: uuid.UUID,
+    task_outputs: list,  # list[AITaskOutput]
+    start_date,          # date
+) -> None:
+    """Write DailyTask rows for a sprint.
+
+    start_date is assigned to day 0; subsequent tasks get start_date + i days.
+    """
+    for i, task_data in enumerate(task_outputs):
+        db.add(DailyTask(
+            id=uuid.uuid4(),
+            goal_id=goal_id,
+            milestone_id=milestone_id,
+            description=task_data.description,
+            tip=task_data.tip,
+            assigned_date=start_date + timedelta(days=i),
+        ))
+
+
+# ---------------------------------------------------------------------------
 # Background task helpers
 # ---------------------------------------------------------------------------
 
@@ -90,15 +116,7 @@ async def _pre_generate_sprint(
                 )).scalar_one_or_none()
                 already_active = ms_row is not None and ms_row.sprint_status == "active"
 
-                for task_data in task_outputs:
-                    db.add(DailyTask(
-                        id=uuid.uuid4(),
-                        goal_id=goal_id,
-                        milestone_id=milestone_id,
-                        description=task_data.description,
-                        tip=task_data.tip,
-                        assigned_date=task_data.assigned_date,
-                    ))
+                await create_sprint_tasks(db, goal_id, milestone_id, task_outputs, start_date)
 
                 if already_active:
                     logger.info(

@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from ai_utils import generate_sprint_tasks
 from auth import get_current_user_id
+from services.task_service import create_sprint_tasks
 from database import get_db
 from exceptions import AIGenerationError
 from models import DailyTask, Goal, Milestone, User
@@ -96,15 +97,7 @@ async def complete_milestone(
                 )
             except AIGenerationError as exc:
                 raise HTTPException(status_code=502, detail=str(exc))
-            for i, task_data in enumerate(task_outputs):
-                db.add(DailyTask(
-                    id=uuid.uuid4(),
-                    goal_id=goal_id,
-                    milestone_id=next_ms.id,
-                    description=task_data.description,
-                    tip=task_data.tip,
-                    assigned_date=today + timedelta(days=i),
-                ))
+            await create_sprint_tasks(db, goal_id, next_ms.id, task_outputs, today)
             next_ms.sprint_status = "active"
 
         elif next_ms.sprint_status == "generating":
@@ -175,15 +168,7 @@ async def retry_sprint_generation(
     # if background pre-gen committed tasks between the status check and here)
     await db.execute(sql_delete(DailyTask).where(DailyTask.milestone_id == milestone_id))
 
-    for i, task_data in enumerate(task_outputs):
-        db.add(DailyTask(
-            id=uuid.uuid4(),
-            goal_id=goal_id,
-            milestone_id=milestone_id,
-            description=task_data.description,
-            tip=task_data.tip,
-            assigned_date=today + timedelta(days=i),
-        ))
+    await create_sprint_tasks(db, goal_id, milestone_id, task_outputs, today)
     milestone.sprint_status = "active"
     await db.flush()
 
