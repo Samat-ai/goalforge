@@ -54,11 +54,12 @@ function computeBlocker(goals: Goal[], today: string): Blocker | null {
 
 interface DoThisNowProps {
   goals: Goal[]
-  completeMilestone: (goalId: string, milestoneId: string) => Promise<void>
 }
 
-function DoThisNow({ goals, completeMilestone }: DoThisNowProps) {
+function DoThisNow({ goals }: DoThisNowProps) {
   const [completing, setCompleting] = useState(false)
+  const userId = goals[0]?.user_id ?? ''
+  const { completeMilestone } = useGoalMutations(userId)
   const today = todayStr()
   const blocker = computeBlocker(goals, today)
 
@@ -261,7 +262,7 @@ export default function Dashboard() {
 
         {!loading && !error && (
           <>
-            <DoThisNow goals={goals} completeMilestone={mutations.completeMilestone} />
+            <DoThisNow goals={goals} />
             <TodayBar goals={goals} />
             <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} />
 
