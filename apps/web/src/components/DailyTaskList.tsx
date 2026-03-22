@@ -296,23 +296,25 @@ export default function DailyTaskList({
 
           {showCatchUp && (
             <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {overdueTasks.map(task => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  draggable={false}
-                  dateLabel={`from ${task.assigned_date}`}
-                  isEditing={editingTaskId === task.id}
-                  editingText={editingText}
-                  setEditingText={setEditingText}
-                  onComplete={onCompleteTask}
-                  onStartEdit={startEdit}
-                  onCancelEdit={cancelEdit}
-                  onSaveEdit={handleSaveEdit}
-                  regeneratingId={regeneratingId}
-                  onRegenerate={handleRegenerate}
-                />
-              ))}
+              <DndContext>
+                {overdueTasks.map(task => (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    draggable={false}
+                    dateLabel={`from ${task.assigned_date}`}
+                    isEditing={editingTaskId === task.id}
+                    editingText={editingText}
+                    setEditingText={setEditingText}
+                    onComplete={onCompleteTask}
+                    onStartEdit={startEdit}
+                    onCancelEdit={cancelEdit}
+                    onSaveEdit={handleSaveEdit}
+                    regeneratingId={regeneratingId}
+                    onRegenerate={handleRegenerate}
+                  />
+                ))}
+              </DndContext>
               <p style={{ fontSize: 10, color: T.amber, fontFamily: T.mono, opacity: 0.6, margin: '2px 0 0', paddingLeft: 24 }}>
                 Completing these still earns you +10 pts each.
               </p>
