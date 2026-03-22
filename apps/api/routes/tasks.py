@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from ai_utils import regenerate_single_task
 from auth import get_current_user_id
 from database import get_db
+from deps import _load_goal_with_ownership
 from models import DailyTask, Goal, Milestone
 from schemas import (
     TaskCreate,
@@ -26,18 +27,6 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-async def _load_goal_with_ownership(
-    goal_id: uuid.UUID, current_user_id: str, db: AsyncSession,
-) -> Goal:
-    result = await db.execute(select(Goal).where(Goal.id == goal_id))
-    goal = result.scalar_one_or_none()
-    if goal is None:
-        raise HTTPException(status_code=404, detail="Goal not found")
-    if goal.user_id != current_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    return goal
-
 
 async def _load_task_with_ownership(
     task_id: uuid.UUID, current_user_id: str, db: AsyncSession,

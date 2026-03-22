@@ -13,6 +13,7 @@ from ai_utils import generate_sprint_tasks
 from auth import get_current_user_id
 from services.task_service import create_sprint_tasks
 from database import get_db
+from deps import _load_goal_with_ownership
 from exceptions import AIGenerationError
 from models import DailyTask, Goal, Milestone, User
 from rate_limiting import _user_key, rate_limit
@@ -37,12 +38,7 @@ async def complete_milestone(
     db: AsyncSession = Depends(get_db),
 ):
     # Verify goal ownership before touching milestone data
-    goal_check = await db.execute(select(Goal).where(Goal.id == goal_id))
-    goal_obj = goal_check.scalar_one_or_none()
-    if goal_obj is None:
-        raise HTTPException(status_code=404, detail="Goal not found")
-    if goal_obj.user_id != current_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    goal_obj = await _load_goal_with_ownership(goal_id, current_user_id, db)
 
     # Load and validate milestone
     ms_result = await db.execute(
@@ -129,12 +125,7 @@ async def retry_sprint_generation(
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    goal_check = await db.execute(select(Goal).where(Goal.id == goal_id))
-    goal_obj = goal_check.scalar_one_or_none()
-    if goal_obj is None:
-        raise HTTPException(status_code=404, detail="Goal not found")
-    if goal_obj.user_id != current_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    goal_obj = await _load_goal_with_ownership(goal_id, current_user_id, db)
 
     ms_result = await db.execute(
         select(Milestone)
