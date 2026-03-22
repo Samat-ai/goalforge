@@ -68,6 +68,7 @@ function DoThisNow({ goals, completeMilestone }: DoThisNowProps) {
   const color = isOverdue ? T.amber : T.emerald
 
   function handleAction() {
+    if (!blocker) return
     if (blocker.kind === 'overdue') {
       document.getElementById(`goal-card-${blocker.goalId}`)
         ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
