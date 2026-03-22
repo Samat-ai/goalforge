@@ -8,13 +8,21 @@ import pytest
 from tests.conftest import TEST_USER_ID, create_test_goal
 
 
+_TEST_JOBS_KEY = "test-jobs-key"
+_JOBS_HEADERS = {"X-Api-Key": _TEST_JOBS_KEY}
+
+
 async def test_trigger_reminders_sends_one_digest_per_user(client):
     """Endpoint sends one digest email per user, not per task."""
     goal = await create_test_goal(client)
     today_tasks = [t for t in goal["daily_tasks"] if t["assigned_date"] == str(date.today())]
 
-    with patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_send:
-        resp = await client.post("/api/jobs/trigger-reminders")
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_send,
+    ):
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
 
     assert resp.status_code == 200
     # One user → one digest, regardless of task count
@@ -34,8 +42,12 @@ async def test_trigger_reminders_skips_completed_tasks(client):
     # Complete the first today task
     await client.patch(f"/tasks/{today_tasks[0]['id']}/complete")
 
-    with patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_send:
-        resp = await client.post("/api/jobs/trigger-reminders")
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_send,
+    ):
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
 
     assert resp.status_code == 200
     if len(today_tasks) == 1:
@@ -50,8 +62,12 @@ async def test_trigger_reminders_skips_completed_tasks(client):
 
 async def test_trigger_reminders_no_tasks_today(client):
     """Returns 0 when there are no pending tasks today."""
-    with patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_send:
-        resp = await client.post("/api/jobs/trigger-reminders")
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_send,
+    ):
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
 
     assert resp.status_code == 200
     assert resp.json() == {"sent": 0}

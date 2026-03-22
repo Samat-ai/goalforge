@@ -7,6 +7,115 @@ import TodayBar from '../components/TodayBar'
 import AddGoal from '../components/AddGoal'
 import GoalCard from '../components/GoalCard'
 import { useGoalsQuery, useProfileQuery, useGoalMutations } from '../hooks'
+import { todayStr } from '../lib/gamification'
+import type { Goal } from '../lib/types'
+
+// ── DoThisNow (blocker resolution CTA) ───────────────────────────────────────
+
+type Blocker =
+  | { kind: 'overdue'; count: number; goalId: string }
+  | { kind: 'sprint_complete'; goalId: string; milestoneId: string; goalTitle: string; milestoneTitle: string }
+
+function computeBlocker(goals: Goal[], today: string): Blocker | null {
+  // P1: Overdue incomplete tasks across all active goals
+  let overdueCount = 0
+  let firstOverdueGoalId: string | null = null
+  for (const goal of goals) {
+    if (goal.status !== 'active') continue
+    const overdue = goal.daily_tasks.filter(t => !t.is_completed && t.assigned_date < today)
+    if (overdue.length > 0) {
+      overdueCount += overdue.length
+      if (!firstOverdueGoalId) firstOverdueGoalId = goal.id
+    }
+  }
+  if (overdueCount > 0 && firstOverdueGoalId) {
+    return { kind: 'overdue', count: overdueCount, goalId: firstOverdueGoalId }
+  }
+
+  // P2: Active milestone with all tasks completed but not yet marked complete
+  for (const goal of goals) {
+    if (goal.status !== 'active') continue
+    const activeMilestone = goal.milestones.find(m => m.sprint_status === 'active' && !m.is_completed)
+    if (!activeMilestone) continue
+    const milestoneTasks = goal.daily_tasks.filter(t => t.milestone_id === activeMilestone.id)
+    if (milestoneTasks.length > 0 && milestoneTasks.every(t => t.is_completed)) {
+      return {
+        kind: 'sprint_complete',
+        goalId: goal.id,
+        milestoneId: activeMilestone.id,
+        goalTitle: goal.smart_title,
+        milestoneTitle: activeMilestone.title,
+      }
+    }
+  }
+
+  return null
+}
+
+interface DoThisNowProps {
+  goals: Goal[]
+  completeMilestone: (goalId: string, milestoneId: string) => Promise<void>
+}
+
+function DoThisNow({ goals, completeMilestone }: DoThisNowProps) {
+  const [completing, setCompleting] = useState(false)
+  const today = todayStr()
+  const blocker = computeBlocker(goals, today)
+
+  if (!blocker) return null
+
+  const isOverdue = blocker.kind === 'overdue'
+  const color = isOverdue ? T.amber : T.emerald
+
+  function handleAction() {
+    if (blocker.kind === 'overdue') {
+      document.getElementById(`goal-card-${blocker.goalId}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } else if (blocker.kind === 'sprint_complete' && !completing) {
+      setCompleting(true)
+      completeMilestone(blocker.goalId, blocker.milestoneId).finally(() => setCompleting(false))
+    }
+  }
+
+  const label = isOverdue
+    ? `${blocker.count} overdue task${blocker.count === 1 ? '' : 's'} need your attention`
+    : 'Sprint complete — unlock your next tasks'
+  const sub = blocker.kind === 'overdue'
+    ? 'Catch up to keep your streak alive'
+    : `"${blocker.milestoneTitle}" is done. Advance to the next sprint.`
+  const btnLabel = isOverdue ? 'Catch Up ↓' : completing ? 'Unlocking…' : 'Complete Sprint ✦'
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+      padding: '14px 18px', borderRadius: 12, marginBottom: 18,
+      background: `${color}10`, border: `1px solid ${color}30`,
+      borderLeft: `3px solid ${color}`,
+      animation: 'fadeUp 0.35s ease both',
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: T.mono, fontSize: 11, fontWeight: 600, color, letterSpacing: '0.06em', marginBottom: 3 }}>
+          DO THIS NOW
+        </div>
+        <div style={{ fontFamily: T.serif, fontSize: 14, color: T.text }}>{label}</div>
+        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.textDim, marginTop: 2 }}>{sub}</div>
+      </div>
+      <button
+        onClick={handleAction}
+        disabled={completing}
+        style={{
+          minHeight: 44, minWidth: 44, padding: '9px 18px', borderRadius: 8,
+          cursor: completing ? 'wait' : 'pointer', flexShrink: 0,
+          fontFamily: T.mono, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
+          background: `${color}18`, color, border: `1px solid ${color}45`,
+          opacity: completing ? 0.6 : 1, transition: 'opacity 0.15s',
+        }}
+      >
+        {btnLabel}
+      </button>
+    </div>
+  )
+}
 
 // ── EmptyState (onboarding for new users) ─────────────────────────────────────
 const EXAMPLE_GOALS = [
@@ -151,6 +260,7 @@ export default function Dashboard() {
 
         {!loading && !error && (
           <>
+            <DoThisNow goals={goals} completeMilestone={mutations.completeMilestone} />
             <TodayBar goals={goals} />
             <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} />
 
@@ -185,7 +295,9 @@ export default function Dashboard() {
                     </div>
                   )}
                   {filtered.map(goal => (
-                    <GoalCard key={goal.id} goal={goal} />
+                    <div key={goal.id} id={`goal-card-${goal.id}`}>
+                      <GoalCard goal={goal} />
+                    </div>
                   ))}
                 </div>
               </>
