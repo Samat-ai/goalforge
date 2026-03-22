@@ -1,5 +1,6 @@
 """Background job trigger routes."""
 
+import secrets
 from collections import defaultdict
 from datetime import date
 
@@ -16,8 +17,14 @@ router = APIRouter()
 
 
 def _verify_api_key(x_api_key: str | None = Header(default=None)) -> None:
-    """Require X-Api-Key header when jobs_api_key is configured."""
-    if settings.jobs_api_key and x_api_key != settings.jobs_api_key:
+    """Require X-Api-Key header. Always enforced — no dev bypass."""
+    api_key = settings.jobs_api_key
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Jobs API key is not configured on this server",
+        )
+    if x_api_key is None or not secrets.compare_digest(x_api_key, api_key):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing API key",
