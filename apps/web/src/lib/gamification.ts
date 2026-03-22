@@ -30,7 +30,7 @@ export const todayStr = () => new Intl.DateTimeFormat('en-CA').format(new Date()
 
 // Returns the date N days before dateStr in the browser's local timezone.
 // Uses noon-anchor to avoid DST midnight ambiguity.
-const daysAgo = (dateStr: string, n: number): string => {
+export const daysAgo = (dateStr: string, n: number): string => {
   const d = new Date(dateStr + "T12:00:00")
   d.setDate(d.getDate() - n)
   return new Intl.DateTimeFormat('en-CA').format(d)
@@ -53,6 +53,27 @@ export function streak(days: string[]): number {
     }
   }
   return s
+}
+
+// ── Last streak (length of most recently broken streak) ──────────────────────
+// Returns 0 if there is an active streak or no history. Used to render a ghost
+// "last streak: Xd" badge when the current streak is broken.
+export function lastStreakLength(days: string[]): number {
+  if (streak(days) > 0) return 0
+  const today = todayStr()
+  const past = days.filter(d => d < today).sort().reverse()
+  if (!past.length) return 0
+  let count = 0
+  let cur = past[0]
+  for (const d of past) {
+    if (d === cur) {
+      count++
+      cur = daysAgo(cur, 1)
+    } else {
+      break
+    }
+  }
+  return count
 }
 
 // ── Star brightness (0–1) — rolling 7-day strength with gradual decay ────────

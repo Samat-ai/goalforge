@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import delete as sql_delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -47,6 +47,7 @@ async def complete_milestone(
     ms_result = await db.execute(
         select(Milestone)
         .where(Milestone.id == milestone_id, Milestone.goal_id == goal_id)
+        .with_for_update()
     )
     milestone = ms_result.scalar_one_or_none()
     if milestone is None:
@@ -64,6 +65,7 @@ async def complete_milestone(
     next_ms_result = await db.execute(
         select(Milestone)
         .where(Milestone.goal_id == goal_id, Milestone.position == milestone.position + 1)
+        .with_for_update()
     )
     next_ms = next_ms_result.scalar_one_or_none()
 
@@ -113,6 +115,78 @@ async def complete_milestone(
         await db.flush()
 
     # Return full goal with updated milestones and tasks
+    result = await db.execute(
+        select(Goal)
+        .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
+        .where(Goal.id == goal_id)
+    )
+    return result.scalar_one()
+
+
+@router.post(
+    "/goals/{goal_id}/milestones/{milestone_id}/retry-generation",
+    response_model=GoalResponse,
+    summary="Retry AI task generation for a failed or task-empty sprint",
+)
+@rate_limit("5/minute", key_func=_user_key)
+async def retry_sprint_generation(
+    request: Request,
+    goal_id: uuid.UUID,
+    milestone_id: uuid.UUID,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    goal_check = await db.execute(select(Goal).where(Goal.id == goal_id))
+    goal_obj = goal_check.scalar_one_or_none()
+    if goal_obj is None:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    if goal_obj.user_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    ms_result = await db.execute(
+        select(Milestone)
+        .where(Milestone.id == milestone_id, Milestone.goal_id == goal_id)
+        .with_for_update()
+    )
+    milestone = ms_result.scalar_one_or_none()
+    if milestone is None:
+        raise HTTPException(status_code=404, detail="Milestone not found")
+    if milestone.is_completed:
+        raise HTTPException(status_code=400, detail="Milestone already completed")
+    if milestone.sprint_status not in ("failed", "active"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot retry milestone in status '{milestone.sprint_status}'",
+        )
+
+    user_result = await db.execute(select(User).where(User.id == current_user_id))
+    user_obj = user_result.scalar_one_or_none()
+    today = user_today(user_obj.timezone if user_obj else "UTC")
+
+    goal_context = f"{goal_obj.smart_title}: {goal_obj.smart_description}"
+    try:
+        task_outputs = await generate_sprint_tasks(
+            goal_context, milestone.sprint_theme, today
+        )
+    except AIGenerationError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    # Remove any existing tasks before inserting new ones (prevents duplication
+    # if background pre-gen committed tasks between the status check and here)
+    await db.execute(sql_delete(DailyTask).where(DailyTask.milestone_id == milestone_id))
+
+    for i, task_data in enumerate(task_outputs):
+        db.add(DailyTask(
+            id=uuid.uuid4(),
+            goal_id=goal_id,
+            milestone_id=milestone_id,
+            description=task_data.description,
+            tip=task_data.tip,
+            assigned_date=today + timedelta(days=i),
+        ))
+    milestone.sprint_status = "active"
+    await db.flush()
+
     result = await db.execute(
         select(Goal)
         .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Circle, CheckCircle2, GripVertical, Pencil, Plus, RefreshCw } from 'lucide-react'
+import { Circle, CheckCircle2, GripVertical, Pencil, Plus, RefreshCw, ChevronDown } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
@@ -21,6 +21,7 @@ import type { Task } from '../lib/types'
 interface DailyTaskListProps {
   goalId: string
   tasks: Task[]
+  overdueTasks?: Task[]
   activeMilestoneId: string | null
   onCompleteTask:   (taskId: string) => void
   onSaveEdit:       (taskId: string, description: string) => void
@@ -70,7 +71,7 @@ function SortableTaskRow({
           style={{
             flexShrink: 0, background: 'none', border: 'none', padding: 0,
             cursor: 'grab', display: 'flex', alignItems: 'center', marginTop: 2,
-            touchAction: 'none',
+            touchAction: 'none', minHeight: 44, minWidth: 44, justifyContent: 'center',
           }}
         >
           <GripVertical size={14} color={T.dim} />
@@ -161,9 +162,113 @@ function SortableTaskRow({
   )
 }
 
+// ── Overdue task row (no drag, shows date label) ─────────────────────────────
+function OverdueTaskRow({
+  task, isEditing, editingText, setEditingText,
+  onComplete, onStartEdit, onCancelEdit, onSaveEdit,
+  regeneratingId, onRegenerate,
+}: {
+  task: Task
+  isEditing: boolean
+  editingText: string
+  setEditingText: (t: string) => void
+  onComplete: (id: string) => void
+  onStartEdit: (t: Task) => void
+  onCancelEdit: () => void
+  onSaveEdit: (id: string, orig: string) => void
+  regeneratingId: string | null
+  onRegenerate: (id: string) => void
+}) {
+  const isRegen = regeneratingId === task.id
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }} className="group">
+      {/* No drag handle — spacer for alignment */}
+      <div style={{ width: 14, flexShrink: 0 }} />
+
+      {/* Complete toggle */}
+      <button
+        aria-label={task.is_completed ? 'Task completed' : 'Mark task complete'}
+        aria-pressed={task.is_completed}
+        disabled={task.is_completed || isEditing}
+        onClick={() => !task.is_completed && !isEditing && onComplete(task.id)}
+        style={{
+          marginTop: 1, flexShrink: 0, background: 'none', border: 'none', padding: 0,
+          cursor: !task.is_completed && !isEditing ? 'pointer' : 'default',
+          display: 'flex', alignItems: 'center',
+        }}
+      >
+        {task.is_completed
+          ? <CheckCircle2 size={16} color={T.emerald} />
+          : <Circle size={16} color={T.amber} />
+        }
+      </button>
+
+      {/* Description + date label */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {isEditing ? (
+          <input
+            autoFocus
+            value={editingText}
+            onChange={e => setEditingText(e.target.value)}
+            onBlur={() => onSaveEdit(task.id, task.description)}
+            onKeyDown={e => {
+              if (e.key === 'Enter')  onSaveEdit(task.id, task.description)
+              if (e.key === 'Escape') onCancelEdit()
+            }}
+            style={{
+              width: '100%', fontSize: 13, background: T.surface,
+              border: `1px solid ${T.orange}80`, borderRadius: 5,
+              padding: '2px 7px', color: T.text, outline: 'none', fontFamily: T.mono,
+            }}
+          />
+        ) : (
+          <>
+            <p style={{
+              fontSize: 13, color: task.is_completed ? T.dim : T.text,
+              textDecoration: task.is_completed ? 'line-through' : 'none',
+              lineHeight: 1.5, fontFamily: T.mono, margin: 0,
+            }}>
+              {task.description}
+            </p>
+            <p style={{ fontSize: 10, color: T.amber, fontFamily: T.mono, margin: '1px 0 0', opacity: 0.7 }}>
+              from {task.assigned_date}
+            </p>
+          </>
+        )}
+      </div>
+
+      {/* Action icons */}
+      {!task.is_completed && !isEditing && (
+        <div className="flex items-center gap-0 shrink-0 transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+          <button
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => onRegenerate(task.id)}
+            disabled={isRegen}
+            aria-label="Regenerate task via AI"
+            className="text-[#3f3f5c] hover:text-indigo-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
+            style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <RefreshCw size={13} style={isRegen ? { animation: 'spin 1s linear infinite' } : undefined} />
+          </button>
+          <button
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => onStartEdit(task)}
+            aria-label="Edit task"
+            className="text-[#3f3f5c] hover:text-indigo-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
+            style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Pencil size={13} />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── DailyTaskList ────────────────────────────────────────────────────────────
 export default function DailyTaskList({
-  goalId, tasks, activeMilestoneId,
+  goalId, tasks, overdueTasks = [], activeMilestoneId,
   onCompleteTask, onSaveEdit, onAddTask, onRegenerateTask, onReorderTasks,
 }: DailyTaskListProps) {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
@@ -172,6 +277,7 @@ export default function DailyTaskList({
   const [showAddTask, setShowAddTask] = useState(false)
   const [addTaskText, setAddTaskText] = useState('')
   const [addingTask, setAddingTask] = useState(false)
+  const [showCatchUp, setShowCatchUp] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -262,9 +368,53 @@ export default function DailyTaskList({
         </DndContext>
       )}
 
+      {/* Catch Up — overdue tasks from previous days */}
+      {overdueTasks.length > 0 && (
+        <div style={{ marginTop: tasks.length > 0 ? 10 : 0 }}>
+          <button
+            onClick={() => setShowCatchUp(o => !o)}
+            style={{
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, width: '100%',
+              background: `${T.amber}08`, border: `1px solid ${T.amber}25`, borderRadius: 7,
+              padding: '7px 10px', fontFamily: T.mono, fontSize: 10, color: T.amber,
+              letterSpacing: '0.08em',
+            }}
+          >
+            <ChevronDown
+              size={12}
+              style={{ transform: showCatchUp ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}
+            />
+            CATCH UP — {overdueTasks.length} task{overdueTasks.length !== 1 ? 's' : ''} from earlier
+          </button>
+
+          {showCatchUp && (
+            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {overdueTasks.map(task => (
+                <OverdueTaskRow
+                  key={task.id}
+                  task={task}
+                  isEditing={editingTaskId === task.id}
+                  editingText={editingText}
+                  setEditingText={setEditingText}
+                  onComplete={onCompleteTask}
+                  onStartEdit={startEdit}
+                  onCancelEdit={cancelEdit}
+                  onSaveEdit={handleSaveEdit}
+                  regeneratingId={regeneratingId}
+                  onRegenerate={handleRegenerate}
+                />
+              ))}
+              <p style={{ fontSize: 10, color: T.amber, fontFamily: T.mono, opacity: 0.6, margin: '2px 0 0', paddingLeft: 24 }}>
+                Completing these still earns you +10 pts each.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Add Task */}
       {showAddTask ? (
-        <div style={{ marginTop: tasks.length > 0 ? 8 : 0, display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ marginTop: tasks.length > 0 || overdueTasks.length > 0 ? 8 : 0, display: 'flex', gap: 8, alignItems: 'center' }}>
           <input
             autoFocus
             value={addTaskText}
@@ -298,7 +448,7 @@ export default function DailyTaskList({
         <button
           onClick={() => setShowAddTask(true)}
           style={{
-            marginTop: tasks.length > 0 ? 8 : 0,
+            marginTop: tasks.length > 0 || overdueTasks.length > 0 ? 8 : 0,
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
             background: 'none', border: 'none', padding: '3px 0',
             fontFamily: T.mono, fontSize: 11, color: T.muted,

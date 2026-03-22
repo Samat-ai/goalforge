@@ -232,6 +232,23 @@ export function useGoalMutations(userId: string) {
     },
   })
 
+  // ── Retry Sprint Generation (server-replace) ──
+  const retrySprintGenerationMutation = useMutation({
+    mutationFn: async ({ goalId, milestoneId }: { goalId: string; milestoneId: string }) => {
+      const { data } = await api.post<Goal>(
+        `/goals/${goalId}/milestones/${milestoneId}/retry-generation`,
+      )
+      return data
+    },
+    onSuccess: (data, { goalId }) => {
+      updateGoals(goals => goals.map(g => g.id === goalId ? data : g))
+      toast.success('Sprint tasks generated successfully')
+    },
+    onError: () => {
+      toast.error('Could not generate sprint tasks. Please try again.')
+    },
+  })
+
   // ── Return handlers matching existing Dashboard signatures ──
   return {
     addGoal: async (rawInput: string): Promise<void> => { await addGoalMutation.mutateAsync(rawInput) },
@@ -263,5 +280,10 @@ export function useGoalMutations(userId: string) {
     reorderTasks: (goalId: string, taskPositions: { id: string; position: number }[]) => {
       reorderTasksMutation.mutate({ goalId, taskPositions })
     },
+
+    retrySprintGeneration: async (goalId: string, milestoneId: string): Promise<void> => {
+      await retrySprintGenerationMutation.mutateAsync({ goalId, milestoneId })
+    },
+    isRetryingSprintGeneration: retrySprintGenerationMutation.isPending,
   }
 }
