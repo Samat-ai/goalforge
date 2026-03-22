@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import func, select, update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from ai_utils import generate_sprint_tasks
 from database import engine
 from exceptions import AIGenerationError
 from models import DailyTask, Goal, Milestone, User
+from schemas import AITaskOutput
 from utils import user_today
 
 logger = logging.getLogger(__name__)
@@ -25,8 +26,8 @@ async def create_sprint_tasks(
     db: AsyncSession,
     goal_id: uuid.UUID,
     milestone_id: uuid.UUID,
-    task_outputs: list,  # list[AITaskOutput]
-    start_date,          # date
+    task_outputs: list[AITaskOutput],
+    start_date: date,
 ) -> None:
     """Write DailyTask rows for a sprint.
 
