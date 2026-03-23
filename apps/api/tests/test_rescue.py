@@ -384,7 +384,9 @@ async def test_send_rescue_email_logs_when_no_api_key(caplog):
     import logging
     from services.email_service import send_rescue_email
 
-    with caplog.at_level(logging.INFO, logger="services.email_service"):
+    with patch("services.email_service.settings") as mock_settings, \
+         caplog.at_level(logging.INFO, logger="services.email_service"):
+        mock_settings.resend_api_key = ""
         await send_rescue_email("test@example.com", "Star Forger")
 
     assert any("rescue email (mock)" in r.message.lower() for r in caplog.records)
