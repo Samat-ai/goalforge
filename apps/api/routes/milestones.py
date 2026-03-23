@@ -4,7 +4,7 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from sqlalchemy import delete as sql_delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from ai_utils import generate_sprint_tasks
 from auth import get_current_user_id
 from services.task_service import create_sprint_tasks
+from services.goal_service import _generate_goal_async, PLACEHOLDER_MILESTONE_TITLE
 from database import get_db
 from deps import _load_goal_with_ownership
 from exceptions import AIGenerationError
@@ -122,6 +123,7 @@ async def retry_sprint_generation(
     request: Request,
     goal_id: uuid.UUID,
     milestone_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -146,6 +148,25 @@ async def retry_sprint_generation(
     user_result = await db.execute(select(User).where(User.id == current_user_id))
     user_obj = user_result.scalar_one_or_none()
     today = user_today(user_obj.timezone if user_obj else "UTC")
+
+    # Sentinel: placeholder milestone from initial goal creation → re-run full goal gen
+    if milestone.title == PLACEHOLDER_MILESTONE_TITLE:
+        milestone.sprint_status = "generating"
+        milestone.generation_started_at = datetime.now(timezone.utc)
+        await db.flush()
+        background_tasks.add_task(
+            _generate_goal_async,
+            goal_id=goal_id,
+            user_id=current_user_id,
+            user_timezone=user_obj.timezone if user_obj else "UTC",
+            raw_input=goal_obj.raw_input,
+        )
+        result = await db.execute(
+            select(Goal)
+            .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
+            .where(Goal.id == goal_id)
+        )
+        return result.scalar_one()
 
     goal_context = f"{goal_obj.smart_title}: {goal_obj.smart_description}"
     try:

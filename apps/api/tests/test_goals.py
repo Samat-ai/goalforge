@@ -4,17 +4,28 @@ from tests.conftest import TEST_USER_ID, OTHER_USER_ID, create_test_goal
 
 
 async def test_create_goal(client):
+    """POST returns 202 with placeholder; background task populates real data."""
     resp = await client.post(
         f"/users/{TEST_USER_ID}/goals",
         json={"raw_input": "I want to run a 5K race in under 25 minutes within 3 months"},
     )
-    assert resp.status_code == 201
+    assert resp.status_code == 202
     data = resp.json()
-    assert data["smart_title"] == "Run 5K in under 25 minutes"
     assert data["status"] == "active"
-    assert len(data["milestones"]) == 3
-    assert len(data["daily_tasks"]) == 7
     assert data["user_id"] == TEST_USER_ID
+    # Phase 1 placeholder values
+    assert data["smart_title"] == "I want to run a 5K race in under 25 minutes within 3 months"
+    assert len(data["milestones"]) == 1
+    assert data["milestones"][0]["sprint_status"] == "generating"
+
+    # After BackgroundTasks run, GET returns the fully-populated goal
+    goal_id = data["id"]
+    get_resp = await client.get(f"/goals/{goal_id}")
+    assert get_resp.status_code == 200
+    full_data = get_resp.json()
+    assert full_data["smart_title"] == "Run 5K in under 25 minutes"
+    assert len(full_data["milestones"]) == 3
+    assert len(full_data["daily_tasks"]) == 7
 
 
 async def test_create_goal_forbidden_for_other_user(client):

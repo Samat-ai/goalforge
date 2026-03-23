@@ -70,6 +70,8 @@ export default function GoalCard({ goal }: GoalCardProps) {
   const allMilestonesComplete = goal.milestones.length > 0 && goal.milestones.every(m => m.is_completed)
   const milestonesProgress   = goal.milestones_total > 0 ? Math.round((goal.milestones_completed / goal.milestones_total) * 100) : 0
 
+  const isGenerating = goal.milestones[0]?.sprint_status === 'generating'
+
   const todayTasks  = goal.daily_tasks
     .filter(t => t.assigned_date === todayStr())
     .sort((a, b) => a.position - b.position)
@@ -113,7 +115,8 @@ export default function GoalCard({ goal }: GoalCardProps) {
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-            <Badge color={T.indigo}>{goal.goal_type}</Badge>
+            {!isGenerating && <Badge color={T.indigo}>{goal.goal_type}</Badge>}
+            {isGenerating && <Badge color={T.muted}>generating…</Badge>}
             {isAbandoned  && <Badge color={T.muted}>abandoned</Badge>}
             {isAchieved   && <Badge color={T.amber}>✦ achieved</Badge>}
             {doneToday && !isAbandoned && !isAchieved && <Badge color={T.emerald}>✓ done today</Badge>}
@@ -135,8 +138,37 @@ export default function GoalCard({ goal }: GoalCardProps) {
         </span>
       </div>
 
+      {/* ── Generating skeleton ── */}
+      {isGenerating && (
+        <div style={{ padding: '0 18px 18px' }}>
+          <div style={{
+            padding: '14px 16px',
+            background: `${T.indigo}10`,
+            borderRadius: 10,
+            border: `1px solid ${T.indigo}30`,
+            display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: `${T.indigo}20`, border: `1.5px solid ${T.indigo}50`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 14, animation: 'pulse 1.5s ease-in-out infinite',
+              color: T.indigo, flexShrink: 0,
+            }}>✦</div>
+            <div>
+              <div style={{ fontSize: 13, color: T.text, fontFamily: T.serif, marginBottom: 3 }}>
+                Building your plan…
+              </div>
+              <div style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }}>
+                AI is generating milestones and tasks — this takes a few seconds
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Sprint Rail ── */}
-      {!isAbandoned && !isAchieved && goal.milestones.length > 0 && (
+      {!isGenerating && !isAbandoned && !isAchieved && goal.milestones.length > 0 && (
         <SprintRail
           milestones={goal.milestones}
           activeMilestone={activeMilestone}
@@ -167,7 +199,7 @@ export default function GoalCard({ goal }: GoalCardProps) {
       )}
 
       {/* ── Today's tasks ── */}
-      {!isAbandoned && !isAchieved && (todayTasks.length > 0 || activeMilestone || overdueTasks.length > 0) && (
+      {!isGenerating && !isAbandoned && !isAchieved && (todayTasks.length > 0 || activeMilestone || overdueTasks.length > 0) && (
         <DailyTaskList
           goalId={goal.id}
           tasks={todayTasks}
@@ -182,7 +214,7 @@ export default function GoalCard({ goal }: GoalCardProps) {
       )}
 
       {/* ── Status actions ── */}
-      {!isAbandoned && !isAchieved && (
+      {!isGenerating && !isAbandoned && !isAchieved && (
         <div style={{ padding: '0 18px 14px', display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
           {allMilestonesComplete ? (
             <button

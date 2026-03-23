@@ -8,18 +8,22 @@ Strategy:
 - All Gemini calls mocked — no real AI calls are made
 """
 
+import uuid
 from datetime import date, timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import delete as sql_delete, update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from auth import get_current_user_email, get_current_user_id
 from database import Base, get_db
 from main import app
+from models import DailyTask, Goal, Milestone
 from schemas import AIMilestoneConfig, AIGoalOutput, AITaskOutput
+from services.goal_service import PLACEHOLDER_MILESTONE_TITLE
 
 # ---------------------------------------------------------------------------
 # Test identity constants
@@ -128,8 +132,46 @@ async def client(engine):
 
     mock_regen = AITaskOutput(description="Regenerated task", tip="Fresh motivation", assigned_date=date.today())
 
+    async def _mock_generate_goal_async(goal_id, user_id, user_timezone, raw_input):
+        """Populate goal with mock AI data using the test session_factory."""
+        async with session_factory() as session:
+            await session.execute(
+                sql_update(Goal).where(Goal.id == goal_id).values(
+                    smart_title=mock_goal.smart_title,
+                    smart_description=mock_goal.smart_description,
+                    goal_type=mock_goal.goal_type,
+                    target_date=mock_goal.target_date,
+                )
+            )
+            await session.execute(sql_delete(Milestone).where(Milestone.goal_id == goal_id))
+            milestone_rows = []
+            for i, ms_config in enumerate(mock_goal.milestones):
+                ms = Milestone(
+                    id=uuid.uuid4(),
+                    goal_id=goal_id,
+                    title=ms_config.title,
+                    position=i + 1,
+                    is_final=ms_config.is_final,
+                    sprint_theme=ms_config.sprint_theme,
+                    sprint_status="active" if i == 0 else "pending",
+                )
+                session.add(ms)
+                milestone_rows.append(ms)
+            await session.flush()
+            first_ms = milestone_rows[0]
+            for task_data in mock_goal.initial_tasks:
+                session.add(DailyTask(
+                    id=uuid.uuid4(),
+                    goal_id=goal_id,
+                    milestone_id=first_ms.id,
+                    description=task_data.description,
+                    tip=task_data.tip,
+                    assigned_date=task_data.assigned_date,
+                ))
+            await session.commit()
+
     with (
-        patch("routes.goals.generate_smart_goal", new=AsyncMock(return_value=mock_goal)),
+        patch("routes.goals._generate_goal_async", new=_mock_generate_goal_async),
         patch("routes.milestones.generate_sprint_tasks", new=AsyncMock(return_value=mock_tasks)),
         patch("services.task_service._pre_generate_sprint", new=AsyncMock()),
         patch("routes.tasks.regenerate_single_task", new=AsyncMock(return_value=mock_regen)),
@@ -170,8 +212,46 @@ async def other_client(engine):
 
     mock_regen = AITaskOutput(description="Regenerated task", tip="Fresh motivation", assigned_date=date.today())
 
+    async def _mock_generate_goal_async(goal_id, user_id, user_timezone, raw_input):
+        """Populate goal with mock AI data using the test session_factory."""
+        async with session_factory() as session:
+            await session.execute(
+                sql_update(Goal).where(Goal.id == goal_id).values(
+                    smart_title=mock_goal.smart_title,
+                    smart_description=mock_goal.smart_description,
+                    goal_type=mock_goal.goal_type,
+                    target_date=mock_goal.target_date,
+                )
+            )
+            await session.execute(sql_delete(Milestone).where(Milestone.goal_id == goal_id))
+            milestone_rows = []
+            for i, ms_config in enumerate(mock_goal.milestones):
+                ms = Milestone(
+                    id=uuid.uuid4(),
+                    goal_id=goal_id,
+                    title=ms_config.title,
+                    position=i + 1,
+                    is_final=ms_config.is_final,
+                    sprint_theme=ms_config.sprint_theme,
+                    sprint_status="active" if i == 0 else "pending",
+                )
+                session.add(ms)
+                milestone_rows.append(ms)
+            await session.flush()
+            first_ms = milestone_rows[0]
+            for task_data in mock_goal.initial_tasks:
+                session.add(DailyTask(
+                    id=uuid.uuid4(),
+                    goal_id=goal_id,
+                    milestone_id=first_ms.id,
+                    description=task_data.description,
+                    tip=task_data.tip,
+                    assigned_date=task_data.assigned_date,
+                ))
+            await session.commit()
+
     with (
-        patch("routes.goals.generate_smart_goal", new=AsyncMock(return_value=mock_goal)),
+        patch("routes.goals._generate_goal_async", new=_mock_generate_goal_async),
         patch("routes.milestones.generate_sprint_tasks", new=AsyncMock(return_value=mock_tasks)),
         patch("services.task_service._pre_generate_sprint", new=AsyncMock()),
         patch("routes.tasks.regenerate_single_task", new=AsyncMock(return_value=mock_regen)),
@@ -193,5 +273,9 @@ async def create_test_goal(client: AsyncClient) -> dict:
         f"/users/{TEST_USER_ID}/goals",
         json={"raw_input": "I want to run a 5K race in under 25 minutes within 3 months"},
     )
-    assert resp.status_code == 201
-    return resp.json()
+    # BackgroundTasks run synchronously in ASGI test mode — goal is fully populated by now
+    assert resp.status_code == 202
+    goal_id = resp.json()["id"]
+    get_resp = await client.get(f"/goals/{goal_id}")
+    assert get_resp.status_code == 200
+    return get_resp.json()

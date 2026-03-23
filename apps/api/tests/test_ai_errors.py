@@ -7,21 +7,27 @@ from exceptions import AIGenerationError
 from tests.conftest import TEST_USER_ID
 
 
-async def test_create_goal_returns_503_on_ai_failure(client: AsyncClient):
-    """generate_smart_goal raising AIGenerationError → 503 with exact message."""
+async def test_create_goal_returns_202_even_when_background_task_would_fail(client: AsyncClient):
+    """
+    Two-phase: POST always returns 202 (placeholder).
+    Even if _generate_goal_async would fail, the endpoint still returns 202
+    with a placeholder milestone in 'generating' status.
+    """
     with patch(
-        "routes.goals.generate_smart_goal",
-        new=AsyncMock(side_effect=AIGenerationError()),
+        "routes.goals._generate_goal_async",
+        new=AsyncMock(),  # no-op — simulates the background not populating data
     ):
         resp = await client.post(
             f"/users/{TEST_USER_ID}/goals",
             json={"raw_input": "I want to run a 5K"},
         )
-    assert resp.status_code == 503
-    assert resp.json()["detail"] == (
-        "Our AI is temporarily busy. Your goal has been saved — "
-        "we'll generate the plan shortly. Please refresh in a minute."
-    )
+    # Phase 1 always returns 202 with placeholder
+    assert resp.status_code == 202
+    data = resp.json()
+    assert data["status"] == "active"
+    # The placeholder milestone was created with sprint_status="generating"
+    assert len(data["milestones"]) == 1
+    assert data["milestones"][0]["sprint_status"] == "generating"
 
 
 async def test_with_retry_calls_factory_three_times(monkeypatch):

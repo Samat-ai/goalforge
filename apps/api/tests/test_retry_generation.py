@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 from auth import get_current_user_id
 from exceptions import AIGenerationError
 from main import app
+from services.goal_service import PLACEHOLDER_MILESTONE_TITLE
 from tests.conftest import OTHER_USER_ID, TEST_USER_ID, create_test_goal
 
 
@@ -169,3 +170,86 @@ async def test_retry_generation_502_on_ai_failure(client):
 
     assert resp.status_code == 502
     assert "AI down" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Sentinel routing — initial goal creation failure
+# ---------------------------------------------------------------------------
+
+async def test_retry_generation_sentinel_routes_to_generate_goal_async(client, engine):
+    """
+    A milestone with the sentinel title (placeholder from Phase 1 goal creation)
+    must route to _generate_goal_async, not generate_sprint_tasks.
+    """
+    from sqlalchemy import update as sql_update
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+    from models import Milestone
+
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+    milestone_id = _sorted_milestones(goal)[0]["id"]
+
+    # Force the milestone into the sentinel / failed state
+    session_factory = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    async with session_factory() as session:
+        await session.execute(
+            sql_update(Milestone)
+            .where(Milestone.id == uuid.UUID(milestone_id))
+            .values(
+                title=PLACEHOLDER_MILESTONE_TITLE,
+                sprint_status="failed",
+                sprint_theme="",
+            )
+        )
+        await session.commit()
+
+    mock_generate_goal = AsyncMock()
+    with patch("routes.milestones._generate_goal_async", new=mock_generate_goal):
+        resp = await client.post(
+            f"/goals/{goal_id}/milestones/{milestone_id}/retry-generation"
+        )
+
+    assert resp.status_code == 200
+    mock_generate_goal.assert_called_once()
+
+    # Milestone should be reset to "generating" while background task runs
+    milestones = resp.json()["milestones"]
+    sentinel_ms = next(m for m in milestones if m["id"] == milestone_id)
+    assert sentinel_ms["sprint_status"] == "generating"
+
+
+async def test_retry_generation_sentinel_does_not_call_generate_sprint_tasks(client, engine):
+    """generate_sprint_tasks must NOT be called for sentinel milestones."""
+    from sqlalchemy import update as sql_update
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+    from models import Milestone
+
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+    milestone_id = _sorted_milestones(goal)[0]["id"]
+
+    session_factory = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    async with session_factory() as session:
+        await session.execute(
+            sql_update(Milestone)
+            .where(Milestone.id == uuid.UUID(milestone_id))
+            .values(
+                title=PLACEHOLDER_MILESTONE_TITLE,
+                sprint_status="failed",
+                sprint_theme="",
+            )
+        )
+        await session.commit()
+
+    mock_sprint_tasks = AsyncMock()
+    mock_generate_goal = AsyncMock()
+    with (
+        patch("routes.milestones.generate_sprint_tasks", new=mock_sprint_tasks),
+        patch("routes.milestones._generate_goal_async", new=mock_generate_goal),
+    ):
+        resp = await client.post(
+            f"/goals/{goal_id}/milestones/{milestone_id}/retry-generation"
+        )
+
+    assert resp.status_code == 200
+    mock_sprint_tasks.assert_not_called()

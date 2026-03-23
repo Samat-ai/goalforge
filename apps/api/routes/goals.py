@@ -3,17 +3,16 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, select, update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from ai_utils import generate_smart_goal
 from auth import get_current_user_email, get_current_user_id
 from database import get_db
 from deps import _load_goal_with_ownership
-from exceptions import AIGenerationError
-from models import DailyTask, Goal, Milestone, User
+from models import Goal, Milestone, User
+from services.goal_service import _generate_goal_async, PLACEHOLDER_MILESTONE_TITLE
 from rate_limiting import _user_key, rate_limit
 from schemas import (
     GoalCreate, GoalProgressUpdate, GoalResponse, GoalStatusUpdate,
@@ -41,14 +40,15 @@ async def get_or_create_user(
 @router.post(
     "/users/{user_id}/goals",
     response_model=GoalResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create a SMART goal from raw user input",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Create a SMART goal from raw user input (two-phase: returns immediately)",
 )
 @rate_limit("5/minute", key_func=_user_key)
 async def create_goal(
     request: Request,
     user_id: str,
     payload: GoalCreate,
+    background_tasks: BackgroundTasks,
     current_user_id: str = Depends(get_current_user_id),
     current_user_email: str = Depends(get_current_user_email),
     db: AsyncSession = Depends(get_db),
@@ -56,70 +56,53 @@ async def create_goal(
     if user_id != current_user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     user = await get_or_create_user(user_id, current_user_email, db)
+    user_timezone = user.timezone  # capture before session closes
 
-    try:
-        ai_output = await generate_smart_goal(payload.raw_input, today=user_today(user.timezone))
-    except AIGenerationError:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Our AI is temporarily busy. Your goal has been saved — "
-                "we'll generate the plan shortly. Please refresh in a minute."
-            ),
-        )
+    today = user_today(user_timezone)
 
+    # Phase 1: save placeholder goal + milestone immediately
     goal = Goal(
         id=uuid.uuid4(),
         user_id=user.id,
         raw_input=payload.raw_input,
-        smart_title=ai_output.smart_title,
-        smart_description=ai_output.smart_description,
-        goal_type=ai_output.goal_type,
-        target_date=ai_output.target_date,
+        smart_title=payload.raw_input,          # placeholder — overwritten in Phase 2
+        smart_description="",                    # placeholder
+        goal_type="personal",                    # placeholder
+        target_date=today + timedelta(days=35),  # placeholder (5 sprints x 7 days)
         status="active",
     )
     db.add(goal)
     await db.flush()
 
-    # Create Milestone rows from AI-generated AIMilestoneConfig objects.
-    # Sprint 1 is set to "active"; remaining sprints start as "pending".
-    milestone_rows: list[Milestone] = []
-    for i, ms_config in enumerate(ai_output.milestones):
-        m = Milestone(
-            id=uuid.uuid4(),
-            goal_id=goal.id,
-            title=ms_config.title,
-            position=i + 1,
-            is_final=ms_config.is_final,
-            sprint_theme=ms_config.sprint_theme,
-            sprint_status="active" if i == 0 else "pending",
-        )
-        db.add(m)
-        milestone_rows.append(m)
+    placeholder_ms = Milestone(
+        id=uuid.uuid4(),
+        goal_id=goal.id,
+        title=PLACEHOLDER_MILESTONE_TITLE,
+        position=1,
+        is_final=False,
+        sprint_theme="",
+        sprint_status="generating",
+        generation_started_at=datetime.now(timezone.utc),
+    )
+    db.add(placeholder_ms)
     await db.flush()
 
-    # Sprint 1 tasks are linked to the first milestone.
-    first_milestone = milestone_rows[0]
-    for task_data in ai_output.initial_tasks:
-        task = DailyTask(
-            id=uuid.uuid4(),
-            goal_id=goal.id,
-            milestone_id=first_milestone.id,
-            description=task_data.description,
-            tip=task_data.tip,
-            assigned_date=task_data.assigned_date,
-        )
-        db.add(task)
+    # Phase 2: enqueue AI generation as a background task
+    background_tasks.add_task(
+        _generate_goal_async,
+        goal_id=goal.id,
+        user_id=user.id,
+        user_timezone=user_timezone,
+        raw_input=payload.raw_input,
+    )
 
-    await db.flush()
-
+    # Return the placeholder goal (milestones eagerly loaded)
     result = await db.execute(
         select(Goal)
         .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
         .where(Goal.id == goal.id)
     )
-    goal = result.scalar_one()
-    return goal
+    return result.scalar_one()
 
 
 @router.get(
