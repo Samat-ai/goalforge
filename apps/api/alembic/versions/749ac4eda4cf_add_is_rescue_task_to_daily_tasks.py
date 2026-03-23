@@ -8,20 +8,16 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "749ac4eda4cf"
-down_revision = "f7a8b9c1d2e3"
+down_revision = "a1b2c3d4e5f6"
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "daily_tasks",
-        sa.Column(
-            "is_rescue_task",
-            sa.Boolean(),
-            nullable=False,
-            server_default=sa.false(),
-        ),
+    # Use IF NOT EXISTS — column may already exist if a1b2c3d4e5f6 was applied
+    op.execute(
+        "ALTER TABLE daily_tasks ADD COLUMN IF NOT EXISTS"
+        " is_rescue_task BOOLEAN NOT NULL DEFAULT FALSE"
     )
 
 
