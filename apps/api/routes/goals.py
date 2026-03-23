@@ -1,6 +1,7 @@
 """Goal CRUD routes."""
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, select, update as sql_update
@@ -148,6 +149,24 @@ async def list_goals(
         .offset(offset)
     )
     items = result.scalars().all()
+
+    # Lazy eval: reset milestones stuck in "generating" for >5 minutes to "failed"
+    now_utc = datetime.now(timezone.utc)
+    stale_threshold = now_utc - timedelta(minutes=5)
+    for goal in items:
+        for ms in goal.milestones:
+            if (
+                ms.sprint_status == "generating"
+                and ms.generation_started_at is not None
+            ):
+                # Normalize: treat naive timestamps as UTC (SQLite returns naive)
+                started = ms.generation_started_at
+                if started.tzinfo is None:
+                    started = started.replace(tzinfo=timezone.utc)
+                if started < stale_threshold:
+                    ms.sprint_status = "failed"
+    await db.flush()
+
     return PaginatedGoalsResponse(items=items, total=total, limit=limit, offset=offset)
 
 

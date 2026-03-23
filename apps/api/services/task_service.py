@@ -87,7 +87,7 @@ async def _pre_generate_sprint(
                 await db.execute(
                     sql_update(Milestone)
                     .where(Milestone.id == milestone_id)
-                    .values(sprint_status="generating")
+                    .values(sprint_status="generating", generation_started_at=datetime.now(timezone.utc))
                 )
         except Exception as exc:
             logger.error("Pre-gen: could not set generating status for %s: %s", milestone_id, exc)

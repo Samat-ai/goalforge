@@ -115,6 +115,43 @@ async def test_delete_goal_forbidden_for_other_user(client):
     assert resp.status_code == 403
 
 
+async def test_list_goals_resets_stuck_generating_milestone_to_failed(client, engine):
+    """
+    A milestone stuck in 'generating' for >5 minutes is reset to 'failed'
+    by the lazy eval in list_goals.
+    """
+    import uuid as _uuid
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+    from sqlalchemy import update as sql_update
+    from models import Milestone
+
+    # Create a goal (will have a real active milestone from mock)
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+    milestone_id = goal["milestones"][0]["id"]
+
+    # Directly force milestone into stuck 'generating' state with old timestamp
+    session_factory = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    async with session_factory() as session:
+        stale_time = datetime.now(timezone.utc) - timedelta(minutes=10)
+        await session.execute(
+            sql_update(Milestone)
+            .where(Milestone.id == _uuid.UUID(milestone_id))
+            .values(sprint_status="generating", generation_started_at=stale_time)
+        )
+        await session.commit()
+
+    # list_goals should lazily reset it to 'failed'
+    resp = await client.get(f"/users/{TEST_USER_ID}/goals")
+    assert resp.status_code == 200
+    milestones = resp.json()["items"][0]["milestones"]
+    stuck_ms = next(m for m in milestones if m["id"] == str(milestone_id))
+    assert stuck_ms["sprint_status"] == "failed", (
+        "Milestone stuck in 'generating' for >5 min should be reset to 'failed'"
+    )
+
+
 async def test_achieve_goal_concurrent_requests_award_points_once(client):
     """
     Achieving a goal twice awards +100 exactly once.
