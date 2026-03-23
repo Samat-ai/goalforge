@@ -279,3 +279,19 @@ async def create_test_goal(client: AsyncClient) -> dict:
     get_resp = await client.get(f"/goals/{goal_id}")
     assert get_resp.status_code == 200
     return get_resp.json()
+
+
+@pytest_asyncio.fixture
+async def db_session(engine):
+    """Direct AsyncSession for test setup/teardown (bypasses HTTP layer)."""
+    session_factory = async_sessionmaker(
+        bind=engine, class_=AsyncSession, expire_on_commit=False
+    )
+    async with session_factory() as session:
+        yield session
+
+
+@pytest_asyncio.fixture
+async def created_goal(client):
+    """A fully-generated goal dict (same as calling create_test_goal(client))."""
+    return await create_test_goal(client)

@@ -7,10 +7,11 @@ export interface BtnProps {
   loading?: boolean
   small?: boolean
   disabled?: boolean
+  style?: React.CSSProperties
 }
 
 export default function Btn({
-  children, onClick, variant = 'primary', loading = false, small = false, disabled = false,
+  children, onClick, variant = 'primary', loading = false, small = false, disabled = false, style,
 }: BtnProps) {
   const V = {
     primary: { background: T.orange,           color: '#fff',      border: 'none' },
@@ -28,6 +29,7 @@ export default function Btn({
         borderRadius: 8, fontFamily: T.mono, fontSize: small ? 11 : 12,
         fontWeight: 500, letterSpacing: '0.04em', opacity: disabled ? 0.4 : 1,
         ...V[variant],
+        ...style,
       }}
     >
       {loading ? '···' : children}

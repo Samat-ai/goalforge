@@ -18,7 +18,7 @@ from pydantic import ValidationError
 
 from config import settings
 from exceptions import AIGenerationError
-from schemas import AIGoalOutput, AISprintOutput, AITaskOutput
+from schemas import AIGoalOutput, AIRescueOutput, AIRescueTaskItem, AISprintOutput, AITaskOutput
 
 logger = logging.getLogger(__name__)
 
@@ -244,3 +244,49 @@ async def regenerate_single_task(
         return AITaskOutput.model_validate(data)
 
     return await _with_retry(_call, "regenerate_single_task")
+
+
+_RESCUE_SYSTEM_PROMPT = """\
+You are helping a user who has missed several days of their goal plan.
+Goal: {goal_title}
+Goal description: {goal_description}
+
+Generate exactly 2 recovery micro-tasks. Each task must:
+- Take 2 minutes or less
+- Require almost zero willpower to start
+- Feel like a guaranteed win, not a chore
+- Be directly relevant to the goal
+- Be written in second-person, action-first ("Listen to...", "Write one...", "Review...")
+- Keep description under 70 characters
+
+Tone: encouraging, zero shame, zero pressure.
+"""
+
+
+async def generate_rescue_tasks(
+    goal_title: str,
+    goal_description: str,
+) -> list[AIRescueTaskItem]:
+    """Generate 2 AI micro-tasks for a Recovery Sprint."""
+
+    user_message = f"Generate 2 recovery micro-tasks for goal: {goal_title}"
+
+    async def _attempt() -> list[AIRescueTaskItem]:
+        response = await _client.aio.models.generate_content(
+            model=_MODEL,
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=_RESCUE_SYSTEM_PROMPT.format(
+                    goal_title=goal_title,
+                    goal_description=goal_description,
+                ),
+                temperature=1.0,
+                response_mime_type="application/json",
+                response_schema=AIRescueOutput,
+            ),
+        )
+        data = json.loads(response.text)
+        parsed = AIRescueOutput.model_validate(data)
+        return parsed.tasks
+
+    return await _with_retry(_attempt, "generate_rescue_tasks")

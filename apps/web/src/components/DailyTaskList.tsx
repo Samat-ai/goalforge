@@ -127,7 +127,20 @@ function TaskRow({
               fontSize: 13, color: task.is_completed ? T.dim : T.text,
               textDecoration: task.is_completed ? 'line-through' : 'none',
               lineHeight: 1.5, fontFamily: T.mono, margin: 0,
+              display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 0,
             }}>
+              {task.is_rescue_task && (
+                <span style={{
+                  fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
+                  color: T.amber, fontFamily: T.mono,
+                  border: `1px solid ${T.amber}`,
+                  borderRadius: 10, padding: '1px 6px',
+                  marginRight: 6, textTransform: 'uppercase',
+                  flexShrink: 0,
+                }}>
+                  ✦ EASY MODE
+                </span>
+              )}
               {task.description}
             </p>
             {dateLabel ? (

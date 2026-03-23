@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -44,6 +44,7 @@ class TaskResponse(TaskBase):
     milestone_id: uuid.UUID | None
     is_completed: bool
     completed_at: datetime | None
+    is_rescue_task: bool = False
 
 
 class TaskCreate(BaseModel):
@@ -121,6 +122,54 @@ class GoalResponse(BaseModel):
         """Total number of milestones for this goal."""
         return len(self.milestones)
 
+    @computed_field
+    @property
+    def rescue_mode(self) -> bool:
+        """True when:
+        - goal is active
+        - has at least one milestone with sprint_status in ('active', 'ready') — 'ready' included
+          because tasks are generated but user hasn't engaged yet
+        - no rescue task already created today (idempotency guard)
+        - 48h+ elapsed since last task completion (or since created_at if no completions ever)
+
+        Note: uses date.today() (server UTC) for the today check — a known limitation
+        since this runs in a Pydantic model without access to user.timezone.
+        The server-side goal_is_rescue_mode() in rescue_service.py uses user_today() instead.
+        """
+        if self.status != "active":
+            return False
+
+        active_milestone = next(
+            (m for m in self.milestones if m.sprint_status in ("active", "ready")),
+            None,
+        )
+        if not active_milestone:
+            return False
+
+        today = date.today()
+        rescue_task_today = any(
+            t.is_rescue_task and t.assigned_date == today
+            for t in self.daily_tasks
+        )
+        if rescue_task_today:
+            return False
+
+        completed_times = [
+            t.completed_at
+            for t in self.daily_tasks
+            if t.is_completed and t.completed_at is not None
+        ]
+        if completed_times:
+            last_completed = max(completed_times)
+        else:
+            last_completed = self.created_at
+
+        # Normalize to UTC-aware for comparison (ORM datetimes may be naive but are UTC)
+        if last_completed.tzinfo is None:
+            last_completed = last_completed.replace(tzinfo=timezone.utc)
+
+        return (datetime.now(timezone.utc) - last_completed) >= timedelta(hours=48)
+
 
 # ---------------------------------------------------------------------------
 # User settings schemas
@@ -190,4 +239,16 @@ class AIGoalOutput(BaseModel):
     initial_tasks: list[AITaskOutput] = Field(
         ..., min_length=1, max_length=7,
         description="Daily tasks for the FIRST milestone sprint only (7 days)"
+    )
+
+
+class AIRescueTaskItem(BaseModel):
+    description: str = Field(..., description="Recovery micro-task (≤70 chars, action-first)")
+    tip: str = Field(..., description="Encouraging reason why this small step helps (≤20 words)")
+
+
+class AIRescueOutput(BaseModel):
+    tasks: list[AIRescueTaskItem] = Field(
+        ..., min_length=2, max_length=2,
+        description="Exactly 2 recovery micro-tasks",
     )

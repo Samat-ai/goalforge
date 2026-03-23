@@ -26,7 +26,8 @@ async def test_trigger_reminders_sends_one_digest_per_user(client):
 
     assert resp.status_code == 200
     # One user → one digest, regardless of task count
-    assert resp.json()["sent"] == 1
+    assert resp.json()["digest_emails"] == 1
+    assert resp.json()["rescue_emails"] == 0
     assert mock_send.call_count == 1
     # The digest should contain all of today's tasks
     tasks_arg = mock_send.call_args.args[2]
@@ -52,10 +53,10 @@ async def test_trigger_reminders_skips_completed_tasks(client):
     assert resp.status_code == 200
     if len(today_tasks) == 1:
         # All tasks completed → no digest sent
-        assert resp.json()["sent"] == 0
+        assert resp.json()["digest_emails"] == 0
         mock_send.assert_not_called()
     else:
-        assert resp.json()["sent"] == 1
+        assert resp.json()["digest_emails"] == 1
         tasks_arg = mock_send.call_args.args[2]
         assert len(tasks_arg) == len(today_tasks) - 1
 
@@ -70,7 +71,7 @@ async def test_trigger_reminders_no_tasks_today(client):
         resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
 
     assert resp.status_code == 200
-    assert resp.json() == {"sent": 0}
+    assert resp.json() == {"rescue_emails": 0, "digest_emails": 0}
     mock_send.assert_not_called()
 
 
@@ -96,3 +97,26 @@ async def test_trigger_reminders_api_key_accepted(client):
         )
 
     assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_trigger_reminders_sends_rescue_email_when_in_rescue_mode(
+    client, created_goal
+):
+    """When goal_is_rescue_mode returns True, send_rescue_email is called, not digest."""
+    with patch("routes.jobs.settings") as mock_settings, \
+         patch("routes.jobs.goal_is_rescue_mode", return_value=True) as mock_rescue_mode, \
+         patch("routes.jobs.send_rescue_email", new=AsyncMock()) as mock_rescue_email, \
+         patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_digest:
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post(
+            "/api/jobs/trigger-reminders",
+            headers={"X-Api-Key": _TEST_JOBS_KEY},
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["rescue_emails"] == 1
+    assert data["digest_emails"] == 0
+    mock_rescue_email.assert_called_once()
+    mock_digest.assert_not_called()

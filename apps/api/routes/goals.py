@@ -13,6 +13,7 @@ from database import get_db
 from deps import _load_goal_with_ownership
 from models import Goal, Milestone, User
 from services.goal_service import _generate_goal_async, PLACEHOLDER_MILESTONE_TITLE
+from services.rescue_service import _execute_rescue_sprint
 from rate_limiting import _user_key, rate_limit
 from schemas import (
     GoalCreate, GoalProgressUpdate, GoalResponse, GoalStatusUpdate,
@@ -247,3 +248,57 @@ async def delete_goal(
     await db.delete(goal)
     await db.flush()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/goals/{goal_id}/rescue", response_model=GoalResponse, status_code=202, summary="Trigger a Recovery Sprint for a stalled goal")
+@rate_limit("10/minute", key_func=_user_key)
+async def trigger_rescue_sprint(
+    request: Request,
+    goal_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Trigger a Recovery Sprint: shift uncompleted tasks + generate 2 AI micro-tasks."""
+    await _load_goal_with_ownership(goal_id, current_user_id, db)  # 403/404 guard
+
+    # Re-fetch with milestones eagerly loaded (async session cannot lazy-load)
+    goal_result = await db.execute(
+        select(Goal)
+        .options(selectinload(Goal.milestones))
+        .where(Goal.id == goal_id)
+    )
+    goal = goal_result.scalar_one()
+
+    if goal.status != "active":
+        raise HTTPException(status_code=409, detail="Goal is not active")
+
+    active_milestone = next(
+        (m for m in goal.milestones if m.sprint_status in ("active", "ready")),
+        None,
+    )
+    if not active_milestone:
+        raise HTTPException(status_code=409, detail="No active sprint to rescue")
+
+    # Set to generating so the frontend shows the loading skeleton
+    active_milestone.sprint_status = "generating"
+    active_milestone.generation_started_at = datetime.now(timezone.utc)
+    await db.commit()  # Must commit before background task — it opens its own session
+
+    background_tasks.add_task(
+        _execute_rescue_sprint,
+        goal_id=goal_id,
+        milestone_id=active_milestone.id,
+        user_id=current_user_id,
+    )
+
+    # Re-load goal to return the updated state (sprint_status = 'generating')
+    result = await db.execute(
+        select(Goal)
+        .options(
+            selectinload(Goal.milestones),
+            selectinload(Goal.daily_tasks),
+        )
+        .where(Goal.id == goal_id)
+    )
+    return result.scalar_one()
