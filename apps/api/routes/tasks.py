@@ -31,7 +31,7 @@ router = APIRouter()
 async def _load_task_with_ownership(
     task_id: uuid.UUID, current_user_id: str, db: AsyncSession,
 ) -> tuple[DailyTask, Goal]:
-    result = await db.execute(select(DailyTask).where(DailyTask.id == task_id).with_for_update())
+    result = await db.execute(select(DailyTask).where(DailyTask.id == task_id))
     task = result.scalar_one_or_none()
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -74,6 +74,12 @@ async def complete_task(
     db: AsyncSession = Depends(get_db),
 ):
     task, goal = await _load_task_with_ownership(task_id, current_user_id, db)
+
+    # Re-read with row lock for the idempotency-critical check
+    result = await db.execute(
+        select(DailyTask).where(DailyTask.id == task_id).with_for_update()
+    )
+    task = result.scalar_one_or_none()
 
     if task.is_completed:
         raise HTTPException(status_code=400, detail="Task already completed")

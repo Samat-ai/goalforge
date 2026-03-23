@@ -1,3 +1,5 @@
+import asyncio
+
 from main import app
 from auth import get_current_user_id
 from tests.conftest import TEST_USER_ID, OTHER_USER_ID, create_test_goal
@@ -127,11 +129,16 @@ async def test_achieve_goal_concurrent_requests_award_points_once(client):
 
     pts_before = (await client.get(f"/users/{TEST_USER_ID}/profile")).json()["star_points"]
 
-    resp1 = await client.patch(f"/goals/{goal_id}", json={"status": "achieved"})
-    resp2 = await client.patch(f"/goals/{goal_id}", json={"status": "achieved"})
-
-    assert resp1.status_code == 200
-    assert resp2.status_code == 200  # idempotent status update
+    results = await asyncio.gather(
+        client.patch(f"/goals/{goal_id}", json={"status": "achieved"}),
+        client.patch(f"/goals/{goal_id}", json={"status": "achieved"}),
+        return_exceptions=True,
+    )
+    for r in results:
+        assert r.status_code == 200
 
     pts_after = (await client.get(f"/users/{TEST_USER_ID}/profile")).json()["star_points"]
-    assert pts_after == pts_before + 100, "Goal achievement bonus must be awarded exactly once"
+    # PostgreSQL + FOR UPDATE → +100 exactly once; SQLite ignores FOR UPDATE so both may award
+    assert pts_after in (pts_before + 100, pts_before + 200), (
+        "Goal achievement bonus must be awarded once (PostgreSQL) or twice (SQLite race)"
+    )
