@@ -21,6 +21,7 @@ class MilestoneResponse(BaseModel):
     sprint_status: str
     is_completed: bool
     completed_at: datetime | None
+    generation_started_at: datetime | None = None
     created_at: datetime
 
 
