@@ -16,3 +16,6 @@ __pycache__/
 .claude/
 .playwright-mcp
 .worktrees
+
+# Planning docs (local only)
+docs/superpowers/
