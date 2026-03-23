@@ -330,6 +330,7 @@ async def test_rescue_endpoint_returns_202_and_sets_generating(client, created_g
     data = resp.json()
     # Milestone should now be 'generating'
     assert any(m["sprint_status"] == "generating" for m in data["milestones"])
+    assert "rescue_mode" in data
 
 
 @pytest.mark.asyncio

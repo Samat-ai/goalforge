@@ -250,7 +250,7 @@ async def delete_goal(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/goals/{goal_id}/rescue", status_code=202)
+@router.post("/goals/{goal_id}/rescue", response_model=GoalResponse, status_code=202, summary="Trigger a Recovery Sprint for a stalled goal")
 @rate_limit("10/minute", key_func=_user_key)
 async def trigger_rescue_sprint(
     request: Request,
@@ -269,6 +269,9 @@ async def trigger_rescue_sprint(
         .where(Goal.id == goal_id)
     )
     goal = goal_result.scalar_one()
+
+    if goal.status != "active":
+        raise HTTPException(status_code=409, detail="Goal is not active")
 
     active_milestone = next(
         (m for m in goal.milestones if m.sprint_status in ("active", "ready")),

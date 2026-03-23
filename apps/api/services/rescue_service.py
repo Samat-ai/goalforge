@@ -98,10 +98,36 @@ async def _execute_rescue_sprint(
                         "user_id": user_id,
                     },
                 )
+                if milestone:
+                    await db.execute(
+                        update(Milestone)
+                        .where(Milestone.id == milestone_id)
+                        .values(sprint_status="failed", generation_started_at=None)
+                    )
+                    await db.commit()
                 return
 
             # Use user's local date for sprint-shift math (same as _pre_generate_sprint)
             today = user_today(user.timezone)
+
+            # Idempotency: abort if rescue tasks already exist for today
+            existing_rescue = await db.execute(
+                select(func.count(DailyTask.id)).where(
+                    DailyTask.goal_id == goal_id,
+                    DailyTask.is_rescue_task == True,  # noqa: E712
+                    DailyTask.assigned_date == today,
+                )
+            )
+            if existing_rescue.scalar_one() > 0:
+                logger.info(
+                    "rescue_sprint_already_exists_today",
+                    extra={"goal_id": str(goal_id)},
+                )
+                milestone.sprint_status = "active"
+                milestone.generation_started_at = None
+                await db.commit()
+                return
+
             tomorrow = today + timedelta(days=1)
 
             # Find oldest uncompleted non-rescue task in this sprint
