@@ -31,7 +31,7 @@ router = APIRouter()
 async def _load_task_with_ownership(
     task_id: uuid.UUID, current_user_id: str, db: AsyncSession,
 ) -> tuple[DailyTask, Goal]:
-    result = await db.execute(select(DailyTask).where(DailyTask.id == task_id))
+    result = await db.execute(select(DailyTask).where(DailyTask.id == task_id).with_for_update())
     task = result.scalar_one_or_none()
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")

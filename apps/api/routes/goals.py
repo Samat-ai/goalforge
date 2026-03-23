@@ -186,6 +186,7 @@ async def update_goal_status(
         select(Goal)
         .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
         .where(Goal.id == goal_id)
+        .with_for_update()
     )
     goal = result.scalar_one()
 

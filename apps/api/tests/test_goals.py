@@ -113,3 +113,25 @@ async def test_delete_goal_forbidden_for_other_user(client):
     finally:
         app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
     assert resp.status_code == 403
+
+
+async def test_achieve_goal_concurrent_requests_award_points_once(client):
+    """
+    Two sequential PATCH /goals/{id} setting status='achieved' must award +100 exactly once.
+    The first request transitions active->achieved and awards points; the second sees
+    old_status='achieved' so the guard `old_status != 'achieved'` skips the bonus.
+    In production, .with_for_update() row-locks prevent a concurrent race on the same row.
+    """
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+
+    pts_before = (await client.get(f"/users/{TEST_USER_ID}/profile")).json()["star_points"]
+
+    resp1 = await client.patch(f"/goals/{goal_id}", json={"status": "achieved"})
+    resp2 = await client.patch(f"/goals/{goal_id}", json={"status": "achieved"})
+
+    assert resp1.status_code == 200
+    assert resp2.status_code == 200  # idempotent status update
+
+    pts_after = (await client.get(f"/users/{TEST_USER_ID}/profile")).json()["star_points"]
+    assert pts_after == pts_before + 100, "Goal achievement bonus must be awarded exactly once"
