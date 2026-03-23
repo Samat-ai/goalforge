@@ -1,17 +1,18 @@
 """Background job trigger routes."""
 
 import secrets
-from collections import defaultdict
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from config import settings
 from database import get_db
-from models import DailyTask, Goal, User
-from services.email_service import TaskDigestItem, send_reminder_digest
+from models import Goal, User
+from services.email_service import TaskDigestItem, send_reminder_digest, send_rescue_email
+from services.rescue_service import goal_is_rescue_mode
 
 router = APIRouter()
 
@@ -33,31 +34,50 @@ def _verify_api_key(x_api_key: str | None = Header(default=None)) -> None:
 
 @router.post(
     "/trigger-reminders",
-    summary="Send daily reminder digest for all pending tasks due today",
+    summary="Send daily reminder digest or rescue email per user",
     dependencies=[Depends(_verify_api_key)],
 )
 async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
+    # Load users with active goals, eagerly loading milestones + tasks for rescue detection
     result = await db.execute(
-        select(DailyTask, User.email, User.display_name, Goal.smart_title)
-        .join(Goal, DailyTask.goal_id == Goal.id)
-        .join(User, Goal.user_id == User.id)
-        .where(DailyTask.assigned_date == date.today())
-        .where(DailyTask.is_completed == False)  # noqa: E712
-    )
-    rows = result.all()
-
-    # Group tasks by user (email, display_name)
-    user_tasks: dict[tuple[str, str | None], list[TaskDigestItem]] = defaultdict(list)
-    for task, email, display_name, goal_title in rows:
-        user_tasks[(email, display_name)].append(
-            TaskDigestItem(
-                description=task.description,
-                tip=task.tip,
-                goal_title=goal_title,
-            )
+        select(User)
+        .join(Goal, Goal.user_id == User.id)
+        .where(Goal.status == "active")
+        .options(
+            selectinload(User.goals).selectinload(Goal.milestones),
+            selectinload(User.goals).selectinload(Goal.daily_tasks),
         )
+        .distinct()
+    )
+    users = result.scalars().all()
 
-    for (email, display_name), tasks in user_tasks.items():
-        await send_reminder_digest(email, display_name, tasks)
+    rescue_count = 0
+    digest_count = 0
 
-    return {"sent": len(user_tasks)}
+    for user in users:
+        active_goals = [g for g in user.goals if g.status == "active"]
+        in_rescue = any(goal_is_rescue_mode(g) for g in active_goals)
+
+        if in_rescue:
+            await send_rescue_email(user.email, user.display_name)
+            rescue_count += 1
+        else:
+            today = date.today()
+            tasks = [
+                TaskDigestItem(
+                    description=t.description,
+                    tip=t.tip,
+                    goal_title=next(
+                        (g.smart_title for g in active_goals if g.id == t.goal_id),
+                        "Your Goal",
+                    ),
+                )
+                for g in active_goals
+                for t in g.daily_tasks
+                if t.assigned_date == today and not t.is_completed
+            ]
+            if tasks:
+                await send_reminder_digest(user.email, user.display_name, tasks)
+                digest_count += 1
+
+    return {"rescue_emails": rescue_count, "digest_emails": digest_count}

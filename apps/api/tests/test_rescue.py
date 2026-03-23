@@ -372,3 +372,19 @@ async def test_rescue_endpoint_403_for_other_user(client, created_goal):
         app.dependency_overrides[get_current_user_id] = lambda: "user_test_abc123"
 
     assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# send_rescue_email
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_send_rescue_email_logs_when_no_api_key(caplog):
+    """send_rescue_email falls back to logging when RESEND_API_KEY is unset."""
+    import logging
+    from services.email_service import send_rescue_email
+
+    with caplog.at_level(logging.INFO, logger="services.email_service"):
+        await send_rescue_email("test@example.com", "Star Forger")
+
+    assert any("rescue" in r.message.lower() or "easy" in r.message.lower() for r in caplog.records)

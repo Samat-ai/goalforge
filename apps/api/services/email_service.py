@@ -110,3 +110,54 @@ async def send_reminder_digest(
         logger.info("Reminder digest sent to=%s tasks=%d", recipient, count)
     except Exception:
         logger.exception("Failed to send reminder digest to=%s", email)
+
+
+def _build_rescue_html(display_name: str | None) -> str:
+    """Build the HTML body for a rescue email."""
+    greeting = html_lib.escape(display_name or "Star Forger")
+    app_url = "https://goalforge.app/dashboard"
+    return f"""\
+<div style="background:#0f0f1a;color:#e2e8f0;font-family:'Plus Jakarta Sans',sans-serif;padding:32px;max-width:600px;margin:0 auto;">
+  <h1 style="font-size:22px;margin:0 0 8px;">Let's make today easy, {greeting}.</h1>
+  <p style="color:#94a3b8;margin:0 0 24px;line-height:1.6;">
+    It looks like you've been busy. We went ahead and paused your schedule, and set up two quick 2-minute tasks for you whenever you're ready.
+    No pressure, no catching up. Just open the app when you feel like it.
+  </p>
+  <a href="{app_url}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#6366f1);color:#fff;font-weight:600;font-size:15px;padding:14px 28px;border-radius:10px;text-decoration:none;">
+    Open Easy Mode &rarr;
+  </a>
+  <p style="margin:24px 0 0;font-size:12px;color:#475569;">
+    No catch-up required &mdash; just one small step.
+  </p>
+</div>"""
+
+
+async def send_rescue_email(email: str, display_name: str | None) -> None:
+    """Send a rescue (Easy Mode) email to a user who has been inactive 48h+.
+
+    Falls back to logging when RESEND_API_KEY is not configured.
+    Never raises — logs errors and returns on failure.
+    """
+    if not settings.resend_api_key:
+        logger.info("Rescue email (mock) to=%s", email)
+        return
+
+    html = _build_rescue_html(display_name)
+    recipient = email
+    if settings.dev_email_override:
+        recipient = settings.dev_email_override
+        logger.info("DEV_EMAIL_OVERRIDE active: routing %s → %s", email, recipient)
+
+    try:
+        await asyncio.to_thread(
+            resend.Emails.send,
+            {
+                "from": "GoalForge <onboarding@resend.dev>",
+                "to": [recipient],
+                "subject": "Let's make today easy.",
+                "html": html,
+            },
+        )
+        logger.info("Rescue email sent to=%s", recipient)
+    except Exception:
+        logger.exception("Failed to send rescue email to=%s", email)

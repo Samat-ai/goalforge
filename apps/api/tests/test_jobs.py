@@ -26,7 +26,8 @@ async def test_trigger_reminders_sends_one_digest_per_user(client):
 
     assert resp.status_code == 200
     # One user → one digest, regardless of task count
-    assert resp.json()["sent"] == 1
+    assert resp.json()["digest_emails"] == 1
+    assert resp.json()["rescue_emails"] == 0
     assert mock_send.call_count == 1
     # The digest should contain all of today's tasks
     tasks_arg = mock_send.call_args.args[2]
@@ -52,10 +53,10 @@ async def test_trigger_reminders_skips_completed_tasks(client):
     assert resp.status_code == 200
     if len(today_tasks) == 1:
         # All tasks completed → no digest sent
-        assert resp.json()["sent"] == 0
+        assert resp.json()["digest_emails"] == 0
         mock_send.assert_not_called()
     else:
-        assert resp.json()["sent"] == 1
+        assert resp.json()["digest_emails"] == 1
         tasks_arg = mock_send.call_args.args[2]
         assert len(tasks_arg) == len(today_tasks) - 1
 
@@ -70,7 +71,7 @@ async def test_trigger_reminders_no_tasks_today(client):
         resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
 
     assert resp.status_code == 200
-    assert resp.json() == {"sent": 0}
+    assert resp.json() == {"rescue_emails": 0, "digest_emails": 0}
     mock_send.assert_not_called()
 
 
