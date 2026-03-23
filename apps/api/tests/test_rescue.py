@@ -267,6 +267,7 @@ def _make_orm_goal(
         rescue = MagicMock()
         rescue.is_rescue_task = True
         rescue.assigned_date = date.today()
+        rescue.is_completed = False
         tasks.append(rescue)
     goal.daily_tasks = tasks
     return goal
@@ -283,6 +284,13 @@ def test_goal_is_rescue_mode_false_when_recent_completion():
     recent = datetime.now(timezone.utc) - timedelta(hours=10)
     goal = _make_orm_goal(completed_at=recent)
     assert goal_is_rescue_mode(goal) is False
+
+
+def test_goal_is_rescue_mode_true_at_exact_48h_boundary():
+    from services.rescue_service import goal_is_rescue_mode
+    exactly_48h = datetime.now(timezone.utc) - timedelta(hours=48)
+    goal = _make_orm_goal(completed_at=exactly_48h)
+    assert goal_is_rescue_mode(goal) is True
 
 
 def test_goal_is_rescue_mode_false_when_rescue_task_today():

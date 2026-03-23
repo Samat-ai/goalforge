@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_utils import generate_rescue_tasks
 from database import engine
-from exceptions import AIGenerationError
 from models import DailyTask, Goal, Milestone, User
 from utils import user_today
 
