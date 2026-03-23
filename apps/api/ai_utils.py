@@ -275,8 +275,7 @@ async def generate_rescue_tasks(
     )
 
     async def _attempt() -> list[AIRescueTaskItem]:
-        response = await asyncio.to_thread(
-            _client.models.generate_content,
+        response = await _client.aio.models.generate_content(
             model=_MODEL,
             contents=prompt,
             config=types.GenerateContentConfig(
@@ -285,7 +284,8 @@ async def generate_rescue_tasks(
                 response_schema=AIRescueOutput,
             ),
         )
-        parsed = AIRescueOutput.model_validate_json(response.text)
+        data = json.loads(response.text)
+        parsed = AIRescueOutput.model_validate(data)
         return parsed.tasks
 
     return await _with_retry(_attempt, "generate_rescue_tasks")
