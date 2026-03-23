@@ -125,7 +125,17 @@ class GoalResponse(BaseModel):
     @computed_field
     @property
     def rescue_mode(self) -> bool:
-        """True when goal is active, has an active/ready sprint, no rescue task today, and 48h+ inactive."""
+        """True when:
+        - goal is active
+        - has at least one milestone with sprint_status in ('active', 'ready') — 'ready' included
+          because tasks are generated but user hasn't engaged yet
+        - no rescue task already created today (idempotency guard)
+        - 48h+ elapsed since last task completion (or since created_at if no completions ever)
+
+        Note: uses date.today() (server UTC) for the today check — a known limitation
+        since this runs in a Pydantic model without access to user.timezone.
+        The server-side goal_is_rescue_mode() in rescue_service.py uses user_today() instead.
+        """
         if self.status != "active":
             return False
 

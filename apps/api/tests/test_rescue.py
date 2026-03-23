@@ -196,3 +196,39 @@ def test_goal_response_rescue_mode_false_when_active_less_than_48h():
         ],
     )
     assert goal.rescue_mode is False
+
+
+def test_goal_response_rescue_mode_true_when_no_completions_and_old_goal():
+    """GoalResponse.rescue_mode is True for a brand-new goal with no completions older than 48h."""
+    from schemas import GoalResponse, MilestoneResponse
+
+    old_time = datetime.now(timezone.utc) - timedelta(hours=50)
+    goal = GoalResponse(
+        id=uuid.uuid4(),
+        user_id="user_test",
+        raw_input="Learn Spanish",
+        smart_title="Spanish Fluency",
+        smart_description="90-day goal",
+        goal_type="learning",
+        target_date=date.today() + timedelta(days=90),
+        status="active",
+        progress=0,
+        created_at=old_time,
+        milestones=[
+            MilestoneResponse(
+                id=uuid.uuid4(),
+                goal_id=uuid.uuid4(),
+                title="M1",
+                position=0,
+                is_final=False,
+                sprint_theme="Foundation",
+                sprint_status="active",
+                is_completed=False,
+                completed_at=None,
+                generation_started_at=None,
+                created_at=old_time,
+            )
+        ],
+        daily_tasks=[],  # No tasks, no completions — fallback to created_at
+    )
+    assert goal.rescue_mode is True
