@@ -12,16 +12,22 @@ from schemas import AIRescueTaskItem
 
 @pytest.mark.asyncio
 async def test_generate_rescue_tasks_returns_two_items():
-    """generate_rescue_tasks returns exactly 2 AIRescueTaskItem objects."""
-    mock_item = AIRescueTaskItem(
-        description="Listen to a 2-min podcast clip",
-        tip="Small steps unlock momentum.",
-    )
-    with patch(
-        "ai_utils.generate_rescue_tasks",
-        new=AsyncMock(return_value=[mock_item, mock_item]),
-    ):
-        from ai_utils import generate_rescue_tasks
+    """generate_rescue_tasks parses Gemini response into 2 AIRescueTaskItem objects."""
+    import json
+    from ai_utils import generate_rescue_tasks
+
+    mock_response = MagicMock()
+    mock_response.text = json.dumps({
+        "tasks": [
+            {"description": "Listen to a 2-min podcast clip", "tip": "Small steps unlock momentum."},
+            {"description": "Write one sentence about your goal", "tip": "Just one word to start."},
+        ]
+    })
+
+    with patch("ai_utils._client") as mock_client:
+        mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
         result = await generate_rescue_tasks("Learn Spanish", "90-day Spanish fluency goal")
+
     assert len(result) == 2
     assert all(isinstance(r, AIRescueTaskItem) for r in result)
+    assert result[0].description == "Listen to a 2-min podcast clip"

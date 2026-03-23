@@ -194,9 +194,12 @@ class AIGoalOutput(BaseModel):
 
 
 class AIRescueTaskItem(BaseModel):
-    description: str
-    tip: str
+    description: str = Field(..., description="Recovery micro-task (≤70 chars, action-first)")
+    tip: str = Field(..., description="Encouraging reason why this small step helps (≤20 words)")
 
 
 class AIRescueOutput(BaseModel):
-    tasks: list[AIRescueTaskItem]
+    tasks: list[AIRescueTaskItem] = Field(
+        ..., min_length=2, max_length=2,
+        description="Exactly 2 recovery micro-tasks",
+    )

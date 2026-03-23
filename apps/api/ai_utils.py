@@ -246,7 +246,7 @@ async def regenerate_single_task(
     return await _with_retry(_call, "regenerate_single_task")
 
 
-_RESCUE_PROMPT = """\
+_RESCUE_SYSTEM_PROMPT = """\
 You are helping a user who has missed several days of their goal plan.
 Goal: {goal_title}
 Goal description: {goal_description}
@@ -269,16 +269,17 @@ async def generate_rescue_tasks(
 ) -> list[AIRescueTaskItem]:
     """Generate 2 AI micro-tasks for a Recovery Sprint."""
 
-    prompt = _RESCUE_PROMPT.format(
-        goal_title=goal_title,
-        goal_description=goal_description,
-    )
+    user_message = f"Generate 2 recovery micro-tasks for goal: {goal_title}"
 
     async def _attempt() -> list[AIRescueTaskItem]:
         response = await _client.aio.models.generate_content(
             model=_MODEL,
-            contents=prompt,
+            contents=user_message,
             config=types.GenerateContentConfig(
+                system_instruction=_RESCUE_SYSTEM_PROMPT.format(
+                    goal_title=goal_title,
+                    goal_description=goal_description,
+                ),
                 temperature=1.0,
                 response_mime_type="application/json",
                 response_schema=AIRescueOutput,
