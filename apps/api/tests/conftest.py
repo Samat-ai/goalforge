@@ -8,6 +8,7 @@ Strategy:
 - All Gemini calls mocked — no real AI calls are made
 """
 
+import asyncio
 import uuid
 from datetime import date, timedelta
 from unittest.mock import AsyncMock, patch
@@ -24,6 +25,20 @@ from main import app
 from models import DailyTask, Goal, Milestone
 from schemas import AIMilestoneConfig, AIGoalOutput, AITaskOutput
 from services.goal_service import PLACEHOLDER_MILESTONE_TITLE
+
+# ---------------------------------------------------------------------------
+# Autouse: cancel lingering background tasks after each test (prevents event
+# loop hang on Linux CI when asyncio.create_task() tasks outlive their test).
+# ---------------------------------------------------------------------------
+
+@pytest_asyncio.fixture(autouse=True)
+async def cancel_pending_tasks():
+    yield
+    tasks = {t for t in asyncio.all_tasks() if t is not asyncio.current_task()}
+    for task in tasks:
+        task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
+
 
 # ---------------------------------------------------------------------------
 # Test identity constants
