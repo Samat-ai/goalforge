@@ -232,3 +232,72 @@ def test_goal_response_rescue_mode_true_when_no_completions_and_old_goal():
         daily_tasks=[],  # No tasks, no completions — fallback to created_at
     )
     assert goal.rescue_mode is True
+
+
+# ---------------------------------------------------------------------------
+# goal_is_rescue_mode (ORM object variant)
+# ---------------------------------------------------------------------------
+
+def _make_orm_goal(
+    status="active",
+    sprint_status="active",
+    completed_at=None,
+    created_at=None,
+    has_rescue_task_today=False,
+):
+    """Build a MagicMock mimicking a loaded Goal ORM object."""
+    now = datetime.now(timezone.utc)
+    goal = MagicMock()
+    goal.status = status
+    goal.created_at = created_at or (now - timedelta(hours=49))
+
+    milestone = MagicMock()
+    milestone.sprint_status = sprint_status
+    goal.milestones = [milestone]
+
+    tasks = []
+    if completed_at:
+        t = MagicMock()
+        t.is_completed = True
+        t.completed_at = completed_at
+        t.is_rescue_task = False
+        t.assigned_date = date.today() - timedelta(days=1)
+        tasks.append(t)
+    if has_rescue_task_today:
+        rescue = MagicMock()
+        rescue.is_rescue_task = True
+        rescue.assigned_date = date.today()
+        tasks.append(rescue)
+    goal.daily_tasks = tasks
+    return goal
+
+
+def test_goal_is_rescue_mode_true_when_no_completions():
+    from services.rescue_service import goal_is_rescue_mode
+    goal = _make_orm_goal()
+    assert goal_is_rescue_mode(goal) is True
+
+
+def test_goal_is_rescue_mode_false_when_recent_completion():
+    from services.rescue_service import goal_is_rescue_mode
+    recent = datetime.now(timezone.utc) - timedelta(hours=10)
+    goal = _make_orm_goal(completed_at=recent)
+    assert goal_is_rescue_mode(goal) is False
+
+
+def test_goal_is_rescue_mode_false_when_rescue_task_today():
+    from services.rescue_service import goal_is_rescue_mode
+    goal = _make_orm_goal(has_rescue_task_today=True)
+    assert goal_is_rescue_mode(goal) is False
+
+
+def test_goal_is_rescue_mode_false_when_not_active():
+    from services.rescue_service import goal_is_rescue_mode
+    goal = _make_orm_goal(status="achieved")
+    assert goal_is_rescue_mode(goal) is False
+
+
+def test_goal_is_rescue_mode_false_when_no_active_sprint():
+    from services.rescue_service import goal_is_rescue_mode
+    goal = _make_orm_goal(sprint_status="completed")
+    assert goal_is_rescue_mode(goal) is False
