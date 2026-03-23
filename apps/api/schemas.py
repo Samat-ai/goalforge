@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -44,6 +44,7 @@ class TaskResponse(TaskBase):
     milestone_id: uuid.UUID | None
     is_completed: bool
     completed_at: datetime | None
+    is_rescue_task: bool = False
 
 
 class TaskCreate(BaseModel):
@@ -120,6 +121,44 @@ class GoalResponse(BaseModel):
     def milestones_total(self) -> int:
         """Total number of milestones for this goal."""
         return len(self.milestones)
+
+    @computed_field
+    @property
+    def rescue_mode(self) -> bool:
+        """True when goal is active, has an active/ready sprint, no rescue task today, and 48h+ inactive."""
+        if self.status != "active":
+            return False
+
+        active_milestone = next(
+            (m for m in self.milestones if m.sprint_status in ("active", "ready")),
+            None,
+        )
+        if not active_milestone:
+            return False
+
+        today = date.today()
+        rescue_task_today = any(
+            t.is_rescue_task and t.assigned_date == today
+            for t in self.daily_tasks
+        )
+        if rescue_task_today:
+            return False
+
+        completed_times = [
+            t.completed_at
+            for t in self.daily_tasks
+            if t.is_completed and t.completed_at is not None
+        ]
+        if completed_times:
+            last_completed = max(completed_times)
+        else:
+            last_completed = self.created_at
+
+        # Normalize to UTC-aware for comparison (ORM datetimes may be naive but are UTC)
+        if last_completed.tzinfo is None:
+            last_completed = last_completed.replace(tzinfo=timezone.utc)
+
+        return (datetime.now(timezone.utc) - last_completed) >= timedelta(hours=48)
 
 
 # ---------------------------------------------------------------------------
