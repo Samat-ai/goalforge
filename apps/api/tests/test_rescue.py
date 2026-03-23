@@ -309,3 +309,65 @@ def test_goal_is_rescue_mode_false_when_no_active_sprint():
     from services.rescue_service import goal_is_rescue_mode
     goal = _make_orm_goal(sprint_status="completed")
     assert goal_is_rescue_mode(goal) is False
+
+
+# ---------------------------------------------------------------------------
+# POST /goals/{goal_id}/rescue endpoint tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_rescue_endpoint_returns_202_and_sets_generating(client, created_goal):
+    """POST /rescue sets milestone to generating and returns the goal."""
+    goal_id = created_goal["id"]
+
+    with patch(
+        "services.rescue_service._execute_rescue_sprint",
+        new=AsyncMock(return_value=None),
+    ):
+        resp = await client.post(f"/goals/{goal_id}/rescue")
+
+    assert resp.status_code == 202
+    data = resp.json()
+    # Milestone should now be 'generating'
+    assert any(m["sprint_status"] == "generating" for m in data["milestones"])
+
+
+@pytest.mark.asyncio
+async def test_rescue_endpoint_409_when_no_active_sprint(client, created_goal, db_session):
+    """POST /rescue returns 409 when there is no active sprint."""
+    from sqlalchemy import update as sql_update
+    from models import Milestone
+
+    goal_id = created_goal["id"]
+
+    # Mark all milestones as completed so there is no active sprint
+    await db_session.execute(
+        sql_update(Milestone)
+        .where(Milestone.goal_id == uuid.UUID(goal_id))
+        .values(sprint_status="completed")
+    )
+    await db_session.commit()
+
+    resp = await client.post(f"/goals/{goal_id}/rescue")
+    assert resp.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_rescue_endpoint_403_for_other_user(client, created_goal):
+    """POST /rescue returns 403 when called by a different user.
+
+    Uses try/finally auth override swap — per CLAUDE.md 'Test auth override gotcha',
+    using both client and other_client fixtures in one test causes override conflicts.
+    """
+    from auth import get_current_user_id
+    from main import app
+
+    goal_id = created_goal["id"]
+
+    try:
+        app.dependency_overrides[get_current_user_id] = lambda: "user_other_xyz789"
+        resp = await client.post(f"/goals/{goal_id}/rescue")
+    finally:
+        app.dependency_overrides[get_current_user_id] = lambda: "user_test_abc123"
+
+    assert resp.status_code == 403
