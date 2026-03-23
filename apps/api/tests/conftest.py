@@ -9,12 +9,24 @@ Strategy:
 """
 
 import asyncio
+import os
 import uuid
 from datetime import date, timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Force-exit the process after all tests finish.
+
+    Without this, aiosqlite's internal thread pool keeps the Python process alive
+    indefinitely on Linux CI after all tests pass — causing a 10+ minute hang.
+    os._exit() bypasses Python's atexit/finalizer machinery and kills the process
+    immediately, which is safe because all test results have already been collected.
+    """
+    os._exit(int(exitstatus))
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete as sql_delete, update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
