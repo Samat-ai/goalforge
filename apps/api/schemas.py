@@ -191,3 +191,12 @@ class AIGoalOutput(BaseModel):
         ..., min_length=1, max_length=7,
         description="Daily tasks for the FIRST milestone sprint only (7 days)"
     )
+
+
+class AIRescueTaskItem(BaseModel):
+    description: str
+    tip: str
+
+
+class AIRescueOutput(BaseModel):
+    tasks: list[AIRescueTaskItem]
