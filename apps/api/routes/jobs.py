@@ -1,7 +1,6 @@
 """Background job trigger routes."""
 
 import secrets
-from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy import select
@@ -13,6 +12,7 @@ from database import get_db
 from models import Goal, User
 from services.email_service import TaskDigestItem, send_reminder_digest, send_rescue_email
 from services.rescue_service import goal_is_rescue_mode
+from utils import user_today
 
 router = APIRouter()
 
@@ -58,11 +58,14 @@ async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
         active_goals = [g for g in user.goals if g.status == "active"]
         in_rescue = any(goal_is_rescue_mode(g) for g in active_goals)
 
+        # Rescue takes priority: if any goal is in rescue mode, send rescue email only.
+        # A user with mixed-state goals (some rescue, some healthy) gets one rescue email
+        # per day — intentional per spec to avoid email overload.
         if in_rescue:
             await send_rescue_email(user.email, user.display_name)
             rescue_count += 1
         else:
-            today = date.today()
+            today = user_today(user.timezone)
             tasks = [
                 TaskDigestItem(
                     description=t.description,
