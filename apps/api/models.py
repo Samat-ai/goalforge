@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 
+import sqlalchemy as sa
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
@@ -132,7 +133,7 @@ class DailyTask(Base):
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     is_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_rescue_task: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default="false"
+        Boolean, nullable=False, default=False, server_default=sa.false()
     )
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
