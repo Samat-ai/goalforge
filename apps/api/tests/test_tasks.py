@@ -1,5 +1,3 @@
-import asyncio
-
 from auth import get_current_user_id
 from main import app
 from tests.conftest import OTHER_USER_ID, TEST_USER_ID, create_test_goal
@@ -209,27 +207,21 @@ async def test_regenerate_completed_task_returns_400(client):
 
 async def test_complete_task_concurrent_requests_award_points_once(client):
     """
-    Two sequential PATCH /tasks/{id}/complete requests must award +10 exactly once.
-    The first completes the task; the second sees is_completed=True and returns 400.
-    In production, .with_for_update() row-locks prevent a concurrent race on the same row.
+    Completing the same task twice awards +10 exactly once.
+    The first request marks the task complete; the second sees is_completed=True and returns 400.
+    The .with_for_update() lock in complete_task enforces this in production (PostgreSQL).
+    This test verifies the application-level idempotency guard.
     """
     goal = await create_test_goal(client)
     task_id = goal["daily_tasks"][0]["id"]
 
     pts_before = (await client.get(f"/users/{TEST_USER_ID}/profile")).json()["star_points"]
 
-    results = await asyncio.gather(
-        client.patch(f"/tasks/{task_id}/complete"),
-        client.patch(f"/tasks/{task_id}/complete"),
-        return_exceptions=True,
-    )
-    status_codes = sorted([r.status_code for r in results if hasattr(r, "status_code")])
-    # PostgreSQL + FOR UPDATE → [200, 400]; SQLite ignores FOR UPDATE so both may succeed
-    assert status_codes in ([200, 400], [200, 200]), f"Unexpected status codes: {status_codes}"
+    resp1 = await client.patch(f"/tasks/{task_id}/complete")
+    resp2 = await client.patch(f"/tasks/{task_id}/complete")
+
+    assert resp1.status_code == 200
+    assert resp2.status_code == 400
 
     pts_after = (await client.get(f"/users/{TEST_USER_ID}/profile")).json()["star_points"]
-    if status_codes == [200, 400]:
-        assert pts_after == pts_before + 10, "Points must be awarded exactly once"
-    else:
-        # SQLite: both requests saw is_completed=False; verify points awarded per success
-        assert pts_after == pts_before + 20, "SQLite: both concurrent requests awarded points"
+    assert pts_after == pts_before + 10, "Points must be awarded exactly once"

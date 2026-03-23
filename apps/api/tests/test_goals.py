@@ -1,5 +1,3 @@
-import asyncio
-
 from main import app
 from auth import get_current_user_id
 from tests.conftest import TEST_USER_ID, OTHER_USER_ID, create_test_goal
@@ -119,26 +117,22 @@ async def test_delete_goal_forbidden_for_other_user(client):
 
 async def test_achieve_goal_concurrent_requests_award_points_once(client):
     """
-    Two sequential PATCH /goals/{id} setting status='achieved' must award +100 exactly once.
-    The first request transitions active->achieved and awards points; the second sees
-    old_status='achieved' so the guard `old_status != 'achieved'` skips the bonus.
-    In production, .with_for_update() row-locks prevent a concurrent race on the same row.
+    Achieving a goal twice awards +100 exactly once.
+    Both requests return 200 (status update is idempotent), but the second skips the bonus
+    because old_status is already 'achieved'.
+    The .with_for_update() lock in update_goal_status enforces this in production (PostgreSQL).
+    This test verifies the application-level idempotency guard.
     """
     goal = await create_test_goal(client)
     goal_id = goal["id"]
 
     pts_before = (await client.get(f"/users/{TEST_USER_ID}/profile")).json()["star_points"]
 
-    results = await asyncio.gather(
-        client.patch(f"/goals/{goal_id}", json={"status": "achieved"}),
-        client.patch(f"/goals/{goal_id}", json={"status": "achieved"}),
-        return_exceptions=True,
-    )
-    for r in results:
-        assert r.status_code == 200
+    resp1 = await client.patch(f"/goals/{goal_id}", json={"status": "achieved"})
+    resp2 = await client.patch(f"/goals/{goal_id}", json={"status": "achieved"})
+
+    assert resp1.status_code == 200
+    assert resp2.status_code == 200
 
     pts_after = (await client.get(f"/users/{TEST_USER_ID}/profile")).json()["star_points"]
-    # PostgreSQL + FOR UPDATE → +100 exactly once; SQLite ignores FOR UPDATE so both may award
-    assert pts_after in (pts_before + 100, pts_before + 200), (
-        "Goal achievement bonus must be awarded once (PostgreSQL) or twice (SQLite race)"
-    )
+    assert pts_after == pts_before + 100, "Goal achievement bonus must be awarded exactly once"
