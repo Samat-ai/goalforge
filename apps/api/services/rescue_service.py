@@ -123,8 +123,11 @@ async def _execute_rescue_sprint(
                     "rescue_sprint_already_exists_today",
                     extra={"goal_id": str(goal_id)},
                 )
-                milestone.sprint_status = "active"
-                milestone.generation_started_at = None
+                await db.execute(
+                    update(Milestone)
+                    .where(Milestone.id == milestone_id)
+                    .values(sprint_status="active", generation_started_at=None)
+                )
                 await db.commit()
                 return
 
