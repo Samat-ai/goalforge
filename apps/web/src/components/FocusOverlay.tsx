@@ -1,5 +1,4 @@
-import { useEffect, useMemo } from 'react'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { T } from '../lib/theme'
 import { pickOneThing } from '../lib/pickOneThing'
 import { useGoalMutations } from '../hooks'
@@ -261,7 +260,7 @@ export default function FocusOverlay({ goals, userId, isOpen, onClose }: FocusOv
             width: '100%',
           }}
         >
-          Mark Complete  +10 ⭐
+          Mark Complete +10 ⭐
         </button>
       </div>
     </div>
