@@ -25,6 +25,7 @@ export interface Task {
   position: number
   is_completed: boolean
   completed_at: string | null
+  is_rescue_task: boolean
 }
 
 export interface Milestone {
@@ -56,4 +57,5 @@ export interface Goal {
   created_at: string
   daily_tasks: Task[]
   completed_days: string[]
+  rescue_mode: boolean
 }

@@ -249,6 +249,15 @@ export function useGoalMutations(userId: string) {
     },
   })
 
+  // ── Trigger Rescue Sprint (invalidate + re-fetch) ──
+  const triggerRescueMutation = useMutation({
+    mutationFn: (goalId: string) =>
+      api.post(`/goals/${goalId}/rescue`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.goals(userId) })
+    },
+  })
+
   // ── Return handlers matching existing Dashboard signatures ──
   return {
     addGoal: async (rawInput: string): Promise<void> => { await addGoalMutation.mutateAsync(rawInput) },
@@ -285,5 +294,7 @@ export function useGoalMutations(userId: string) {
       await retrySprintGenerationMutation.mutateAsync({ goalId, milestoneId })
     },
     isRetryingSprintGeneration: retrySprintGenerationMutation.isPending,
+
+    triggerRescue: (goalId: string) => { triggerRescueMutation.mutate(goalId) },
   }
 }
