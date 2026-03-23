@@ -70,7 +70,21 @@ export default function GoalCard({ goal }: GoalCardProps) {
   const allMilestonesComplete = goal.milestones.length > 0 && goal.milestones.every(m => m.is_completed)
   const milestonesProgress   = goal.milestones_total > 0 ? Math.round((goal.milestones_completed / goal.milestones_total) * 100) : 0
 
-  const isGenerating = goal.milestones[0]?.sprint_status === 'generating'
+  const isGenerating = goal.milestones.some(m => m.sprint_status === 'generating')
+
+  const isRescueMode = goal.rescue_mode && !isGenerating
+
+  const DISMISS_KEY = `rescue_dismissed_${goal.id}`
+  const [dismissed, setDismissed] = useState(() => {
+    const ts = localStorage.getItem(DISMISS_KEY)
+    if (!ts) return false
+    return Date.now() - Number(ts) < 8 * 60 * 60 * 1000  // safe: runs in initializer, not render
+  })
+
+  const handleDismiss = () => {
+    localStorage.setItem(DISMISS_KEY, String(Date.now()))
+    setDismissed(true)
+  }
 
   const todayTasks  = goal.daily_tasks
     .filter(t => t.assigned_date === todayStr())
@@ -167,8 +181,48 @@ export default function GoalCard({ goal }: GoalCardProps) {
         </div>
       )}
 
+      {/* ── Recovery Sprint card — replaces SprintRail + DailyTaskList ── */}
+      {isRescueMode && !dismissed && !isAbandoned && !isAchieved && (
+        <div style={{ padding: '0 18px 22px' }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: '#2d1f4e', border: '1px solid #5b21b6',
+            borderRadius: 20, padding: '3px 10px',
+            fontSize: 10, fontWeight: 600, letterSpacing: '0.08em',
+            color: T.amber, fontFamily: T.mono,
+            textTransform: 'uppercase', marginBottom: 14,
+          }}>
+            ✦ EASY MODE
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: T.text, marginBottom: 6, lineHeight: 1.3 }}>
+            Let's make today easy.
+          </div>
+          <div style={{ fontSize: 13, color: T.muted, lineHeight: 1.6, marginBottom: 18 }}>
+            It looks like you've been busy. We paused your schedule and set up two quick wins
+            for today — no pressure, no catching up.
+          </div>
+          <Btn
+            variant="primary"
+            style={{ width: '100%', marginBottom: 10 }}
+            onClick={() => mutations.triggerRescue(goal.id)}
+          >
+            Start Easy Mode (2 min)
+          </Btn>
+          <button
+            onClick={handleDismiss}
+            style={{
+              display: 'block', width: '100%', textAlign: 'center',
+              fontSize: 12, color: T.muted, background: 'none', border: 'none',
+              textDecoration: 'underline', cursor: 'pointer', padding: 4, minHeight: 44,
+            }}
+          >
+            I'm feeling good — show my full plan
+          </button>
+        </div>
+      )}
+
       {/* ── Sprint Rail ── */}
-      {!isGenerating && !isAbandoned && !isAchieved && goal.milestones.length > 0 && (
+      {(!isRescueMode || dismissed) && !isGenerating && !isAbandoned && !isAchieved && goal.milestones.length > 0 && (
         <SprintRail
           milestones={goal.milestones}
           activeMilestone={activeMilestone}
@@ -199,7 +253,7 @@ export default function GoalCard({ goal }: GoalCardProps) {
       )}
 
       {/* ── Today's tasks ── */}
-      {!isGenerating && !isAbandoned && !isAchieved && (todayTasks.length > 0 || activeMilestone || overdueTasks.length > 0) && (
+      {(!isRescueMode || dismissed) && !isGenerating && !isAbandoned && !isAchieved && (todayTasks.length > 0 || activeMilestone || overdueTasks.length > 0) && (
         <DailyTaskList
           goalId={goal.id}
           tasks={todayTasks}
