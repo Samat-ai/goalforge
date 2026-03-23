@@ -6,6 +6,7 @@ import { Creature } from '../components/GamificationSvgs'
 import TodayBar from '../components/TodayBar'
 import AddGoal from '../components/AddGoal'
 import GoalCard from '../components/GoalCard'
+import FocusOverlay from '../components/FocusOverlay'
 import { useGoalsQuery, useProfileQuery, useGoalMutations } from '../hooks'
 import { todayStr } from '../lib/gamification'
 import type { Goal } from '../lib/types'
@@ -190,6 +191,7 @@ export default function Dashboard() {
 
   const [filter, setFilter] = useState<string>('all')
   const [addGoalText, setAddGoalText] = useState('')
+  const [focusOpen, setFocusOpen] = useState(false)
 
   useEffect(() => { document.title = 'Dashboard — GoalForge' }, [])
 
@@ -263,7 +265,7 @@ export default function Dashboard() {
         {!loading && !error && (
           <>
             <DoThisNow goals={goals} />
-            <TodayBar goals={goals} />
+            <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} />
             <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} />
 
             {goals.length === 0 ? (
@@ -307,6 +309,14 @@ export default function Dashboard() {
           </>
         )}
       </main>
+
+      <FocusOverlay
+        key={focusOpen ? 'open' : 'closed'}
+        goals={goals}
+        userId={userId ?? ''}
+        isOpen={focusOpen}
+        onClose={() => setFocusOpen(false)}
+      />
     </div>
   )
 }
