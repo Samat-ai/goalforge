@@ -61,7 +61,7 @@ export function pickOneThing(goals: Goal[]): FocusItem | null {
         score = TODAY_SCORE
       } else if (task.assigned_date < today) {
         const daysOverdue = dateDiffDays(task.assigned_date, today)
-        score = OVERDUE_BASE + daysOverdue
+        score = Math.min(OVERDUE_BASE + daysOverdue, TODAY_SCORE - 1)
       } else {
         score = 1 // future task — lowest priority
       }
