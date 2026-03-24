@@ -41,6 +41,29 @@ export interface Milestone {
   created_at: string
 }
 
+export interface RewardDrop {
+  tier: 'bonus' | 'crit' | 'jackpot'
+  points_awarded: number
+  collectible_type: 'theme' | 'title' | 'lore' | null
+  collectible_key: string | null
+  collectible_display_name: string | null
+  collectible_body: string | null
+}
+
+export interface TaskCompleteResponse extends Task {
+  reward_drop: RewardDrop | null
+}
+
+export interface Reward {
+  id: string
+  reward_type: 'theme' | 'title' | 'lore'
+  reward_key: string
+  display_name: string
+  body: string | null
+  is_equipped: boolean
+  acquired_at: string
+}
+
 export interface Goal {
   id: string
   user_id: string

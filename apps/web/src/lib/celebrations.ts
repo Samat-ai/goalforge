@@ -79,3 +79,18 @@ export function triggerCelebration(type: 'task' | 'sprint' | 'goal') {
     case 'goal':   return goalFireworks()
   }
 }
+
+export function triggerCritCelebration() {
+  // Slightly larger burst than task pop — purple-tinted
+  confetti({
+    particleCount: 90,
+    spread: 70,
+    origin: { y: 0.6 },
+    colors: ['#a78bfa', '#c4b5fd', '#fbbf24', '#f59e0b'],
+  })
+}
+
+export function triggerJackpotCelebration() {
+  // Full goalFireworks equivalent — reuse existing goalFireworks
+  goalFireworks()
+}

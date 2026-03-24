@@ -3,8 +3,8 @@ import { toast } from 'sonner'
 import api from '../lib/api'
 import { queryKeys } from '../lib/queryKeys'
 import { todayStr } from '../lib/gamification'
-import { triggerCelebration } from '../lib/celebrations'
-import type { Goal, Task, PaginatedGoalsResponse } from '../lib/types'
+import { triggerCelebration, triggerCritCelebration, triggerJackpotCelebration } from '../lib/celebrations'
+import type { Goal, Task, PaginatedGoalsResponse, TaskCompleteResponse, RewardDrop } from '../lib/types'
 
 const GOALS_PARAMS = { limit: 20, offset: 0 } as const
 
@@ -12,7 +12,7 @@ interface ProfileData {
   star_points: number
 }
 
-export function useGoalMutations(userId: string) {
+export function useGoalMutations(userId: string, onJackpot?: (drop: RewardDrop) => void) {
   const qc = useQueryClient()
   const goalsKey = queryKeys.goals(userId, GOALS_PARAMS)
   const profileKey = queryKeys.profile(userId)
@@ -41,10 +41,11 @@ export function useGoalMutations(userId: string) {
     },
   })
 
-  // ── Complete Task (optimistic fire-and-forget) ──
+  // ── Complete Task (mutateAsync internally; toast deferred to onSuccess) ──
   const completeTaskMutation = useMutation({
-    mutationFn: async (taskId: string) => {
-      await api.patch(`/tasks/${taskId}/complete`)
+    mutationFn: async (taskId: string): Promise<TaskCompleteResponse> => {
+      const { data } = await api.patch<TaskCompleteResponse>(`/tasks/${taskId}/complete`)
+      return data
     },
     onMutate: async (taskId: string) => {
       await qc.cancelQueries({ queryKey: goalsKey })
@@ -52,6 +53,7 @@ export function useGoalMutations(userId: string) {
       const prevProfile = qc.getQueryData<ProfileData>(profileKey)
       const today = todayStr()
 
+      // Optimistic: mark complete + +10 pts + confetti pop
       updateGoals(goals => goals.map(goal => {
         if (!goal.daily_tasks.some(t => t.id === taskId)) return goal
         return {
@@ -61,10 +63,42 @@ export function useGoalMutations(userId: string) {
         }
       }))
       updatePts(10)
-      toast.success('Task completed! +10 pts', { icon: '⚡' })
       triggerCelebration('task')
+      // Toast is NOT fired here — deferred to onSuccess to avoid double-toast
 
       return { prevGoals, prevProfile }
+    },
+    onSuccess: (data) => {
+      const drop = data.reward_drop
+
+      if (!drop) {
+        // Standard (+10) — pts already correct from onMutate
+        toast.success('Task completed! +10 pts', { icon: '⚡' })
+      } else if (drop.tier === 'bonus') {
+        // Correct optimistic +10 to actual points
+        updatePts(drop.points_awarded - 10)
+        toast.success(`Bonus! +${drop.points_awarded} pts \u2746`, {
+          style: { borderLeft: '3px solid #f59e0b', background: '#1a140a' },
+        })
+      } else if (drop.tier === 'crit') {
+        updatePts(drop.points_awarded - 10)
+        triggerCritCelebration()
+        toast.success(
+          `CRIT \u2014 ${drop.collectible_display_name ?? 'Lore Fragment'} unlocked (+${drop.points_awarded} \u2b50)`,
+          {
+            duration: 10000,
+            style: {
+              borderLeft: '3px solid #a78bfa',
+              background: 'linear-gradient(135deg, #1a0f2e, #0f1a2e)',
+              color: '#e2e8f0',
+            },
+          }
+        )
+      } else if (drop.tier === 'jackpot') {
+        updatePts(drop.points_awarded - 10)
+        triggerJackpotCelebration()
+        onJackpot?.(drop)
+      }
     },
     onError: (_err, _taskId, context) => {
       if (context?.prevGoals) qc.setQueryData(goalsKey, context.prevGoals)
@@ -263,7 +297,11 @@ export function useGoalMutations(userId: string) {
     addGoal: async (rawInput: string): Promise<void> => { await addGoalMutation.mutateAsync(rawInput) },
     isAddingGoal: addGoalMutation.isPending,
 
-    completeTask: (taskId: string) => { completeTaskMutation.mutate(taskId) },
+    completeTask: (taskId: string) => {
+      completeTaskMutation.mutateAsync(taskId).catch(() => {
+        // onError already handles rollback — suppress unhandled rejection
+      })
+    },
 
     saveEdit: (taskId: string, description: string) =>
       saveEditMutation.mutateAsync({ taskId, description }),

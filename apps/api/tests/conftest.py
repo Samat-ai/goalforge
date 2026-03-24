@@ -202,6 +202,7 @@ async def client(engine):
         patch("routes.milestones.generate_sprint_tasks", new=AsyncMock(return_value=mock_tasks)),
         patch("services.task_service._pre_generate_sprint", new=AsyncMock()),
         patch("routes.tasks.regenerate_single_task", new=AsyncMock(return_value=mock_regen)),
+        patch("services.reward_service.roll_reward", return_value="standard"),  # always standard in tests
     ):
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
@@ -282,6 +283,7 @@ async def other_client(engine):
         patch("routes.milestones.generate_sprint_tasks", new=AsyncMock(return_value=mock_tasks)),
         patch("services.task_service._pre_generate_sprint", new=AsyncMock()),
         patch("routes.tasks.regenerate_single_task", new=AsyncMock(return_value=mock_regen)),
+        patch("services.reward_service.roll_reward", return_value="standard"),  # always standard in tests
     ):
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
