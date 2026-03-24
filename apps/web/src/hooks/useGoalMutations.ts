@@ -86,7 +86,7 @@ export function useGoalMutations(userId: string, onJackpot?: (drop: RewardDrop) 
         toast.success(
           `CRIT \u2014 ${drop.collectible_display_name ?? 'Lore Fragment'} unlocked (+${drop.points_awarded} \u2b50)`,
           {
-            duration: 5000,
+            duration: 10000,
             style: {
               borderLeft: '3px solid #a78bfa',
               background: 'linear-gradient(135deg, #1a0f2e, #0f1a2e)',
