@@ -83,6 +83,9 @@ async def complete_task(
     )
     task = result.scalar_one_or_none()
 
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
     if task.is_completed:
         raise HTTPException(status_code=400, detail="Task already completed")
 
