@@ -12,6 +12,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -141,3 +142,28 @@ class DailyTask(Base):
 
     goal: Mapped["Goal"] = relationship("Goal", back_populates="daily_tasks")
     milestone: Mapped["Milestone | None"] = relationship("Milestone", back_populates="daily_tasks")
+
+
+class Reward(Base):
+    __tablename__ = "rewards"
+    __table_args__ = (
+        UniqueConstraint("user_id", "reward_key", name="uq_rewards_user_key"),
+        CheckConstraint(
+            "reward_type IN ('theme', 'title', 'lore')",
+            name="ck_rewards_type",
+        ),
+        Index("ix_rewards_user_id", "user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    reward_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    reward_key: Mapped[str] = mapped_column(String(60), nullable=False)
+    is_equipped: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    acquired_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
