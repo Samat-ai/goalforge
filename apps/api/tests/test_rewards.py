@@ -8,7 +8,7 @@ from sqlalchemy import select
 from auth import get_current_user_id
 from main import app
 from models import Reward
-from tests.conftest import OTHER_USER_ID, TEST_USER_ID, create_test_goal
+from tests.conftest import OTHER_USER_ID, TEST_USER_ID
 
 
 async def _seed_reward(db_session, user_id, reward_type, reward_key, is_equipped=False):
