@@ -35,7 +35,7 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
       const cls = THEME_KEY_TO_CLASS[equippedTheme.reward_key]
       if (cls) document.body.classList.add(cls)
     }
-  }, [equippedTheme?.reward_key])
+  }, [equippedTheme])
 
   return (
     <>

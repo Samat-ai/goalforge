@@ -68,7 +68,7 @@ export function useGoalMutations(userId: string, onJackpot?: (drop: RewardDrop) 
 
       return { prevGoals, prevProfile }
     },
-    onSuccess: (data, _taskId, _context) => {
+    onSuccess: (data) => {
       const drop = data.reward_drop
 
       if (!drop) {
