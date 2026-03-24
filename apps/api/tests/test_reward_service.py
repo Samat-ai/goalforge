@@ -127,3 +127,92 @@ def test_consistency_tier_mapping():
     assert reward_service._consistency_tier(11) == "high"
     assert reward_service._consistency_tier(12) == "max"
     assert reward_service._consistency_tier(14) == "max"
+
+
+# ---------------------------------------------------------------------------
+# pick_collectible
+# ---------------------------------------------------------------------------
+
+async def test_pick_collectible_returns_none_for_standard(db_session):
+    user, goal = await _make_user_goal(db_session)
+    result = await reward_service.pick_collectible("standard", TEST_USER_ID, db_session)
+    assert result is None
+
+
+async def test_pick_collectible_returns_none_for_bonus(db_session):
+    user, goal = await _make_user_goal(db_session)
+    result = await reward_service.pick_collectible("bonus", TEST_USER_ID, db_session)
+    assert result is None
+
+
+async def test_pick_collectible_crit_returns_lore(db_session):
+    user, goal = await _make_user_goal(db_session)
+    result = await reward_service.pick_collectible("crit", TEST_USER_ID, db_session)
+    assert result is not None
+    assert result["reward_type"] == "lore"
+    assert result["key"] in [item["key"] for item in reward_service.COLLECTIBLE_REGISTRY["lore"]]
+
+
+async def test_pick_collectible_jackpot_returns_theme_or_title(db_session):
+    user, goal = await _make_user_goal(db_session)
+    result = await reward_service.pick_collectible("jackpot", TEST_USER_ID, db_session)
+    assert result is not None
+    assert result["reward_type"] in ("theme", "title")
+
+
+async def test_pick_collectible_excludes_owned(db_session):
+    user, goal = await _make_user_goal(db_session)
+    # Own all lore fragments
+    for item in reward_service.COLLECTIBLE_REGISTRY["lore"]:
+        db_session.add(Reward(
+            id=uuid.uuid4(),
+            user_id=TEST_USER_ID,
+            reward_type="lore",
+            reward_key=item["key"],
+        ))
+    await db_session.flush()
+
+    result = await reward_service.pick_collectible("crit", TEST_USER_ID, db_session)
+    assert result is None  # lore pool exhausted
+
+
+# ---------------------------------------------------------------------------
+# award_reward
+# ---------------------------------------------------------------------------
+
+async def test_award_reward_increments_points(db_session):
+    user, goal = await _make_user_goal(db_session)
+    result = await reward_service.award_reward(TEST_USER_ID, "bonus", None, db_session)
+
+    assert result.tier == "bonus"
+    assert result.points_awarded == 15
+    assert result.collectible_type is None
+
+    refreshed = (await db_session.execute(
+        select(User).where(User.id == TEST_USER_ID)
+    )).scalar_one()
+    assert refreshed.star_points == 15
+
+
+async def test_award_reward_inserts_reward_row(db_session):
+    user, goal = await _make_user_goal(db_session)
+    collectible = {"reward_type": "lore", "key": "lore_speck", "display_name": "The Speck Awakens", "body": "text"}
+
+    result = await reward_service.award_reward(TEST_USER_ID, "crit", collectible, db_session)
+
+    assert result.collectible_key == "lore_speck"
+    row = (await db_session.execute(
+        select(Reward).where(Reward.user_id == TEST_USER_ID, Reward.reward_key == "lore_speck")
+    )).scalar_one_or_none()
+    assert row is not None
+    assert row.reward_type == "lore"
+    assert row.is_equipped is False
+
+
+async def test_award_reward_standard_no_collectible(db_session):
+    user, goal = await _make_user_goal(db_session)
+    result = await reward_service.award_reward(TEST_USER_ID, "standard", None, db_session)
+
+    assert result.tier == "standard"
+    assert result.points_awarded == 10
+    assert result.collectible_type is None
