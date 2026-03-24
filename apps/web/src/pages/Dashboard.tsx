@@ -308,7 +308,7 @@ export default function Dashboard() {
                   )}
                   {filtered.map(goal => (
                     <div key={goal.id} id={`goal-card-${goal.id}`}>
-                      <GoalCard goal={goal} />
+                      <GoalCard goal={goal} onJackpot={(drop) => setActiveRewardDrop(drop)} />
                     </div>
                   ))}
                 </div>

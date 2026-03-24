@@ -8,14 +8,15 @@ import SprintRail from './SprintRail'
 import DailyTaskList from './DailyTaskList'
 import GoalHeatmap from './GoalHeatmap'
 import { useGoalMutations } from '../hooks'
-import type { Goal } from '../lib/types'
+import type { Goal, RewardDrop } from '../lib/types'
 
 export interface GoalCardProps {
   goal: Goal
+  onJackpot?: (drop: RewardDrop) => void
 }
 
-export default function GoalCard({ goal }: GoalCardProps) {
-  const mutations = useGoalMutations(goal.user_id)
+export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
+  const mutations = useGoalMutations(goal.user_id, onJackpot)
 
   const [open, setOpen] = useState(false)
   const [completingMilestone, setCompletingMilestone] = useState(false)
