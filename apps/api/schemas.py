@@ -47,6 +47,21 @@ class TaskResponse(TaskBase):
     is_rescue_task: bool = False
 
 
+class RewardDrop(BaseModel):
+    tier: Literal['bonus', 'crit', 'jackpot']
+    points_awarded: int
+    collectible_type: str | None   # 'theme' | 'title' | 'lore' | None
+    collectible_key: str | None
+    collectible_display_name: str | None
+    collectible_body: str | None   # lore text only; None for theme/title
+
+
+class TaskCompleteResponse(TaskResponse):
+    # Always present in JSON output — never omitted via exclude_none.
+    # Standard tier sets this to None; bonus/crit/jackpot populate it.
+    reward_drop: RewardDrop | None = None
+
+
 class TaskCreate(BaseModel):
     description: str = Field(..., min_length=1, max_length=500)
     milestone_id: uuid.UUID | None = None
@@ -188,6 +203,18 @@ class UserProfileResponse(BaseModel):
 class UserSettingsUpdate(BaseModel):
     timezone: str | None = None
     display_name: str | None = Field(default=None, max_length=60)
+
+
+class RewardResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    reward_type: str
+    reward_key: str
+    display_name: str
+    body: str | None
+    is_equipped: bool
+    acquired_at: datetime
 
 
 # ---------------------------------------------------------------------------
