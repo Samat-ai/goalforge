@@ -7,9 +7,12 @@ import TodayBar from '../components/TodayBar'
 import AddGoal from '../components/AddGoal'
 import GoalCard from '../components/GoalCard'
 import FocusOverlay from '../components/FocusOverlay'
+import RewardModal from '../components/RewardModal'
+import CollectionModal from '../components/CollectionModal'
 import { useGoalsQuery, useProfileQuery, useGoalMutations } from '../hooks'
+import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
 import { todayStr } from '../lib/gamification'
-import type { Goal } from '../lib/types'
+import type { Goal, RewardDrop } from '../lib/types'
 
 // ── DoThisNow (blocker resolution CTA) ───────────────────────────────────────
 
@@ -187,11 +190,16 @@ export default function Dashboard() {
 
   const { goals, isLoading: loading, isError, refetch } = useGoalsQuery(userId)
   const { pts } = useProfileQuery(userId)
-  const mutations = useGoalMutations(userId ?? '')
 
   const [filter, setFilter] = useState<string>('all')
   const [addGoalText, setAddGoalText] = useState('')
   const [focusOpen, setFocusOpen] = useState(false)
+  const [activeRewardDrop, setActiveRewardDrop] = useState<RewardDrop | null>(null)
+  const [showCollection, setShowCollection] = useState(false)
+
+  const { data: rewards = [] } = useRewardsQuery(userId ?? '')
+  const equipMutation = useEquipRewardMutation(userId ?? '')
+  const mutations = useGoalMutations(userId ?? '', (drop) => setActiveRewardDrop(drop))
 
   useEffect(() => { document.title = 'Dashboard — GoalForge' }, [])
 
@@ -213,7 +221,7 @@ export default function Dashboard() {
         button:focus-visible, a:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; border-radius: 4px; }
       `}</style>
 
-      <AppHeader pts={pts} />
+      <AppHeader pts={pts} onOpenCollection={() => setShowCollection(true)} />
 
       <main id="main-content" style={{ maxWidth: 1100, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
 
@@ -317,6 +325,28 @@ export default function Dashboard() {
         isOpen={focusOpen}
         onClose={() => setFocusOpen(false)}
       />
+
+      {activeRewardDrop && (() => {
+        const activeRewardId = activeRewardDrop.collectible_key
+          ? rewards.find(r => r.reward_key === activeRewardDrop.collectible_key)?.id ?? null
+          : null
+        return (
+          <RewardModal
+            drop={activeRewardDrop}
+            rewardId={activeRewardId}
+            onEquip={(rewardId) => equipMutation.mutate(rewardId)}
+            onClose={() => setActiveRewardDrop(null)}
+          />
+        )
+      })()}
+
+      {showCollection && (
+        <CollectionModal
+          rewards={rewards}
+          onEquip={(rewardId) => equipMutation.mutate(rewardId)}
+          onClose={() => setShowCollection(false)}
+        />
+      )}
     </div>
   )
 }

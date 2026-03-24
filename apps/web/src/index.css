@@ -122,3 +122,44 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #1a1e3a; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #252a4a; }
+
+/* ── Reward modal animations ── */
+
+@keyframes modalPop {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes fadeInBg {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── App Themes ── */
+
+.theme-neon-cyberpunk {
+  --color-bg: #050510;
+  --color-orange: #00ffcc;
+  --color-border: #00ffcc22;
+  --color-muted: #00ffcc66;
+}
+
+.theme-matcha-green {
+  --color-bg: #0a120a;
+  --color-orange: #4ade80;
+  --color-border: #4ade8022;
+  --color-muted: #4ade8066;
+}
+
+.theme-midnight-ocean {
+  --color-bg: #050a14;
+  --color-orange: #60a5fa;
+  --color-border: #60a5fa22;
+  --color-muted: #60a5fa66;
+}
+
+.theme-sunset-ember {
+  --color-bg: #140a05;
+  --color-orange: #fb923c;
+  --color-border: #fb923c22;
+  --color-muted: #fb923c66;
+}
