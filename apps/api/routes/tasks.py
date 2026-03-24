@@ -14,6 +14,8 @@ from database import get_db
 from deps import _load_goal_with_ownership
 from models import DailyTask, Goal, Milestone
 from schemas import (
+    RewardDrop,
+    TaskCompleteResponse,
     TaskCreate,
     TaskReorderRequest,
     TaskResponse,
@@ -65,7 +67,7 @@ async def list_tasks(
 
 @router.patch(
     "/tasks/{task_id}/complete",
-    response_model=TaskResponse,
+    response_model=TaskCompleteResponse,
     summary="Mark a daily task as completed and award star points",
 )
 async def complete_task(
@@ -84,8 +86,22 @@ async def complete_task(
     if task.is_completed:
         raise HTTPException(status_code=400, detail="Task already completed")
 
-    await complete_task_and_award_points(task, goal, db)
-    return task
+    reward_result = await complete_task_and_award_points(task, goal, db)
+
+    # Build reward_drop — None for standard, populated for bonus/crit/jackpot
+    reward_drop = None
+    if reward_result.tier != "standard":
+        reward_drop = RewardDrop(
+            tier=reward_result.tier,
+            points_awarded=reward_result.points_awarded,
+            collectible_type=reward_result.collectible_type,
+            collectible_key=reward_result.collectible_key,
+            collectible_display_name=reward_result.collectible_display_name,
+            collectible_body=reward_result.collectible_body,
+        )
+
+    task_resp = TaskResponse.model_validate(task)
+    return TaskCompleteResponse(**task_resp.model_dump(), reward_drop=reward_drop)
 
 
 @router.patch(

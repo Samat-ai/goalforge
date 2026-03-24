@@ -205,6 +205,19 @@ async def test_regenerate_completed_task_returns_400(client):
     assert "completed" in resp.json()["detail"]
 
 
+async def test_complete_task_response_has_reward_drop_field(client):
+    """TaskCompleteResponse always includes reward_drop (null for standard tier)."""
+    goal = await create_test_goal(client)
+    task_id = goal["daily_tasks"][0]["id"]
+
+    resp = await client.patch(f"/tasks/{task_id}/complete")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "reward_drop" in data          # field always present
+    assert data["reward_drop"] is None    # standard tier → null
+    assert data["is_completed"] is True
+
+
 async def test_complete_task_concurrent_requests_award_points_once(client):
     """
     Completing the same task twice awards +10 exactly once.

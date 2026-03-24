@@ -13,6 +13,8 @@ from database import engine
 from exceptions import AIGenerationError
 from models import DailyTask, Goal, Milestone, User
 from schemas import AITaskOutput
+from services import reward_service as _reward_service
+from services.reward_service import RewardResult
 from utils import user_today
 
 logger = logging.getLogger(__name__)
@@ -155,30 +157,37 @@ async def complete_task_and_award_points(
     task: DailyTask,
     goal: Goal,
     db: AsyncSession,
-) -> None:
+) -> RewardResult:
     """
-    Mark a task complete, award star points, and kick off pre-gen if this was
-    the last task in the current sprint.
+    Mark a task complete, roll the reward loot table, award tier-based star points,
+    drop a collectible if appropriate, and kick off pre-gen if this was the last
+    task in the current sprint.
+
+    Returns a RewardResult describing what was awarded (tier, points, collectible).
     """
     task.is_completed = True
     task.completed_at = datetime.now(timezone.utc)
-
-    # Award 10 star points to the goal's owner (atomic SQL increment avoids race conditions)
-    await db.execute(
-        sql_update(User)
-        .where(User.id == goal.user_id)
-        .values(star_points=User.star_points + 10)
-    )
-
     await db.flush()
 
+    # Compute consistency score + roll reward tier
+    try:
+        score = await _reward_service.compute_consistency_score(goal.user_id, db)
+        tier = _reward_service.roll_reward(score)
+        collectible = await _reward_service.pick_collectible(tier, goal.user_id, db)
+    except Exception as exc:
+        logger.warning("Reward roll failed for task %s, falling back to standard: %s", task.id, exc)
+        tier = "standard"
+        collectible = None
+
+    result = await _reward_service.award_reward(goal.user_id, tier, collectible, db)
+
     # Magic Pre-Gen: if this was the last task in the current sprint, kick off
-    # background generation of next sprint's tasks so the advance is near-instant.
+    # background generation of the next sprint's tasks.
     if task.milestone_id is not None:
         remaining = (await db.execute(
             select(func.count(DailyTask.id))
             .where(DailyTask.milestone_id == task.milestone_id)
-            .where(DailyTask.is_completed == False)
+            .where(DailyTask.is_completed == False)  # noqa: E712
         )).scalar_one()
 
         if remaining == 0:
@@ -206,3 +215,5 @@ async def complete_task_and_award_points(
                     _background_tasks.add(_t)
                     _t.add_done_callback(_log_task_exception)
                     _t.add_done_callback(_background_tasks.discard)
+
+    return result
