@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { T } from '../lib/theme'
 import { pickOneThing } from '../lib/pickOneThing'
-import { useGoalMutations } from '../hooks'
 import type { Goal } from '../lib/types'
 
 const DONE_MESSAGES = [
@@ -16,7 +15,7 @@ type Phase = 'focus' | 'done'
 
 interface FocusOverlayProps {
   goals: Goal[]
-  userId: string
+  completeTask: (taskId: string) => void
   isOpen: boolean
   onClose: () => void
 }
@@ -33,10 +32,10 @@ const OVERLAY_STYLE = {
   padding: '24px 16px',
 }
 
-export default function FocusOverlay({ goals, userId, isOpen, onClose }: FocusOverlayProps) {
+export default function FocusOverlay({ goals, completeTask, isOpen, onClose }: FocusOverlayProps) {
   const [phase, setPhase] = useState<Phase>('focus')
   const [doneMessage, setDoneMessage] = useState('')
-  const { completeTask } = useGoalMutations(userId)
+  const [completing, setCompleting] = useState(false)
 
   // Recomputes whenever goals cache updates. Becomes null after completeTask fires.
   const focusItem = useMemo(() => pickOneThing(goals), [goals])
@@ -123,6 +122,8 @@ export default function FocusOverlay({ goals, userId, isOpen, onClose }: FocusOv
   const { task, goal, milestone } = focusItem
 
   function handleComplete() {
+    if (completing) return
+    setCompleting(true)
     // Pick message in event handler (not render) to satisfy ESLint impure-render rule
     const msg = DONE_MESSAGES[Math.floor(Math.random() * DONE_MESSAGES.length)]
     setDoneMessage(msg)
@@ -244,6 +245,7 @@ export default function FocusOverlay({ goals, userId, isOpen, onClose }: FocusOv
         {/* Complete button */}
         <button
           onClick={handleComplete}
+          disabled={completing}
           style={{
             marginTop: 8,
             minHeight: 48,
@@ -252,12 +254,13 @@ export default function FocusOverlay({ goals, userId, isOpen, onClose }: FocusOv
             background: T.indigo,
             color: '#fff',
             border: 'none',
-            cursor: 'pointer',
+            cursor: completing ? 'not-allowed' : 'pointer',
             fontFamily: T.mono,
             fontSize: 13,
             fontWeight: 600,
             letterSpacing: '0.04em',
             width: '100%',
+            opacity: completing ? 0.6 : 1,
           }}
         >
           Mark Complete +10 ⭐

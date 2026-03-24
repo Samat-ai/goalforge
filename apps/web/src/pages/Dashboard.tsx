@@ -313,7 +313,7 @@ export default function Dashboard() {
       <FocusOverlay
         key={focusOpen ? 'open' : 'closed'}
         goals={goals}
-        userId={userId ?? ''}
+        completeTask={mutations.completeTask}
         isOpen={focusOpen}
         onClose={() => setFocusOpen(false)}
       />
