@@ -96,7 +96,7 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
                       background: T.orange, color: '#0a0a14',
                       border: 'none', borderRadius: 5,
                       fontFamily: T.mono, fontSize: 10, fontWeight: 700,
-                      padding: '4px 10px', cursor: 'pointer', minHeight: 28,
+                      padding: '4px 10px', cursor: 'pointer', minHeight: 44,
                     }}
                   >
                     Equip
@@ -105,7 +105,7 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
               </div>
             ))}
             {/* Locked slots */}
-            {Array.from({ length: REGISTRY_COUNTS.theme - themes.length }).map((_, i) => (
+            {Array.from({ length: Math.max(0, REGISTRY_COUNTS.theme - themes.length) }).map((_, i) => (
               <div key={`locked-theme-${i}`} style={{
                 background: '#0d0d17', border: '1px dashed #1e1e2e',
                 borderRadius: 10, padding: '12px 14px', opacity: 0.4,
@@ -137,7 +137,7 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
                       background: T.orange, color: '#0a0a14',
                       border: 'none', borderRadius: 5,
                       fontFamily: T.mono, fontSize: 10, fontWeight: 700,
-                      padding: '4px 10px', cursor: 'pointer', minHeight: 28,
+                      padding: '4px 10px', cursor: 'pointer', minHeight: 44,
                     }}
                   >
                     Equip
@@ -145,7 +145,7 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
                 )}
               </div>
             ))}
-            {Array.from({ length: REGISTRY_COUNTS.title - titles.length }).map((_, i) => (
+            {Array.from({ length: Math.max(0, REGISTRY_COUNTS.title - titles.length) }).map((_, i) => (
               <div key={`locked-title-${i}`} style={{
                 background: '#0d0d17', border: '1px dashed #1e1e2e',
                 borderRadius: 10, padding: '12px 14px', opacity: 0.4,
@@ -176,7 +176,7 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
                       background: '#818cf820', border: '1px solid #818cf840',
                       color: '#818cf8', borderRadius: 5,
                       fontFamily: T.mono, fontSize: 10, fontWeight: 700,
-                      padding: '4px 10px', cursor: 'pointer', minHeight: 28,
+                      padding: '4px 10px', cursor: 'pointer', minHeight: 44,
                     }}
                   >
                     {expandedLore === r.id ? 'Close' : 'Read'}
@@ -193,7 +193,7 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
                 )}
               </div>
             ))}
-            {Array.from({ length: REGISTRY_COUNTS.lore - loreFragments.length }).map((_, i) => (
+            {Array.from({ length: Math.max(0, REGISTRY_COUNTS.lore - loreFragments.length) }).map((_, i) => (
               <div key={`locked-lore-${i}`} style={{
                 background: '#0d0d17', border: '1px dashed #1e1e2e',
                 borderRadius: 10, padding: '14px 16px', opacity: 0.4,

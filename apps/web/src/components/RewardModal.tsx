@@ -1,9 +1,8 @@
 import { T } from '../lib/theme'
-import type { RewardDrop, Reward } from '../lib/types'
+import type { RewardDrop } from '../lib/types'
 
 interface RewardModalProps {
   drop: RewardDrop
-  equippedReward?: Reward  // set after equip succeeds (optimistic)
   onEquip: (rewardId: string) => void
   onClose: () => void
   // rewardId from the rewards list (needed for equip call); null until rewards query updates
