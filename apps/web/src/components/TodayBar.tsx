@@ -1,12 +1,14 @@
 import { T } from '../lib/theme'
 import { todayStr } from '../lib/gamification'
+import { pickOneThing } from '../lib/pickOneThing'
 import type { Goal } from '../lib/types'
 
 interface TodayBarProps {
   goals: Goal[]
+  onFocusOpen?: () => void
 }
 
-export default function TodayBar({ goals }: TodayBarProps) {
+export default function TodayBar({ goals, onFocusOpen }: TodayBarProps) {
   const today  = todayStr()
   const active = goals.filter(g => g.status === 'active')
 
@@ -21,6 +23,8 @@ export default function TodayBar({ goals }: TodayBarProps) {
   const hasToday = todayAll.length > 0
   const allDone  = hasToday && doneCnt === todayAll.length
   const barPct   = hasToday ? (doneCnt / todayAll.length) * 100 : 0
+
+  const hasFocusItem = onFocusOpen != null && pickOneThing(goals) !== null
 
   return (
     <div
@@ -63,6 +67,34 @@ export default function TodayBar({ goals }: TodayBarProps) {
         }} />
       </div>
       <span style={{ fontSize: 20 }}>{allDone ? '🏆' : !hasToday ? '⏳' : '🎯'}</span>
+
+      {hasFocusItem && (
+        <button
+          onClick={onFocusOpen}
+          aria-label="Enter focus mode"
+          style={{
+            minHeight: 44,
+            minWidth: 44,
+            padding: '0 14px',
+            borderRadius: 8,
+            border: `1px solid ${T.indigo}40`,
+            background: `${T.indigo}12`,
+            color: T.indigo,
+            fontFamily: T.mono,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.06em',
+            cursor: 'pointer',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+          }}
+        >
+          <span>⚡</span>
+          <span>Focus</span>
+        </button>
+      )}
     </div>
   )
 }
