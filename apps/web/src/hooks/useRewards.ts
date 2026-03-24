@@ -9,7 +9,6 @@ export function useRewardsQuery(userId: string) {
   return useQuery<Reward[]>({
     queryKey: rewardsKey(userId),
     queryFn: async () => {
-      if (!userId) return []
       const { data } = await api.get<Reward[]>(`/users/${userId}/rewards`)
       return data
     },
@@ -48,7 +47,7 @@ export function useEquipRewardMutation(userId: string) {
       return { prev }
     },
     onError: (_err, _id, context) => {
-      if (context?.prev) qc.setQueryData(rewardsKey(userId), context.prev)
+      if (context?.prev !== undefined) qc.setQueryData(rewardsKey(userId), context.prev)
       toast.error('Could not equip reward. Please try again.')
     },
     onSuccess: () => {
