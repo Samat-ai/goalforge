@@ -37,6 +37,30 @@ class User(Base):
     goals: Mapped[list["Goal"]] = relationship("Goal", back_populates="user", cascade="all, delete-orphan")
 
 
+class AccountabilityPartner(Base):
+    __tablename__ = "accountability_partners"
+    __table_args__ = (
+        UniqueConstraint("user_id", "partner_user_id", name="uq_partner_pair"),
+        CheckConstraint("status IN ('pending', 'accepted')", name="ck_partner_status"),
+        Index("ix_partner_user", "user_id"),
+        Index("ix_partner_partner_user", "partner_user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    partner_user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class Goal(Base):
     __tablename__ = "goals"
     __table_args__ = (

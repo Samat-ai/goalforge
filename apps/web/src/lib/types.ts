@@ -15,6 +15,15 @@ export interface UserSettings {
   display_name: string | null
 }
 
+export interface Partner {
+  id: string
+  user_id: string
+  partner_user_id: string
+  partner_email: string
+  status: 'pending' | 'accepted'
+  created_at: string
+}
+
 export interface Task {
   id: string
   goal_id: string

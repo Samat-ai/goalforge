@@ -24,6 +24,18 @@ class MilestoneResponse(BaseModel):
     generation_started_at: datetime | None = None
     created_at: datetime
 
+class PartnerInviteRequest(BaseModel):
+    partner_email: str = Field(..., min_length=5, max_length=320)
+
+
+class PartnerResponse(BaseModel):
+    id: uuid.UUID
+    user_id: str
+    partner_user_id: str
+    partner_email: str
+    status: Literal["pending", "accepted"]
+    created_at: datetime
+
 
 # ---------------------------------------------------------------------------
 # Daily Task schemas

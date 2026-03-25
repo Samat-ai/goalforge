@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/react'
 import AppHeader from '../components/AppHeader'
 import { T } from '../lib/theme'
-import { useSettingsQuery, useSaveSettingsMutation, useProfileQuery } from '../hooks'
+import { useInvitePartnerMutation, usePartnersQuery, useSettingsQuery, useSaveSettingsMutation, useProfileQuery } from '../hooks'
 import type { UserSettings } from '../lib/types'
 
 const TIMEZONES = [
@@ -39,8 +39,11 @@ const TIMEZONES = [
 
 function SettingsForm({ settings, userId }: { settings: UserSettings; userId: string }) {
   const { save: saveSettings, isSaving: saving } = useSaveSettingsMutation(userId)
+  const { partners } = usePartnersQuery(userId)
+  const { invitePartner, isInviting } = useInvitePartnerMutation(userId)
   const [timezone, setTimezone] = useState(settings.timezone)
   const [displayName, setDisplayName] = useState(settings.display_name ?? '')
+  const [partnerEmail, setPartnerEmail] = useState('')
 
   function save() {
     if (saving) return
@@ -120,6 +123,51 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
         >
           {saving ? '···' : 'Save settings'}
         </button>
+      </div>
+
+      {/* Accountability partners */}
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '18px 20px' }}>
+        <label style={{ display: 'block', fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 10 }}>
+          ACCOUNTABILITY PARTNER
+        </label>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <input
+            type="email"
+            value={partnerEmail}
+            onChange={e => setPartnerEmail(e.target.value)}
+            placeholder="partner@example.com"
+            style={{
+              flex: 1, minWidth: 220, background: T.surface, border: `1px solid ${T.border}`,
+              borderRadius: 7, padding: '10px 13px', color: T.text, fontFamily: T.mono,
+              fontSize: 13, outline: 'none', boxSizing: 'border-box', minHeight: 44,
+            }}
+          />
+          <button
+            onClick={() => {
+              const email = partnerEmail.trim()
+              if (!email) return
+              invitePartner(email)
+              setPartnerEmail('')
+            }}
+            disabled={isInviting}
+            style={{
+              minHeight: 44,
+              minWidth: 44,
+              cursor: isInviting ? 'default' : 'pointer',
+              padding: '10px 16px', borderRadius: 8,
+              fontFamily: T.mono, fontSize: 11, fontWeight: 500,
+              letterSpacing: '0.04em', background: `${T.indigo}20`,
+              color: T.indigo, border: `1px solid ${T.indigo}50`, opacity: isInviting ? 0.6 : 1,
+            }}
+          >
+            Invite
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: T.dim, fontFamily: T.mono, marginTop: 9 }}>
+          {partners.length === 0
+            ? 'No partner links yet.'
+            : `${partners.filter(p => p.status === 'accepted').length} accepted · ${partners.filter(p => p.status === 'pending').length} pending`}
+        </div>
       </div>
 
     </div>
