@@ -19,8 +19,12 @@ async def test_get_settings_returns_user_profile(client):
     assert "star_points" in data
     assert "timezone" in data
     assert "display_name" in data
+    assert "reminder_enabled" in data
+    assert "reminder_hour" in data
     assert data["id"] == TEST_USER_ID
     assert data["email"] == TEST_USER_EMAIL
+    assert data["reminder_enabled"] is True
+    assert data["reminder_hour"] == 9
 
 
 async def test_get_settings_403_wrong_user(client):
@@ -69,6 +73,18 @@ async def test_patch_settings_partial_update(client):
     assert data["timezone"] == "Europe/London"
     # display_name was never set, so it should still be None
     assert data["display_name"] is None
+
+
+async def test_patch_settings_updates_reminder_preferences(client):
+    await create_test_goal(client)
+    resp = await client.patch(
+        f"/users/{TEST_USER_ID}/settings",
+        json={"reminder_enabled": False, "reminder_hour": 20},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["reminder_enabled"] is False
+    assert data["reminder_hour"] == 20
 
 
 async def test_patch_settings_403_wrong_user(client):

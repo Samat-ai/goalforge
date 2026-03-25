@@ -12,7 +12,7 @@ from database import get_db
 from models import Goal, User
 from services.email_service import TaskDigestItem, send_reminder_digest, send_rescue_email
 from services.rescue_service import goal_is_rescue_mode
-from utils import user_today
+from utils import user_now, user_today
 
 router = APIRouter()
 
@@ -65,6 +65,13 @@ async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
             await send_rescue_email(user.email, user.display_name)
             rescue_count += 1
         else:
+            if not user.reminder_enabled:
+                continue
+
+            now_local = user_now(user.timezone)
+            if now_local.hour != user.reminder_hour:
+                continue
+
             today = user_today(user.timezone)
             tasks = [
                 TaskDigestItem(

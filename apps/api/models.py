@@ -23,6 +23,9 @@ from database import Base
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint("reminder_hour >= 0 AND reminder_hour <= 23", name="ck_user_reminder_hour"),
+    )
 
     # Maps directly to Clerk's user_id (e.g. "user_2abc...")
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
@@ -30,6 +33,12 @@ class User(Base):
     star_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     timezone: Mapped[str] = mapped_column(String, default="UTC", nullable=False, server_default="UTC")
     display_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    reminder_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False, server_default=sa.true()
+    )
+    reminder_hour: Mapped[int] = mapped_column(
+        Integer, default=9, nullable=False, server_default="9"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
