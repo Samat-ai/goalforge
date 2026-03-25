@@ -1,10 +1,13 @@
 """Tests for users.py routes: GET/PATCH /users/{user_id}/settings."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from auth import get_current_user_id
 from main import app
 from tests.conftest import TEST_USER_ID, TEST_USER_EMAIL, OTHER_USER_ID, create_test_goal
 
+MOCK_RECOMMENDATION = "Focus on completing your morning routine first thing — it anchors the rest of your day and builds momentum for harder tasks."
 
 pytestmark = pytest.mark.asyncio
 
@@ -106,3 +109,57 @@ async def test_patch_settings_404_user_not_found(client):
         json={"timezone": "UTC"},
     )
     assert resp.status_code == 404
+
+
+@patch("routes.users.generate_weekly_coach_recommendation", new_callable=AsyncMock, return_value=MOCK_RECOMMENDATION)
+async def test_create_weekly_reflection_returns_recommendation(mock_coach, client):
+    await create_test_goal(client)
+    resp = await client.post(
+        f"/users/{TEST_USER_ID}/weekly-reflection",
+        json={
+            "went_well": "I completed tasks early in the morning.",
+            "blockers": "Late-night scrolling reduced focus.",
+            "week_rating": 4,
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["user_id"] == TEST_USER_ID
+    assert data["coach_recommendation"] == MOCK_RECOMMENDATION
+    mock_coach.assert_called_once()
+
+
+@patch("routes.users.generate_weekly_coach_recommendation", new_callable=AsyncMock, return_value=MOCK_RECOMMENDATION)
+async def test_get_latest_weekly_reflection(mock_coach, client):
+    await create_test_goal(client)
+    create_resp = await client.post(
+        f"/users/{TEST_USER_ID}/weekly-reflection",
+        json={
+            "went_well": "I kept momentum on weekdays.",
+            "blockers": "Context switching slowed me down.",
+            "week_rating": 3,
+        },
+    )
+    assert create_resp.status_code == 201
+
+    latest_resp = await client.get(f"/users/{TEST_USER_ID}/weekly-reflection/latest")
+    assert latest_resp.status_code == 200
+    latest = latest_resp.json()
+    assert latest["id"] == create_resp.json()["id"]
+
+
+async def test_weekly_reflection_403_wrong_user(client):
+    await create_test_goal(client)
+    try:
+        app.dependency_overrides[get_current_user_id] = lambda: OTHER_USER_ID
+        resp = await client.post(
+            f"/users/{TEST_USER_ID}/weekly-reflection",
+            json={
+                "went_well": "I stayed consistent.",
+                "blockers": "Meetings overloaded my day.",
+                "week_rating": 3,
+            },
+        )
+    finally:
+        app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
+    assert resp.status_code == 403

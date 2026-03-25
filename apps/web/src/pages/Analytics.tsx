@@ -4,7 +4,12 @@ import AppHeader from '../components/AppHeader'
 import { Creature } from '../components/GamificationSvgs'
 import { STAGES, getStage, getNext, stagePct, streak } from '../lib/gamification'
 import { T } from '../lib/theme'
-import { useAllGoalsQuery, useProfileQuery } from '../hooks'
+import {
+  useAllGoalsQuery,
+  useCreateWeeklyReflectionMutation,
+  useLatestWeeklyReflectionQuery,
+  useProfileQuery,
+} from '../hooks'
 
 // ── Analytics page ────────────────────────────────────────────────────────────
 export default function Analytics() {
@@ -12,6 +17,11 @@ export default function Analytics() {
 
   const { goals, isLoading: loading, isError, refetch } = useAllGoalsQuery(user?.id)
   const { pts } = useProfileQuery(user?.id)
+  const { reflection } = useLatestWeeklyReflectionQuery(user?.id)
+  const { createReflection, isSaving } = useCreateWeeklyReflectionMutation(user?.id ?? '')
+  const [wentWell, setWentWell] = useState('')
+  const [blockers, setBlockers] = useState('')
+  const [weekRating, setWeekRating] = useState(3)
 
   const error = isError ? 'Failed to load data.' : null
 
@@ -228,6 +238,122 @@ export default function Analytics() {
                 </div>
               ))}
             </div>
+
+            {/* ── Weekly Reflection + Coach ── */}
+            <section style={{
+              background: T.card,
+              border: `1px solid ${T.border}`,
+              borderRadius: 12,
+              padding: '16px 16px 14px',
+              marginBottom: 24,
+            }}>
+              <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 10 }}>
+                WEEKLY REFLECTION RITUAL
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <textarea
+                  value={wentWell}
+                  onChange={e => setWentWell(e.target.value)}
+                  placeholder="What went well this week?"
+                  rows={2}
+                  style={{
+                    width: '100%',
+                    resize: 'vertical',
+                    minHeight: 44,
+                    borderRadius: 8,
+                    border: `1px solid ${T.border}`,
+                    background: T.surface,
+                    color: T.text,
+                    padding: '10px 12px',
+                    fontFamily: T.mono,
+                    fontSize: 12,
+                  }}
+                />
+                <textarea
+                  value={blockers}
+                  onChange={e => setBlockers(e.target.value)}
+                  placeholder="What blocked you?"
+                  rows={2}
+                  style={{
+                    width: '100%',
+                    resize: 'vertical',
+                    minHeight: 44,
+                    borderRadius: 8,
+                    border: `1px solid ${T.border}`,
+                    background: T.surface,
+                    color: T.text,
+                    padding: '10px 12px',
+                    fontFamily: T.mono,
+                    fontSize: 12,
+                  }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <label style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>Week rating</label>
+                  <select
+                    value={weekRating}
+                    onChange={e => setWeekRating(Number(e.target.value))}
+                    style={{
+                      minHeight: 44,
+                      borderRadius: 8,
+                      border: `1px solid ${T.border}`,
+                      background: T.surface,
+                      color: T.text,
+                      padding: '0 10px',
+                      fontFamily: T.mono,
+                      fontSize: 12,
+                    }}
+                  >
+                    {[1, 2, 3, 4, 5].map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                  <button
+                    onClick={() => {
+                      if (wentWell.trim().length < 5 || blockers.trim().length < 5) return
+                      createReflection({
+                        went_well: wentWell.trim(),
+                        blockers: blockers.trim(),
+                        week_rating: weekRating,
+                      })
+                      setWentWell('')
+                      setBlockers('')
+                    }}
+                    disabled={isSaving}
+                    style={{
+                      minHeight: 44,
+                      minWidth: 44,
+                      borderRadius: 8,
+                      border: `1px solid ${T.indigo}`,
+                      background: `${T.indigo}18`,
+                      color: T.indigo,
+                      padding: '0 14px',
+                      fontFamily: T.mono,
+                      fontSize: 11,
+                      letterSpacing: '0.05em',
+                      cursor: isSaving ? 'default' : 'pointer',
+                      opacity: isSaving ? 0.6 : 1,
+                    }}
+                  >
+                    Save Reflection
+                  </button>
+                </div>
+
+                {reflection && (
+                  <div style={{
+                    marginTop: 4,
+                    borderRadius: 8,
+                    border: `1px solid ${T.emerald}40`,
+                    background: `${T.emerald}10`,
+                    padding: '10px 12px',
+                  }}>
+                    <div style={{ fontFamily: T.mono, fontSize: 10, color: T.emerald, letterSpacing: '0.08em', marginBottom: 4 }}>
+                      AI COACH RECOMMENDATION
+                    </div>
+                    <div style={{ fontSize: 12, color: T.text, lineHeight: 1.6 }}>
+                      {reflection.coach_recommendation}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
 
             {/* ── Hall of Fame ── */}
             <div>

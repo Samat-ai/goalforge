@@ -216,6 +216,24 @@ class UserSettingsUpdate(BaseModel):
     reminder_hour: int | None = Field(default=None, ge=0, le=23)
 
 
+class WeeklyReflectionCreate(BaseModel):
+    went_well: str = Field(..., min_length=5, max_length=1200)
+    blockers: str = Field(..., min_length=5, max_length=1200)
+    week_rating: int = Field(..., ge=1, le=5)
+
+
+class WeeklyReflectionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    user_id: str
+    went_well: str
+    blockers: str
+    week_rating: int
+    coach_recommendation: str
+    created_at: datetime
+
+
 class RewardResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -309,4 +327,13 @@ class AIRescueOutput(BaseModel):
     tasks: list[AIRescueTaskItem] = Field(
         ..., min_length=2, max_length=2,
         description="Exactly 2 recovery micro-tasks",
+    )
+
+
+class AIWeeklyCoachOutput(BaseModel):
+    recommendation: str = Field(
+        ...,
+        min_length=20,
+        max_length=400,
+        description="Practical coaching recommendation for next week",
     )
