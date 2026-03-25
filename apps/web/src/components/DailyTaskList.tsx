@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Circle, CheckCircle2, GripVertical, Pencil, Plus, RefreshCw, ChevronDown } from 'lucide-react'
+import { Circle, CheckCircle2, GripVertical, Pencil, Plus, RefreshCw, ChevronDown, Undo2 } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
@@ -28,6 +28,7 @@ interface DailyTaskListProps {
   onAddTask:        (goalId: string, milestoneId: string | null, description: string) => Promise<void>
   onRegenerateTask: (taskId: string) => Promise<void>
   onReorderTasks:   (goalId: string, tasks: { id: string; position: number }[]) => void
+  onRestoreTask?:   (taskId: string) => Promise<void>
 }
 
 // ── Unified task row (sortable or overdue) ────────────────────────────────────
@@ -35,6 +36,7 @@ function TaskRow({
   task, isEditing, editingText, setEditingText,
   onComplete, onStartEdit, onCancelEdit, onSaveEdit,
   regeneratingId, onRegenerate,
+  restoringId, onRestore,
   draggable = true,
   dateLabel,
 }: {
@@ -48,6 +50,8 @@ function TaskRow({
   onSaveEdit: (id: string, orig: string) => void
   regeneratingId: string | null
   onRegenerate: (id: string) => void
+  restoringId: string | null
+  onRestore: (id: string) => void
   draggable?: boolean
   dateLabel?: string
 }) {
@@ -63,6 +67,7 @@ function TaskRow({
     display: 'flex', alignItems: 'flex-start', gap: 10,
   }
   const isRegen = regeneratingId === task.id
+  const isRestoring = restoringId === task.id
   const pendingCircleColor = draggable ? T.dim : T.amber
 
   return (
@@ -161,6 +166,19 @@ function TaskRow({
       {/* Action icons — pending tasks only */}
       {!task.is_completed && !isEditing && (
         <div className="flex items-center gap-0 shrink-0 transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+          {task.original_description !== null && (
+            <button
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => onRestore(task.id)}
+              disabled={isRestoring}
+              aria-label="Restore original task"
+              title="Restore original task"
+              className="text-[#7c3aed] hover:text-violet-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
+              style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isRestoring ? 0.4 : 1 }}
+            >
+              <Undo2 size={13} style={isRestoring ? { animation: 'spin 1s linear infinite' } : undefined} />
+            </button>
+          )}
           <button
             onMouseDown={e => e.preventDefault()}
             onClick={() => onRegenerate(task.id)}
@@ -189,11 +207,12 @@ function TaskRow({
 // ── DailyTaskList ────────────────────────────────────────────────────────────
 export default function DailyTaskList({
   goalId, tasks, overdueTasks = [], activeMilestoneId,
-  onCompleteTask, onSaveEdit, onAddTask, onRegenerateTask, onReorderTasks,
+  onCompleteTask, onSaveEdit, onAddTask, onRegenerateTask, onReorderTasks, onRestoreTask,
 }: DailyTaskListProps) {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [editingText, setEditingText] = useState('')
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
+  const [restoringId, setRestoringId] = useState<string | null>(null)
   const [showAddTask, setShowAddTask] = useState(false)
   const [addTaskText, setAddTaskText] = useState('')
   const [addingTask, setAddingTask] = useState(false)
@@ -225,6 +244,13 @@ export default function DailyTaskList({
     setRegeneratingId(taskId)
     try { await onRegenerateTask(taskId) }
     finally { setRegeneratingId(null) }
+  }
+
+  async function handleRestore(taskId: string) {
+    if (!onRestoreTask) return
+    setRestoringId(taskId)
+    try { await onRestoreTask(taskId) }
+    finally { setRestoringId(null) }
   }
 
   async function handleAddTask() {
@@ -281,6 +307,8 @@ export default function DailyTaskList({
                   onSaveEdit={handleSaveEdit}
                   regeneratingId={regeneratingId}
                   onRegenerate={handleRegenerate}
+                  restoringId={restoringId}
+                  onRestore={handleRestore}
                 />
               ))}
             </div>
@@ -326,6 +354,8 @@ export default function DailyTaskList({
                       onSaveEdit={handleSaveEdit}
                       regeneratingId={regeneratingId}
                       onRegenerate={handleRegenerate}
+                      restoringId={restoringId}
+                      onRestore={handleRestore}
                     />
                   ))}
                 </SortableContext>

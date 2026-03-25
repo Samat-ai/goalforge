@@ -8,6 +8,7 @@ import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
 import Settings from './pages/Settings'
 import ErrorBoundary from './components/ErrorBoundary'
+import EnergyParamCapture from './components/EnergyParamCapture'
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   return (
@@ -21,6 +22,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <EnergyParamCapture />
       <Toaster theme="dark" position="bottom-right" richColors />
       <ErrorBoundary>
         <Routes>

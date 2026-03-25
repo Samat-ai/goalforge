@@ -59,6 +59,13 @@ def _build_digest_html(display_name: str | None, tasks: list[TaskDigestItem]) ->
     </tbody>
   </table>
 
+  <a href="https://goalforge.app/dashboard?energy=low"
+     style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#6366f1);
+            color:#fff;font-weight:600;font-size:14px;padding:12px 24px;
+            border-radius:8px;text-decoration:none;margin-top:20px;">
+    Low energy today? Simplify everything &rarr;
+  </a>
+
   <p style="margin:24px 0 0;font-size:13px;color:#64748b;">
     Every task you complete earns +10 ⭐ — keep the momentum going!
   </p>

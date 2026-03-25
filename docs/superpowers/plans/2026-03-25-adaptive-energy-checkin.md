@@ -14,7 +14,7 @@
 
 | Action | Path | Responsibility |
 |---|---|---|
-| Create | `apps/api/alembic/versions/a1b2c3d4e5f6_add_energy_resize_columns.py` | Migration: 2 nullable columns on `daily_tasks` |
+| Create | `apps/api/alembic/versions/b2c3d4e5f6a1_add_energy_resize_columns.py` | Migration: 2 nullable columns on `daily_tasks` |
 | Modify | `apps/api/models.py` | Add `original_description`, `original_tip` to `DailyTask` |
 | Modify | `apps/api/schemas.py` | Add fields to `TaskResponse`; add `EnergyResizeResponse` |
 | Modify | `apps/api/ai_utils.py` | Add `_ENERGY_RESIZE_PROMPT` + `resize_task_for_low_energy()` |
@@ -37,24 +37,24 @@
 ## Task 1: Alembic Migration
 
 **Files:**
-- Create: `apps/api/alembic/versions/a1b2c3d4e5f6_add_energy_resize_columns.py`
+- Create: `apps/api/alembic/versions/b2c3d4e5f6a1_add_energy_resize_columns.py`
 
 - [ ] **Step 1: Create the migration file manually**
 
   Use `op.execute` with `IF NOT EXISTS` (CLAUDE.md catch-up pattern — `Base.metadata.create_all` may have already created the table without these columns):
 
   ```python
-  # apps/api/alembic/versions/a1b2c3d4e5f6_add_energy_resize_columns.py
+  # apps/api/alembic/versions/b2c3d4e5f6a1_add_energy_resize_columns.py
   """add energy resize columns to daily_tasks
 
-  Revision ID: a1b2c3d4e5f6
-  Revises: f7a8b9c1d2e3
+  Revision ID: b2c3d4e5f6a1
+  Revises: ab3ab8b88a85
   Create Date: 2026-03-25
   """
   from alembic import op
 
-  revision = "a1b2c3d4e5f6"
-  down_revision = "f7a8b9c1d2e3"
+  revision = "b2c3d4e5f6a1"
+  down_revision = "ab3ab8b88a85"
   branch_labels = None
   depends_on = None
 
@@ -84,12 +84,12 @@
   py -3 -m alembic upgrade head
   ```
 
-  Expected: `Running upgrade f7a8b9c1d2e3 -> a1b2c3d4e5f6, add energy resize columns to daily_tasks`
+  Expected: `Running upgrade ab3ab8b88a85 -> b2c3d4e5f6a1, add energy resize columns to daily_tasks`
 
 - [ ] **Step 3: Commit**
 
   ```bash
-  git add apps/api/alembic/versions/a1b2c3d4e5f6_add_energy_resize_columns.py
+  git add apps/api/alembic/versions/b2c3d4e5f6a1_add_energy_resize_columns.py
   git commit -m "chore: add energy resize columns migration"
   ```
 

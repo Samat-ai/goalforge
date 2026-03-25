@@ -139,6 +139,8 @@ class DailyTask(Base):
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    original_description: Mapped[str | None] = mapped_column(String, nullable=True)
+    original_tip: Mapped[str | None] = mapped_column(String, nullable=True)
 
     goal: Mapped["Goal"] = relationship("Goal", back_populates="daily_tasks")
     milestone: Mapped["Milestone | None"] = relationship("Milestone", back_populates="daily_tasks")
