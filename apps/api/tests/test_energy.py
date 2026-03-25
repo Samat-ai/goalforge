@@ -10,11 +10,12 @@ from models import DailyTask
 from schemas import AITaskOutput
 from tests.conftest import OTHER_USER_ID, TEST_USER_ID, create_test_goal
 
-MOCK_RESIZE = AITaskOutput(
-    description="Open your running app",
-    tip="Just doing this is a win today.",
-    assigned_date=date.today(),
-)
+def _make_mock_resize() -> AITaskOutput:
+    return AITaskOutput(
+        description="Open your running app",
+        tip="Just doing this is a win today.",
+        assigned_date=date(2000, 1, 1),  # sentinel — endpoint discards this field
+    )
 
 
 async def test_schema_has_original_fields(client):
@@ -35,7 +36,7 @@ async def test_energy_resize_bulk_mutates_tasks(client):
     assert tasks_today, "Need at least one task today"
     original_desc = tasks_today[0]["description"]
 
-    with patch("routes.energy.resize_task_for_low_energy", new=AsyncMock(return_value=MOCK_RESIZE)):
+    with patch("routes.energy.resize_task_for_low_energy", new=AsyncMock(return_value=_make_mock_resize())):
         resp = await client.post(f"/users/{TEST_USER_ID}/energy-resize")
 
     assert resp.status_code == 200
@@ -51,7 +52,7 @@ async def test_energy_resize_idempotent(client):
     """Second call when all tasks already resized returns tasks_resized=0."""
     await create_test_goal(client)
 
-    with patch("routes.energy.resize_task_for_low_energy", new=AsyncMock(return_value=MOCK_RESIZE)):
+    with patch("routes.energy.resize_task_for_low_energy", new=AsyncMock(return_value=_make_mock_resize())):
         await client.post(f"/users/{TEST_USER_ID}/energy-resize")
         resp = await client.post(f"/users/{TEST_USER_ID}/energy-resize")
 
@@ -79,7 +80,7 @@ async def test_energy_resize_partial_gemini_failure(client):
         call_count += 1
         if call_count == 1:
             raise Exception("Simulated Gemini failure")
-        return MOCK_RESIZE
+        return _make_mock_resize()
 
     with patch("routes.energy.resize_task_for_low_energy", new=mock_resize_partial):
         resp = await client.post(f"/users/{TEST_USER_ID}/energy-resize")
@@ -133,7 +134,7 @@ async def test_energy_resize_caps_at_10(client, db_session):
         ))
     await db_session.commit()
 
-    mock_resize = AsyncMock(return_value=MOCK_RESIZE)
+    mock_resize = AsyncMock(return_value=_make_mock_resize())
     with patch("routes.energy.resize_task_for_low_energy", new=mock_resize):
         resp = await client.post(f"/users/{TEST_USER_ID}/energy-resize")
 
