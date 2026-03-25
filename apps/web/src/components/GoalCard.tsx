@@ -8,6 +8,7 @@ import SprintRail from './SprintRail'
 import DailyTaskList from './DailyTaskList'
 import GoalHeatmap from './GoalHeatmap'
 import { useGoalMutations } from '../hooks'
+import { useTaskRestoreMutation } from '../hooks/useEnergyMutations'
 import type { Goal, RewardDrop } from '../lib/types'
 
 export interface GoalCardProps {
@@ -17,6 +18,7 @@ export interface GoalCardProps {
 
 export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
   const mutations = useGoalMutations(goal.user_id, onJackpot)
+  const restoreTaskMutation = useTaskRestoreMutation(goal.user_id)
 
   const [open, setOpen] = useState(false)
   const [completingMilestone, setCompletingMilestone] = useState(false)
@@ -265,6 +267,9 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
           onAddTask={mutations.addTask}
           onRegenerateTask={mutations.regenerateTask}
           onReorderTasks={mutations.reorderTasks}
+          onRestoreTask={(taskId) => new Promise<void>((resolve, reject) => {
+            restoreTaskMutation.mutate(taskId, { onSuccess: () => resolve(), onError: reject })
+          })}
         />
       )}
 
