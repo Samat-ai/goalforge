@@ -90,3 +90,32 @@ async def test_patch_settings_404_user_not_found(client):
         json={"timezone": "UTC"},
     )
     assert resp.status_code == 404
+
+
+async def test_export_user_data_json(client):
+    await create_test_goal(client)
+    resp = await client.get(f"/users/{TEST_USER_ID}/export?format=json")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["user"]["id"] == TEST_USER_ID
+    assert isinstance(data["goals"], list)
+    assert isinstance(data["rewards"], list)
+
+
+async def test_export_user_data_csv(client):
+    await create_test_goal(client)
+    resp = await client.get(f"/users/{TEST_USER_ID}/export?format=csv")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/csv")
+    body = resp.text
+    assert "goal_id,goal_title,goal_status,task_id,task_description" in body
+
+
+async def test_export_user_data_403_wrong_user(client):
+    await create_test_goal(client)
+    try:
+        app.dependency_overrides[get_current_user_id] = lambda: OTHER_USER_ID
+        resp = await client.get(f"/users/{TEST_USER_ID}/export?format=json")
+    finally:
+        app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
+    assert resp.status_code == 403
