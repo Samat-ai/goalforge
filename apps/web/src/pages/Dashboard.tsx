@@ -10,7 +10,8 @@ import FocusOverlay from '../components/FocusOverlay'
 import RewardModal from '../components/RewardModal'
 import CollectionModal from '../components/CollectionModal'
 import EnergyModal from '../components/EnergyModal'
-import { useGoalsQuery, useProfileQuery, useGoalMutations } from '../hooks'
+import StarShop from '../components/StarShop'
+import { useGoalsQuery, useProfileQuery, useGoalMutations, useShopRewardsQuery, useShopRewardMutations } from '../hooks'
 import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
 import { useEnergyResizeMutation } from '../hooks/useEnergyMutations'
 import { todayStr } from '../lib/gamification'
@@ -205,6 +206,8 @@ export default function Dashboard() {
   })
 
   const { data: rewards = [] } = useRewardsQuery(userId ?? '')
+  const { rewards: shopRewards } = useShopRewardsQuery(userId)
+  const shopMutations = useShopRewardMutations(userId ?? '')
   const equipMutation = useEquipRewardMutation(userId ?? '')
   const mutations = useGoalMutations(userId ?? '', (drop) => setActiveRewardDrop(drop))
   const energyResizeMutation = useEnergyResizeMutation(userId ?? '')
@@ -283,6 +286,15 @@ export default function Dashboard() {
             <DoThisNow goals={goals} />
             <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} onEnergyOpen={() => setShowEnergyModal(true)} />
             <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} />
+
+            <StarShop
+              pts={pts}
+              rewards={shopRewards}
+              onAdd={shopMutations.addReward}
+              onRedeem={shopMutations.redeemReward}
+              isCreating={shopMutations.isCreating}
+              isRedeeming={shopMutations.isRedeeming}
+            />
 
             {goals.length === 0 ? (
               <EmptyState onSelect={setAddGoalText} />
