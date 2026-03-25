@@ -13,11 +13,15 @@ export interface UserSettings {
   star_points: number
   timezone: string
   display_name: string | null
+  reminder_enabled: boolean
+  reminder_hour: number
 }
 
 export interface UserSettingsUpdatePayload {
   timezone?: string | null
   display_name?: string | null
+  reminder_enabled?: boolean | null
+  reminder_hour?: number | null
 }
 
 export interface Task {

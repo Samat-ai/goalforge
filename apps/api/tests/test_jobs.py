@@ -19,8 +19,13 @@ async def test_trigger_reminders_sends_one_digest_per_user(client):
 
     with (
         patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
         patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_send,
     ):
+        class _Now:
+            hour = 9
+
+        mock_user_now.return_value = _Now()
         mock_settings.jobs_api_key = _TEST_JOBS_KEY
         resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
 
@@ -34,6 +39,52 @@ async def test_trigger_reminders_sends_one_digest_per_user(client):
     assert len(tasks_arg) == len(today_tasks)
 
 
+async def test_trigger_reminders_skips_when_reminders_disabled(client):
+    await create_test_goal(client)
+    settings_resp = await client.patch(
+        f"/users/{TEST_USER_ID}/settings",
+        json={"reminder_enabled": False},
+    )
+    assert settings_resp.status_code == 200
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_send,
+    ):
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.status_code == 200
+    assert resp.json()["digest_emails"] == 0
+    mock_send.assert_not_called()
+
+
+async def test_trigger_reminders_skips_when_local_hour_does_not_match(client):
+    await create_test_goal(client)
+    settings_resp = await client.patch(
+        f"/users/{TEST_USER_ID}/settings",
+        json={"reminder_hour": 23},
+    )
+    assert settings_resp.status_code == 200
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_send,
+    ):
+        class _Now:
+            hour = 10
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        # reminder_hour was set to 23, mocked local hour is 10
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.status_code == 200
+    assert resp.json()["digest_emails"] == 0
+    mock_send.assert_not_called()
+
+
 async def test_trigger_reminders_skips_completed_tasks(client):
     """Completed tasks are not included in the reminder digest."""
     goal = await create_test_goal(client)
@@ -45,8 +96,13 @@ async def test_trigger_reminders_skips_completed_tasks(client):
 
     with (
         patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
         patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_send,
     ):
+        class _Now:
+            hour = 9
+
+        mock_user_now.return_value = _Now()
         mock_settings.jobs_api_key = _TEST_JOBS_KEY
         resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
 

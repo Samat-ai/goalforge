@@ -41,12 +41,16 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
   const { save: saveSettings, isSaving: saving } = useSaveSettingsMutation(userId)
   const [timezone, setTimezone] = useState(settings.timezone)
   const [displayName, setDisplayName] = useState(settings.display_name ?? '')
+  const [reminderEnabled, setReminderEnabled] = useState(settings.reminder_enabled)
+  const [reminderHour, setReminderHour] = useState(settings.reminder_hour)
 
   function save() {
     if (saving) return
     saveSettings({
       timezone,
       display_name: displayName.trim() || null,
+      reminder_enabled: reminderEnabled,
+      reminder_hour: reminderHour,
     })
   }
 
@@ -102,6 +106,49 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
         </select>
         <div style={{ fontSize: 11, color: T.dim, fontFamily: T.mono, marginTop: 7 }}>
           Used to localise your daily task schedule.
+        </div>
+      </div>
+
+      {/* Reminders */}
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '18px 20px' }}>
+        <label style={{ display: 'block', fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 10 }}>
+          DAILY REMINDER
+        </label>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, cursor: 'pointer', minHeight: 44 }}>
+          <input
+            type="checkbox"
+            checked={reminderEnabled}
+            onChange={e => setReminderEnabled(e.target.checked)}
+            style={{ width: 18, height: 18, accentColor: T.orange }}
+          />
+          <span style={{ fontSize: 13, color: T.text }}>Email me a daily digest of pending tasks</span>
+        </label>
+
+        <label style={{ display: 'block', fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 10 }}>
+          REMINDER HOUR (LOCAL TIME)
+        </label>
+        <select
+          value={reminderHour}
+          onChange={e => setReminderHour(Number(e.target.value))}
+          disabled={!reminderEnabled}
+          style={{
+            width: '100%', background: T.surface, border: `1px solid ${T.border}`,
+            borderRadius: 7, padding: '10px 13px', color: T.text, fontFamily: T.mono,
+            fontSize: 13, outline: 'none', cursor: reminderEnabled ? 'pointer' : 'default', appearance: 'none',
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2371717a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat', backgroundPosition: 'right 13px center',
+            paddingRight: 36, opacity: reminderEnabled ? 1 : 0.6,
+          }}
+          onFocus={e => { e.currentTarget.style.borderColor = T.orange }}
+          onBlur={e => { e.currentTarget.style.borderColor = T.border }}
+        >
+          {Array.from({ length: 24 }, (_, hour) => (
+            <option key={hour} value={hour}>{hour.toString().padStart(2, '0')}:00</option>
+          ))}
+        </select>
+        <div style={{ fontSize: 11, color: T.dim, fontFamily: T.mono, marginTop: 7 }}>
+          Reminders are sent when your local timezone reaches this hour.
         </div>
       </div>
 

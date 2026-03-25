@@ -54,6 +54,10 @@ async def update_user_settings(
         user.timezone = payload.timezone
     if payload.display_name is not None:
         user.display_name = payload.display_name
+    if payload.reminder_enabled is not None:
+        user.reminder_enabled = payload.reminder_enabled
+    if payload.reminder_hour is not None:
+        user.reminder_hour = payload.reminder_hour
     await db.commit()
     await db.refresh(user)
     return user
