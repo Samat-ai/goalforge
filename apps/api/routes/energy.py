@@ -5,7 +5,7 @@ import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_utils import resize_task_for_low_energy
@@ -68,25 +68,26 @@ async def energy_resize(
     to_resize = to_resize[:10]  # cap at 10 Gemini calls
 
     goal_ids = {t.goal_id for t in to_resize}
-    milestone_ids = {t.milestone_id for t in to_resize if t.milestone_id}
 
-    goals_result = await db.execute(select(Goal).where(Goal.id.in_(goal_ids)))
-    goals_map = {g.id: g for g in goals_result.scalars().all()}
-
-    milestones_map: dict = {}
-    if milestone_ids:
-        ms_result = await db.execute(
-            select(Milestone).where(Milestone.id.in_(milestone_ids))
+    # Single JOIN query: batch-load goal_context + sprint_theme per goal_id
+    ctx_stmt = (
+        select(Goal, Milestone)
+        .join(Milestone, and_(Goal.id == Milestone.goal_id, Milestone.sprint_status == "active"), isouter=True)
+        .where(Goal.id.in_(goal_ids))
+    )
+    ctx_result = await db.execute(ctx_stmt)
+    context_map: dict[str, tuple[str, str]] = {}
+    for goal_row, milestone_row in ctx_result.all():
+        goal_context = (
+            f"{goal_row.smart_title}: {goal_row.smart_description}"
+            if goal_row.smart_title
+            else (goal_row.smart_description or "")
         )
-        milestones_map = {m.id: m for m in ms_result.scalars().all()}
+        sprint_theme = milestone_row.sprint_theme if milestone_row else ""
+        context_map[goal_row.id] = (goal_context, sprint_theme)
 
     async def _resize_one(task: DailyTask):
-        goal = goals_map.get(task.goal_id)
-        goal_context = (
-            f"{goal.smart_title}: {goal.smart_description}" if goal else ""
-        )
-        milestone = milestones_map.get(task.milestone_id) if task.milestone_id else None
-        sprint_theme = milestone.sprint_theme if milestone else ""
+        goal_context, sprint_theme = context_map.get(task.goal_id, ("", ""))
         return await resize_task_for_low_energy(
             goal_context=goal_context,
             sprint_theme=sprint_theme,

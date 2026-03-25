@@ -1,10 +1,12 @@
 """Integration tests for energy resize endpoints."""
 
+import uuid
 from datetime import date
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from models import DailyTask
 from schemas import AITaskOutput
 from tests.conftest import OTHER_USER_ID, TEST_USER_ID, create_test_goal
 
@@ -106,3 +108,35 @@ async def test_energy_resize_all_gemini_failures(client):
     # Tasks returned unchanged
     unchanged = [t for t in data["tasks"] if t["original_description"] is None]
     assert len(unchanged) == len(tasks_today)
+
+
+async def test_energy_resize_caps_at_10(client, db_session):
+    """When more than 10 pending tasks exist today, only 10 are resized (Gemini cap)."""
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+    today = date.today()
+
+    # Add extra tasks so there are 12 total for today (7 already created by mock AI)
+    existing_today = [t for t in goal["daily_tasks"] if t["assigned_date"] == today.isoformat()]
+    extra_needed = 12 - len(existing_today)
+    goal_uuid = uuid.UUID(goal_id)
+    for _ in range(extra_needed):
+        db_session.add(DailyTask(
+            id=uuid.uuid4(),
+            goal_id=goal_uuid,
+            milestone_id=None,
+            description="Extra task for cap test",
+            tip="Keep going.",
+            assigned_date=today,
+            is_completed=False,
+        ))
+    await db_session.commit()
+
+    mock_resize = AsyncMock(return_value=MOCK_RESIZE)
+    with patch("routes.energy.resize_task_for_low_energy", new=mock_resize):
+        resp = await client.post(f"/users/{TEST_USER_ID}/energy-resize")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["tasks_resized"] == 10
+    assert mock_resize.call_count == 10
