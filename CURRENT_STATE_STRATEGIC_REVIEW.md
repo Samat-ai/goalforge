@@ -9,6 +9,7 @@
 
 - **Catastrophic Scale Risk: unbounded in-process async pre-generation**
   - `complete_task_and_award_points()` spawns `asyncio.create_task()` for pre-generation (`apps/api/services/task_service.py`) and tracks tasks in `_background_tasks`.
+  - `_background_tasks` is a **module-level in-memory set** in the API process, so lifecycle and load-shedding are tied to each app instance, not a durable shared queue.
   - This is still process-local queueing with no backpressure, no centralized worker, and no global concurrency cap.
   - Under burst load, DB connections and memory pressure can spike faster than request throughput can recover, producing cascading latency and stuck generations.
 
@@ -25,6 +26,7 @@
 - **Security & Exploits: what is actually dangerous now**
   - **IDOR posture is mostly solid**: ownership checks exist in shared deps (`apps/api/deps.py`) and are used by goal/task/reward mutations.
   - **High-impact exposure remains the jobs endpoint blast radius**: `/api/jobs/trigger-reminders` is API-key protected (`apps/api/routes/jobs.py`) and bypasses user auth by design. If key leaks, attacker can trigger global reminder/rescue flows and force outbound email volume.
+    - **Required mitigations before scale**: rotateable short-lived job key strategy, IP allowlisting at edge, per-minute rate limiting on this route, and anomaly alerts on rescue/digest send spikes.
   - **Abuse/DoS vector**: critical mutation endpoints are unevenly rate-limited (goal create and some milestone ops are limited; task completion is not), enabling request flooding against high-write paths.
 
 ---
@@ -55,7 +57,7 @@
 
   - **Feature Name:** Dynamic Reward Pacing Layer
     - **What it does:** Adds adaptive reward pacing (e.g., streak-protection rewards, near-miss bonuses, milestone-completion bursts) based on recent behavior.
-    - **The User Benefit (Why it keeps them engaged):** Converts “just +10 again” into variable reinforcement that feels alive and personally responsive.
+    - **The User Benefit (Why it keeps them engaged):** Converts “just +10 again” into variable reinforcement that feels alive and personally responsive. In practice, this means reward timing and intensity are intentionally non-identical, which is usually more habit-forming than perfectly fixed rewards.
 
   - **Feature Name:** Recovery Protocol (Not Just Rescue Sprint)
     - **What it does:** When inactivity is detected, app shifts from normal planning to low-friction recovery mode (tiny tasks, reduced UI complexity, confidence rebuilding).
@@ -93,7 +95,7 @@
 - **Dopamine Design: Evolve “Speck → Celestial”**
   - **Short-term hits (session-level)**
     - Add “near-term certainty” rewards every 2–3 actions (audio/visual unlock pings, tiny streak multipliers, micro-lore reveals).
-    - Use variable ratio rewards, but cap dry streaks so users never feel ignored.
+    - Use variable ratio rewards, but cap long periods without rewards so users never feel ignored.
   - **Mid-term hits (week-level)**
     - Weekly “constellation completion” arcs that reset with novelty (new mini-theme, mini-boss challenge, recovery badge).
   - **Long-term hits (identity-level)**
@@ -137,4 +139,3 @@
     - Push: “7-day snapshot is ready — you’ve built real momentum.”
     - AI check-in: “Choose your Week 2 mode: Gentle, Balanced, or Ambitious.”
     - UI nudge: “Lock in Week 2 with one click” with pre-tuned plan.
-
