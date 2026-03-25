@@ -24,6 +24,14 @@ export interface UserSettingsUpdatePayload {
   reminder_hour?: number | null
 }
 
+export interface PushSubscriptionRecord {
+  id: string
+  user_id: string
+  endpoint: string
+  is_active: boolean
+  created_at: string
+}
+
 export interface Task {
   id: string
   goal_id: string

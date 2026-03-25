@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/react'
 import AppHeader from '../components/AppHeader'
 import { T } from '../lib/theme'
-import { useSettingsQuery, useSaveSettingsMutation, useProfileQuery } from '../hooks'
+import { useEnablePushMutation, usePushSubscriptionsQuery, useSettingsQuery, useSaveSettingsMutation, useProfileQuery } from '../hooks'
 import type { UserSettings } from '../lib/types'
 
 const TIMEZONES = [
@@ -39,6 +39,8 @@ const TIMEZONES = [
 
 function SettingsForm({ settings, userId }: { settings: UserSettings; userId: string }) {
   const { save: saveSettings, isSaving: saving } = useSaveSettingsMutation(userId)
+  const { subscriptions } = usePushSubscriptionsQuery(userId)
+  const { enablePush, isEnabling } = useEnablePushMutation(userId)
   const [timezone, setTimezone] = useState(settings.timezone)
   const [displayName, setDisplayName] = useState(settings.display_name ?? '')
   const [reminderEnabled, setReminderEnabled] = useState(settings.reminder_enabled)
@@ -167,6 +169,29 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
         >
           {saving ? '···' : 'Save settings'}
         </button>
+      </div>
+
+      {/* Push notifications */}
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '18px 20px' }}>
+        <label style={{ display: 'block', fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 10 }}>
+          WEB PUSH REMINDERS
+        </label>
+        <button
+          onClick={() => enablePush()}
+          disabled={isEnabling}
+          style={{
+            cursor: isEnabling ? 'default' : 'pointer',
+            padding: '10px 18px', borderRadius: 8, minHeight: 44, minWidth: 44,
+            fontFamily: T.mono, fontSize: 11, fontWeight: 600,
+            letterSpacing: '0.04em', background: `${T.indigo}18`,
+            color: T.indigo, border: `1px solid ${T.indigo}45`, opacity: isEnabling ? 0.6 : 1,
+          }}
+        >
+          {isEnabling ? 'Enabling…' : 'Enable Browser Notifications'}
+        </button>
+        <div style={{ fontSize: 11, color: T.dim, fontFamily: T.mono, marginTop: 8 }}>
+          Active browser subscriptions: {subscriptions.filter(s => s.is_active).length}
+        </div>
       </div>
 
     </div>

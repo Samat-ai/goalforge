@@ -228,6 +228,26 @@ class RewardResponse(BaseModel):
     acquired_at: datetime
 
 
+class PushSubscriptionKeys(BaseModel):
+    p256dh: str = Field(..., min_length=10, max_length=512)
+    auth: str = Field(..., min_length=5, max_length=512)
+
+
+class PushSubscriptionCreate(BaseModel):
+    endpoint: str = Field(..., min_length=10, max_length=4000)
+    keys: PushSubscriptionKeys
+
+
+class PushSubscriptionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    user_id: str
+    endpoint: str
+    is_active: bool
+    created_at: datetime
+
+
 # ---------------------------------------------------------------------------
 # Paginated response wrappers
 # ---------------------------------------------------------------------------

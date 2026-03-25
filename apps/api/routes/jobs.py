@@ -9,8 +9,9 @@ from sqlalchemy.orm import selectinload
 
 from config import settings
 from database import get_db
-from models import Goal, User
+from models import Goal, User, WebPushSubscription
 from services.email_service import TaskDigestItem, send_reminder_digest, send_rescue_email
+from services.push_service import send_push_digest
 from services.rescue_service import goal_is_rescue_mode
 from utils import user_now, user_today
 
@@ -53,6 +54,7 @@ async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
 
     rescue_count = 0
     digest_count = 0
+    push_count = 0
 
     for user in users:
         active_goals = [g for g in user.goals if g.status == "active"]
@@ -90,4 +92,24 @@ async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
                 await send_reminder_digest(user.email, user.display_name, tasks)
                 digest_count += 1
 
-    return {"rescue_emails": rescue_count, "digest_emails": digest_count}
+                push_subs = (
+                    await db.execute(
+                        select(WebPushSubscription).where(
+                            WebPushSubscription.user_id == user.id,
+                            WebPushSubscription.is_active == True,  # noqa: E712
+                        )
+                    )
+                ).scalars().all()
+                for sub in push_subs:
+                    await send_push_digest(
+                        sub,
+                        title="GoalForge reminder",
+                        body=f"You have {len(tasks)} pending task{'s' if len(tasks) != 1 else ''} today.",
+                    )
+                    push_count += 1
+
+    return {
+        "rescue_emails": rescue_count,
+        "digest_emails": digest_count,
+        "push_notifications": push_count,
+    }
