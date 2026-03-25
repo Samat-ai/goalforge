@@ -130,6 +130,25 @@ const EXAMPLE_GOALS = [
   'Read 12 books this year',
 ]
 
+const ONBOARDING_STEPS = [
+  {
+    title: 'Welcome to GoalForge',
+    body: 'Start with one plain-language goal. We will shape it into a daily action plan.',
+  },
+  {
+    title: 'Use Do This Now',
+    body: 'When this card appears, tackle that single blocker first to protect momentum.',
+  },
+  {
+    title: 'Focus Mode',
+    body: 'Hit Focus to narrow the day to one best task when motivation is low.',
+  },
+  {
+    title: 'Build Daily Evidence',
+    body: 'Small wins stack. Keep completing tasks to evolve your companion and unlock rewards.',
+  },
+]
+
 function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
   return (
     <div style={{
@@ -196,6 +215,13 @@ export default function Dashboard() {
   const [focusOpen, setFocusOpen] = useState(false)
   const [activeRewardDrop, setActiveRewardDrop] = useState<RewardDrop | null>(null)
   const [showCollection, setShowCollection] = useState(false)
+  const [onboardingStep, setOnboardingStep] = useState<number>(() => {
+    try {
+      return localStorage.getItem('onboarding_seen_v1') === '1' ? -1 : 0
+    } catch {
+      return -1
+    }
+  })
 
   const { data: rewards = [] } = useRewardsQuery(userId ?? '')
   const equipMutation = useEquipRewardMutation(userId ?? '')
@@ -205,6 +231,15 @@ export default function Dashboard() {
 
   const error = isError ? 'Failed to load goals.' : null
   const filtered = filter === 'all' ? goals : goals.filter(g => g.status === filter)
+
+  function completeOnboarding() {
+    try {
+      localStorage.setItem('onboarding_seen_v1', '1')
+    } catch {
+      // Ignore storage failures; UX still works within the current session.
+    }
+    setOnboardingStep(-1)
+  }
 
   // ── Render ──
   return (
@@ -234,6 +269,73 @@ export default function Dashboard() {
             {goals.filter(g => g.status === 'active').length} active · {goals.length} total
           </p>
         </div>
+
+        {onboardingStep >= 0 && onboardingStep < ONBOARDING_STEPS.length && (
+          <div style={{
+            marginBottom: 18,
+            borderRadius: 12,
+            border: `1px solid ${T.indigo}50`,
+            background: `${T.indigo}10`,
+            padding: '14px 16px',
+            animation: 'fadeUp 0.35s ease both',
+          }}>
+            <div style={{
+              fontFamily: T.mono,
+              fontSize: 10,
+              color: T.indigo,
+              letterSpacing: '0.08em',
+              marginBottom: 5,
+            }}>
+              QUICK TOUR · STEP {onboardingStep + 1} / {ONBOARDING_STEPS.length}
+            </div>
+            <div style={{ fontFamily: T.serif, fontSize: 17, color: T.text, marginBottom: 5 }}>
+              {ONBOARDING_STEPS[onboardingStep].title}
+            </div>
+            <div style={{ fontFamily: T.mono, fontSize: 12, color: T.textDim, lineHeight: 1.7, marginBottom: 12 }}>
+              {ONBOARDING_STEPS[onboardingStep].body}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                onClick={completeOnboarding}
+                style={{
+                  minHeight: 44, minWidth: 44, padding: '8px 14px', borderRadius: 8,
+                  border: `1px solid ${T.dim}`, background: T.surface, color: T.textDim,
+                  fontFamily: T.mono, fontSize: 11, cursor: 'pointer',
+                }}
+              >
+                Skip
+              </button>
+              {onboardingStep > 0 && (
+                <button
+                  onClick={() => setOnboardingStep(prev => prev - 1)}
+                  style={{
+                    minHeight: 44, minWidth: 44, padding: '8px 14px', borderRadius: 8,
+                    border: `1px solid ${T.indigo}50`, background: `${T.indigo}12`, color: T.indigo,
+                    fontFamily: T.mono, fontSize: 11, cursor: 'pointer',
+                  }}
+                >
+                  Back
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (onboardingStep >= ONBOARDING_STEPS.length - 1) {
+                    completeOnboarding()
+                    return
+                  }
+                  setOnboardingStep(prev => prev + 1)
+                }}
+                style={{
+                  minHeight: 44, minWidth: 44, padding: '8px 14px', borderRadius: 8,
+                  border: `1px solid ${T.indigo}55`, background: `${T.indigo}20`, color: T.indigo,
+                  fontFamily: T.mono, fontSize: 11, cursor: 'pointer',
+                }}
+              >
+                {onboardingStep >= ONBOARDING_STEPS.length - 1 ? 'Finish' : 'Next'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Loading */}
         {loading && (
