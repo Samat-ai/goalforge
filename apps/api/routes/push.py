@@ -62,6 +62,7 @@ async def create_push_subscription(
         existing.p256dh = payload.keys.p256dh
         existing.auth = payload.keys.auth
         existing.is_active = True
+        await db.flush()
         await db.refresh(existing)
         return existing
 
@@ -73,6 +74,7 @@ async def create_push_subscription(
         is_active=True,
     )
     db.add(sub)
+    await db.flush()
     await db.refresh(sub)
     return sub
 
