@@ -3,7 +3,7 @@
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -12,7 +12,8 @@ from ai_utils import regenerate_single_task
 from auth import get_current_user_id
 from database import get_db
 from deps import _load_goal_with_ownership
-from models import DailyTask, Goal, Milestone
+from models import DailyTask, Goal, Milestone, User
+from rate_limiting import _user_key, rate_limit
 from schemas import (
     RewardDrop,
     TaskCompleteResponse,
@@ -22,6 +23,7 @@ from schemas import (
     TaskUpdate,
 )
 from services.task_service import complete_task_and_award_points
+from utils import user_today
 
 router = APIRouter()
 
@@ -174,7 +176,12 @@ async def create_task(
         active_ms = ms_result.scalar_one_or_none()
         milestone_id = active_ms.id if active_ms else None
 
-    assigned = body.assigned_date or date.today()
+    assigned = body.assigned_date
+    if assigned is None:
+        # Use user's timezone-aware "today" for consistent daily scheduling.
+        user_result = await db.execute(select(User).where(User.id == goal.user_id))
+        goal_user = user_result.scalar_one_or_none()
+        assigned = user_today(goal_user.timezone if goal_user else "UTC")
 
     # Compute next position for tasks with same milestone + date
     max_pos = (await db.execute(
@@ -233,7 +240,9 @@ async def reorder_tasks(
     response_model=TaskResponse,
     summary="Regenerate a task description via AI",
 )
+@rate_limit("10/minute", key_func=_user_key)
 async def regenerate_task(
+    request: Request,
     task_id: uuid.UUID,
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
