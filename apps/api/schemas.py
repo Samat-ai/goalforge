@@ -334,6 +334,6 @@ class AIWeeklyCoachOutput(BaseModel):
     recommendation: str = Field(
         ...,
         min_length=20,
-        max_length=400,
+        max_length=800,
         description="Practical coaching recommendation for next week",
     )
