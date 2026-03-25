@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -10,6 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -230,3 +231,31 @@ class WeeklyReflection(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="weekly_reflections")
+
+
+class StarLog(Base):
+    __tablename__ = "star_logs"
+    __table_args__ = (
+        UniqueConstraint("user_id", "start_date", "end_date", name="uq_star_log_user_period"),
+        Index("ix_star_logs_user_id", "user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    completed_tasks: Mapped[int] = mapped_column(Integer, nullable=False)
+    completed_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    chapter_title: Mapped[str] = mapped_column(String(200), nullable=False)
+    chapter_body: Mapped[str] = mapped_column(Text, nullable=False)
+    highlights: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    is_fallback: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=sa.false()
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
