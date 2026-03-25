@@ -290,3 +290,70 @@ async def generate_rescue_tasks(
         return parsed.tasks
 
     return await _with_retry(_attempt, "generate_rescue_tasks")
+
+
+_ENERGY_RESIZE_PROMPT = """\
+You are GoalForge AI helping a user who is low on energy today.
+Original task: {original_description}
+Goal context: {goal_context}
+Sprint theme: {sprint_theme}
+
+Your job is to find the single, absurdly small FIRST STEP that physically initiates this task.
+
+Rules:
+- The micro-task MUST be the literal first physical or digital action toward the original task.
+  (e.g. "Open your notes app" not "Review your notes strategy")
+- It must be completable in under 3 minutes.
+- The description MUST start with a strong action verb: Open, Put on, Type, Pull up, Set, Write.
+- Keep description <= 15 words.
+- The tip MUST be empathetic and zero-pressure.
+  Good: "Just doing this is a win today." Bad: "Stay consistent!"
+- Keep tip <= 15 words.
+- Do NOT invent a thematic alternative. Stay anchored to the original task.
+- Use the same assigned_date: {assigned_date}.
+"""
+
+
+async def resize_task_for_low_energy(
+    goal_context: str,
+    sprint_theme: str,
+    original_description: str,
+    assigned_date: date,
+) -> AITaskOutput:
+    """
+    Generate a 3-minute first-step micro-task from an original task description.
+
+    IMPORTANT: Callers must consume ONLY result.description and result.tip.
+    result.assigned_date must be DISCARDED — never write it back to the DB.
+
+    Raises:
+        AIGenerationError: after 3 failed attempts.
+    """
+    system_instruction = _ENERGY_RESIZE_PROMPT.format(
+        original_description=original_description,
+        goal_context=goal_context,
+        sprint_theme=sprint_theme,
+        assigned_date=assigned_date.isoformat(),
+    )
+    user_message = (
+        f"Generate a 3-minute first step for: {original_description}\n"
+        f"Goal: {goal_context}"
+    )
+
+    async def _call() -> AITaskOutput:
+        response = await _client.aio.models.generate_content(
+            model=_MODEL,
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                response_mime_type="application/json",
+                response_schema=AITaskOutput,
+                temperature=1.0,
+            ),
+        )
+        raw_json: str = response.text
+        logger.debug("Gemini raw response (energy_resize): %s", raw_json)
+        data = json.loads(raw_json)
+        return AITaskOutput.model_validate(data)
+
+    return await _with_retry(_call, "resize_task_for_low_energy")
