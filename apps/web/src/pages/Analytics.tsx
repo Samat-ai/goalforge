@@ -9,6 +9,7 @@ import {
   useCreateWeeklyReflectionMutation,
   useLatestWeeklyReflectionQuery,
   useProfileQuery,
+  useWeeklyReviewQuery,
 } from '../hooks'
 
 // ── Analytics page ────────────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ export default function Analytics() {
   const [wentWell, setWentWell] = useState('')
   const [blockers, setBlockers] = useState('')
   const [weekRating, setWeekRating] = useState(3)
+  const { data: weeklyReview } = useWeeklyReviewQuery(user?.id, 7)
 
   const error = isError ? 'Failed to load data.' : null
 
@@ -99,6 +101,39 @@ export default function Analytics() {
 
         {!loading && (
           <>
+            {weeklyReview && (
+              <div style={{
+                background: T.card,
+                border: `1px solid ${T.indigo}40`,
+                borderRadius: 12,
+                padding: '16px 18px',
+                marginBottom: 20,
+              }}>
+                <div style={{ fontSize: 10, color: T.muted, fontFamily: T.mono, letterSpacing: '0.08em', marginBottom: 6 }}>
+                  WEEKLY REVIEW
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                  gap: 8,
+                  marginBottom: 10,
+                }}>
+                  <div style={{ fontSize: 12, color: T.textDim, fontFamily: T.mono }}>
+                    Completed: <span style={{ color: T.emerald }}>{weeklyReview.completed_tasks}/{weeklyReview.total_tasks}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: T.textDim, fontFamily: T.mono }}>
+                    Rate: <span style={{ color: T.amber }}>{Math.round(weeklyReview.completion_rate * 100)}%</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: T.textDim, fontFamily: T.mono }}>
+                    Risk: <span style={{ color: weeklyReview.risk_level === 'low' ? T.emerald : weeklyReview.risk_level === 'medium' ? T.amber : T.rose }}>{weeklyReview.risk_level}</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: T.text, lineHeight: 1.7 }}>
+                  {weeklyReview.recommendation}
+                </div>
+              </div>
+            )}
+
             {/* ── Creature hero ── */}
             <div style={{
               background: T.card, border: `1px solid ${stage.color}45`, borderRadius: 15,

@@ -42,6 +42,18 @@ export interface WeeklyReflection {
   created_at: string
 }
 
+export interface WeeklyReviewResponse {
+  start_date: string
+  end_date: string
+  total_tasks: number
+  completed_tasks: number
+  completion_rate: number
+  completed_days: number
+  overdue_tasks: number
+  risk_level: 'low' | 'medium' | 'high'
+  recommendation: string
+}
+
 export interface Task {
   id: string
   goal_id: string
