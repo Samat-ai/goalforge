@@ -36,6 +36,14 @@ export const daysAgo = (dateStr: string, n: number): string => {
   return new Intl.DateTimeFormat('en-CA').format(d)
 }
 
+// Difference in whole calendar days between two ISO dates (YYYY-MM-DD).
+// Noon-anchor avoids DST midnight edge-cases.
+export const dayDiff = (fromDateStr: string, toDateStr: string): number => {
+  const from = new Date(fromDateStr + 'T12:00:00').getTime()
+  const to = new Date(toDateStr + 'T12:00:00').getTime()
+  return Math.max(0, Math.round((to - from) / 864e5))
+}
+
 // ── Streak (consecutive completed days ending today) ──────────────────────────
 export function streak(days: string[]): number {
   const today = todayStr()

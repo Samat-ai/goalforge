@@ -11,7 +11,7 @@ import RewardModal from '../components/RewardModal'
 import CollectionModal from '../components/CollectionModal'
 import { useGoalsQuery, useProfileQuery, useGoalMutations } from '../hooks'
 import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
-import { todayStr } from '../lib/gamification'
+import { dayDiff, todayStr } from '../lib/gamification'
 import type { Goal, RewardDrop } from '../lib/types'
 
 // ── DoThisNow (blocker resolution CTA) ───────────────────────────────────────
@@ -58,6 +58,64 @@ function computeBlocker(goals: Goal[], today: string): Blocker | null {
 
 interface DoThisNowProps {
   goals: Goal[]
+}
+
+interface WelcomeBackState {
+  daysAway: number
+  lastCompletedDate: string
+}
+
+function computeWelcomeBack(goals: Goal[], today: string): WelcomeBackState | null {
+  const allCompletedDays = goals
+    .flatMap(g => g.completed_days)
+    .filter(d => d <= today)
+
+  if (allCompletedDays.length === 0) return null
+
+  const lastCompletedDate = allCompletedDays.reduce((latest, cur) => (cur > latest ? cur : latest))
+  const daysAway = dayDiff(lastCompletedDate, today)
+  if (daysAway < 3) return null
+
+  return { daysAway, lastCompletedDate }
+}
+
+function WelcomeBackCard({ goals, onRestart }: { goals: Goal[]; onRestart: () => void }) {
+  const today = todayStr()
+  const state = computeWelcomeBack(goals, today)
+  if (!state) return null
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+      padding: '14px 18px', borderRadius: 12, marginBottom: 16,
+      background: `${T.indigo}12`, border: `1px solid ${T.indigo}40`,
+      borderLeft: `3px solid ${T.indigo}`,
+      animation: 'fadeUp 0.35s ease both',
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: T.mono, fontSize: 11, fontWeight: 600, color: T.indigo, letterSpacing: '0.06em', marginBottom: 3 }}>
+          WELCOME BACK
+        </div>
+        <div style={{ fontFamily: T.serif, fontSize: 14, color: T.text }}>
+          You were away for {state.daysAway} days. No reset needed.
+        </div>
+        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.textDim, marginTop: 2 }}>
+          Last completion: {state.lastCompletedDate}. One tiny win gets momentum back.
+        </div>
+      </div>
+      <button
+        onClick={onRestart}
+        style={{
+          minHeight: 44, minWidth: 44, padding: '9px 18px', borderRadius: 8,
+          cursor: 'pointer', flexShrink: 0,
+          fontFamily: T.mono, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
+          background: `${T.indigo}18`, color: T.indigo, border: `1px solid ${T.indigo}45`,
+        }}
+      >
+        Restart With 1 Task
+      </button>
+    </div>
+  )
 }
 
 function DoThisNow({ goals }: DoThisNowProps) {
@@ -272,6 +330,7 @@ export default function Dashboard() {
 
         {!loading && !error && (
           <>
+            <WelcomeBackCard goals={goals} onRestart={() => setFocusOpen(true)} />
             <DoThisNow goals={goals} />
             <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} />
             <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} />
