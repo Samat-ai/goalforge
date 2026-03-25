@@ -30,7 +30,7 @@ async def test_schema_has_original_fields(client):
 async def test_energy_resize_bulk_mutates_tasks(client):
     """Resized tasks get micro-descriptions; original is preserved in original_description."""
     goal = await create_test_goal(client)
-    today = date.today().isoformat()
+    today = goal["daily_tasks"][0]["assigned_date"]
     tasks_today = [t for t in goal["daily_tasks"] if t["assigned_date"] == today]
     assert tasks_today, "Need at least one task today"
     original_desc = tasks_today[0]["description"]
@@ -67,7 +67,7 @@ async def test_energy_resize_forbidden_for_other_user(client):
 async def test_energy_resize_partial_gemini_failure(client):
     """Tasks where Gemini fails are skipped; others succeed."""
     goal = await create_test_goal(client)
-    today = date.today().isoformat()
+    today = goal["daily_tasks"][0]["assigned_date"]
     tasks_today = [t for t in goal["daily_tasks"] if t["assigned_date"] == today]
     if len(tasks_today) < 2:
         pytest.skip("Need at least 2 tasks today for this test")
@@ -92,7 +92,7 @@ async def test_energy_resize_partial_gemini_failure(client):
 async def test_energy_resize_all_gemini_failures(client):
     """If all Gemini calls fail, tasks_resized=0 and existing tasks returned unchanged."""
     goal = await create_test_goal(client)
-    today = date.today().isoformat()
+    today = goal["daily_tasks"][0]["assigned_date"]
     tasks_today = [t for t in goal["daily_tasks"] if t["assigned_date"] == today]
     assert tasks_today
 
@@ -114,10 +114,11 @@ async def test_energy_resize_caps_at_10(client, db_session):
     """When more than 10 pending tasks exist today, only 10 are resized (Gemini cap)."""
     goal = await create_test_goal(client)
     goal_id = goal["id"]
-    today = date.today()
+    today_str = goal["daily_tasks"][0]["assigned_date"]
+    today = date.fromisoformat(today_str)
 
     # Add extra tasks so there are 12 total for today (7 already created by mock AI)
-    existing_today = [t for t in goal["daily_tasks"] if t["assigned_date"] == today.isoformat()]
+    existing_today = [t for t in goal["daily_tasks"] if t["assigned_date"] == today_str]
     extra_needed = 12 - len(existing_today)
     goal_uuid = uuid.UUID(goal_id)
     for _ in range(extra_needed):

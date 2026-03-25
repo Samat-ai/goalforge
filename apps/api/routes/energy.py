@@ -86,14 +86,17 @@ async def energy_resize(
         sprint_theme = milestone_row.sprint_theme if milestone_row else ""
         context_map[goal_row.id] = (goal_context, sprint_theme)
 
+    sem = asyncio.Semaphore(5)
+
     async def _resize_one(task: DailyTask):
         goal_context, sprint_theme = context_map.get(task.goal_id, ("", ""))
-        return await resize_task_for_low_energy(
-            goal_context=goal_context,
-            sprint_theme=sprint_theme,
-            original_description=task.description,
-            assigned_date=task.assigned_date,
-        )
+        async with sem:
+            return await resize_task_for_low_energy(
+                goal_context=goal_context,
+                sprint_theme=sprint_theme,
+                original_description=task.description,
+                assigned_date=task.assigned_date,
+            )
 
     raw_results = await asyncio.gather(
         *[_resize_one(t) for t in to_resize],
@@ -111,8 +114,6 @@ async def energy_resize(
         task.description = res.description
         task.tip = res.tip
         tasks_resized += 1
-
-    await db.flush()
 
     return EnergyResizeResponse(
         tasks_resized=tasks_resized,
