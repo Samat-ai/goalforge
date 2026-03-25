@@ -6,4 +6,5 @@ export const queryKeys = {
   pushSubscriptions: (userId: string) => ['pushSubscriptions', userId] as const,
   weeklyReflectionLatest: (userId: string) => ['weeklyReflectionLatest', userId] as const,
   weeklyReview: (userId: string, days: number) => ['weeklyReview', userId, days] as const,
+  starLog: (userId: string, days: number) => ['starLog', userId, days] as const,
 }

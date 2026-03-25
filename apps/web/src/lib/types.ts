@@ -54,6 +54,20 @@ export interface WeeklyReviewResponse {
   recommendation: string
 }
 
+export interface StarLogResponse {
+  id: string
+  user_id: string
+  start_date: string
+  end_date: string
+  completed_tasks: number
+  completed_days: number
+  chapter_title: string
+  chapter_body: string
+  highlights: string[]
+  is_fallback: boolean
+  created_at: string
+}
+
 export interface Task {
   id: string
   goal_id: string

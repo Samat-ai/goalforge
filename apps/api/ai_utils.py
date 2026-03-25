@@ -23,6 +23,7 @@ from schemas import (
     AIRescueOutput,
     AIRescueTaskItem,
     AISprintOutput,
+    AIStarLogOutput,
     AITaskOutput,
     AIWeeklyCoachOutput,
 )
@@ -419,3 +420,65 @@ async def generate_weekly_coach_recommendation(
         return parsed.recommendation
 
     return await _with_retry(_attempt, "generate_weekly_coach_recommendation")
+
+
+_STAR_LOG_SYSTEM_PROMPT = """\
+You write a short weekly Star Log chapter for GoalForge.
+
+Inputs:
+- date range: {start_date} to {end_date}
+- completed task count: {completed_tasks}
+- completed distinct days: {completed_days}
+- completed task snippets: {task_snippets}
+
+Rules:
+- Keep tone encouraging, specific, and grounded in completed actions only.
+- Avoid generic motivational filler.
+- chapter_title: 3-8 words.
+- chapter_body: 2 short paragraphs (max 110 words total).
+- highlights: 2-3 concise bullet-like lines.
+- Never shame the user.
+"""
+
+
+async def generate_star_log_narrative(
+    *,
+    start_date: date,
+    end_date: date,
+    completed_tasks: int,
+    completed_days: int,
+    task_snippets: list[str],
+) -> AIStarLogOutput:
+    """Generate a narrative Star Log chapter for a user's recent 7-day effort."""
+
+    snippets = task_snippets[:8]
+    snippet_text = " | ".join(snippets) if snippets else "No completed tasks in this window"
+    system_instruction = _STAR_LOG_SYSTEM_PROMPT.format(
+        start_date=start_date.isoformat(),
+        end_date=end_date.isoformat(),
+        completed_tasks=completed_tasks,
+        completed_days=completed_days,
+        task_snippets=snippet_text,
+    )
+    user_message = (
+        "Write the user's weekly Star Log chapter from this evidence. "
+        "Only mention actions present in completed tasks."
+    )
+
+    async def _call() -> AIStarLogOutput:
+        response = await _client.aio.models.generate_content(
+            model=_MODEL,
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                response_mime_type="application/json",
+                response_schema=AIStarLogOutput,
+                temperature=1.0,
+            ),
+        )
+        raw_json: str = response.text
+        logger.debug("Gemini raw response (star_log): %s", raw_json)
+        data = json.loads(raw_json)
+        return AIStarLogOutput.model_validate(data)
+
+    return await _with_retry(_call, "generate_star_log_narrative")

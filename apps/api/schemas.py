@@ -349,3 +349,25 @@ class AIWeeklyCoachOutput(BaseModel):
         max_length=800,
         description="Practical coaching recommendation for next week",
     )
+
+
+class AIStarLogOutput(BaseModel):
+    chapter_title: str = Field(..., max_length=200)
+    chapter_body: str = Field(..., max_length=1200)
+    highlights: list[str] = Field(..., min_length=2, max_length=3)
+
+
+class StarLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    user_id: str
+    start_date: date
+    end_date: date
+    completed_tasks: int
+    completed_days: int
+    chapter_title: str
+    chapter_body: str
+    highlights: list[str]
+    is_fallback: bool
+    created_at: datetime

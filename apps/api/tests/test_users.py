@@ -1,5 +1,6 @@
-"""Tests for users.py routes: GET/PATCH /users/{user_id}/settings."""
+"""Tests for users.py routes: GET/PATCH /users/{user_id}/settings, star-log."""
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -195,6 +196,59 @@ async def test_get_weekly_review_403_wrong_user(client):
     try:
         app.dependency_overrides[get_current_user_id] = lambda: OTHER_USER_ID
         resp = await client.get(f"/users/{TEST_USER_ID}/weekly-review")
+    finally:
+        app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
+    assert resp.status_code == 403
+
+
+# ── Star Log ──────────────────────────────────────────────────────────
+
+
+@patch(
+    "routes.users.generate_star_log_narrative",
+    new_callable=AsyncMock,
+    return_value=SimpleNamespace(
+        chapter_title="Week of Ignition",
+        chapter_body="You showed up consistently and moved your goal forward.",
+        highlights=["Started strong", "Kept daily rhythm"],
+    ),
+)
+async def test_get_star_log_generates_and_persists(mock_ai, client):
+    goal = await create_test_goal(client)
+    task_id = goal["daily_tasks"][0]["id"]
+    await client.patch(f"/tasks/{task_id}/complete")
+
+    resp = await client.get(f"/users/{TEST_USER_ID}/star-log?days=7")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["chapter_title"] == "Week of Ignition"
+    assert data["is_fallback"] is False
+    assert data["completed_tasks"] >= 1
+    assert "id" in data  # persisted — has a DB id
+    mock_ai.assert_called_once()
+
+    # Second call should return cached — no second AI call
+    resp2 = await client.get(f"/users/{TEST_USER_ID}/star-log?days=7")
+    assert resp2.status_code == 200
+    assert resp2.json()["id"] == data["id"]
+    mock_ai.assert_called_once()  # still only one call
+
+
+async def test_get_star_log_fallback_no_completed_tasks(client):
+    await create_test_goal(client)
+    resp = await client.get(f"/users/{TEST_USER_ID}/star-log?days=3")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["chapter_title"] == "Quiet Orbit"
+    assert data["is_fallback"] is True
+    assert "id" in data  # persisted even for fallback
+
+
+async def test_get_star_log_403_wrong_user(client):
+    await create_test_goal(client)
+    try:
+        app.dependency_overrides[get_current_user_id] = lambda: OTHER_USER_ID
+        resp = await client.get(f"/users/{TEST_USER_ID}/star-log")
     finally:
         app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
     assert resp.status_code == 403

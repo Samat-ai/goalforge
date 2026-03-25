@@ -9,6 +9,7 @@ import {
   useCreateWeeklyReflectionMutation,
   useLatestWeeklyReflectionQuery,
   useProfileQuery,
+  useStarLogQuery,
   useWeeklyReviewQuery,
 } from '../hooks'
 
@@ -24,6 +25,7 @@ export default function Analytics() {
   const [blockers, setBlockers] = useState('')
   const [weekRating, setWeekRating] = useState(3)
   const { data: weeklyReview } = useWeeklyReviewQuery(user?.id, 7)
+  const { data: starLog } = useStarLogQuery(user?.id, 7)
 
   const error = isError ? 'Failed to load data.' : null
 
@@ -130,6 +132,43 @@ export default function Analytics() {
                 </div>
                 <div style={{ fontSize: 12, color: T.text, lineHeight: 1.7 }}>
                   {weeklyReview.recommendation}
+                </div>
+              </div>
+            )}
+
+            {starLog && (
+              <div style={{
+                background: T.card,
+                border: `1px solid ${starLog.is_fallback ? T.border : T.amber}40`,
+                borderRadius: 12,
+                padding: '16px 18px',
+                marginBottom: 20,
+              }}>
+                <div style={{ fontSize: 10, color: T.muted, fontFamily: T.mono, letterSpacing: '0.08em', marginBottom: 6 }}>
+                  STAR LOG
+                </div>
+                <div style={{ fontFamily: T.serif, fontSize: 18, color: starLog.is_fallback ? T.muted : T.amber, marginBottom: 6, lineHeight: 1.4 }}>
+                  {starLog.chapter_title}
+                </div>
+                <div style={{ fontSize: 12, color: T.text, lineHeight: 1.7, marginBottom: 10 }}>
+                  {starLog.chapter_body}
+                </div>
+                {starLog.highlights.length > 0 && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                    {starLog.highlights.map((h, i) => (
+                      <span key={i} style={{
+                        fontSize: 10, padding: '2px 8px', borderRadius: 20,
+                        fontFamily: T.mono, letterSpacing: '0.04em',
+                        border: `1px solid ${T.amber}40`, background: `${T.amber}10`, color: T.amber,
+                      }}>
+                        {h}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 12, fontSize: 11, color: T.textDim, fontFamily: T.mono }}>
+                  <span>Tasks: <span style={{ color: T.emerald }}>{starLog.completed_tasks}</span></span>
+                  <span>Days: <span style={{ color: T.emerald }}>{starLog.completed_days}</span></span>
                 </div>
               </div>
             )}
