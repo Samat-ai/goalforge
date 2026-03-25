@@ -150,5 +150,4 @@ async def restore_task(
     task.original_description = None
     task.original_tip = None
 
-    await db.flush()
     return TaskResponse.model_validate(task)

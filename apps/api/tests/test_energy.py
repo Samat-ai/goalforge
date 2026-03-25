@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from sqlalchemy import select
 from models import DailyTask
 from schemas import AITaskOutput
 from tests.conftest import OTHER_USER_ID, TEST_USER_ID, create_test_goal
@@ -155,9 +156,7 @@ async def test_restore_task_swaps_back(client, db_session):
     task_id = uuid.UUID(task_data["id"])
 
     # Directly set original_description to simulate a previously resized task
-    from sqlalchemy import select as sa_select
-    from models import DailyTask as DT
-    result = await db_session.execute(sa_select(DT).where(DT.id == task_id))
+    result = await db_session.execute(select(DailyTask).where(DailyTask.id == task_id))
     task = result.scalar_one()
     task.original_description = task.description
     task.original_tip = task.tip
@@ -192,9 +191,7 @@ async def test_restore_completed_task_returns_400(client, db_session):
     task_data = goal["daily_tasks"][0]
     task_id = uuid.UUID(task_data["id"])
 
-    from sqlalchemy import select as sa_select
-    from models import DailyTask as DT
-    result = await db_session.execute(sa_select(DT).where(DT.id == task_id))
+    result = await db_session.execute(select(DailyTask).where(DailyTask.id == task_id))
     task = result.scalar_one()
     task.original_description = task.description
     task.original_tip = task.tip
@@ -216,9 +213,7 @@ async def test_restore_other_users_task_returns_403(client, db_session):
     task_id = uuid.UUID(task_data["id"])
 
     # Simulate resized state so the ownership check is the only guard that fires
-    from sqlalchemy import select as sa_select
-    from models import DailyTask as DT
-    result = await db_session.execute(sa_select(DT).where(DT.id == task_id))
+    result = await db_session.execute(select(DailyTask).where(DailyTask.id == task_id))
     task = result.scalar_one()
     task.original_description = task.description
     task.original_tip = task.tip
