@@ -142,3 +142,96 @@ async def test_energy_resize_caps_at_10(client, db_session):
     data = resp.json()
     assert data["tasks_resized"] == 10
     assert mock_resize.call_count == 10
+
+
+# ---------------------------------------------------------------------------
+# POST /tasks/{task_id}/restore tests
+# ---------------------------------------------------------------------------
+
+async def test_restore_task_swaps_back(client, db_session):
+    """Resized task: restore returns original description/tip and clears original_* to null."""
+    goal = await create_test_goal(client)
+    task_data = goal["daily_tasks"][0]
+    task_id = uuid.UUID(task_data["id"])
+
+    # Directly set original_description to simulate a previously resized task
+    from sqlalchemy import select as sa_select
+    from models import DailyTask as DT
+    result = await db_session.execute(sa_select(DT).where(DT.id == task_id))
+    task = result.scalar_one()
+    task.original_description = task.description
+    task.original_tip = task.tip
+    task.description = "Open your running app"
+    task.tip = "Just doing this is a win today."
+    await db_session.commit()
+
+    resp = await client.post(f"/tasks/{task_id}/restore")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["description"] == task_data["description"]
+    assert data["tip"] == task_data["tip"]
+    assert data["original_description"] is None
+    assert data["original_tip"] is None
+
+
+async def test_restore_task_not_resized_returns_400(client):
+    """Task without original_description (normal task) returns 400."""
+    goal = await create_test_goal(client)
+    task_id = goal["daily_tasks"][0]["id"]
+
+    resp = await client.post(f"/tasks/{task_id}/restore")
+
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "Task is not in resized state"
+
+
+async def test_restore_completed_task_returns_400(client, db_session):
+    """A completed task returns 400 even if it was resized."""
+    goal = await create_test_goal(client)
+    task_data = goal["daily_tasks"][0]
+    task_id = uuid.UUID(task_data["id"])
+
+    from sqlalchemy import select as sa_select
+    from models import DailyTask as DT
+    result = await db_session.execute(sa_select(DT).where(DT.id == task_id))
+    task = result.scalar_one()
+    task.original_description = task.description
+    task.original_tip = task.tip
+    task.description = "Open your running app"
+    task.tip = "Just doing this is a win today."
+    task.is_completed = True
+    await db_session.commit()
+
+    resp = await client.post(f"/tasks/{task_id}/restore")
+
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "Cannot restore a completed task"
+
+
+async def test_restore_other_users_task_returns_403(client, db_session):
+    """Trying to restore another user's task returns 403."""
+    goal = await create_test_goal(client)
+    task_data = goal["daily_tasks"][0]
+    task_id = uuid.UUID(task_data["id"])
+
+    # Simulate resized state so the ownership check is the only guard that fires
+    from sqlalchemy import select as sa_select
+    from models import DailyTask as DT
+    result = await db_session.execute(sa_select(DT).where(DT.id == task_id))
+    task = result.scalar_one()
+    task.original_description = task.description
+    task.original_tip = task.tip
+    task.description = "Open your running app"
+    task.tip = "Just doing this is a win today."
+    await db_session.commit()
+
+    from auth import get_current_user_id
+    from main import app
+    app.dependency_overrides[get_current_user_id] = lambda: OTHER_USER_ID
+    try:
+        resp = await client.post(f"/tasks/{task_id}/restore")
+    finally:
+        app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
+
+    assert resp.status_code == 403

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ai_utils import resize_task_for_low_energy
 from auth import get_current_user_id
 from database import get_db
+from deps import _load_goal_with_ownership
 from models import DailyTask, Goal, Milestone, User
 from rate_limiting import _user_key, rate_limit
 from schemas import EnergyResizeResponse, TaskResponse
@@ -119,3 +120,35 @@ async def energy_resize(
         tasks_resized=tasks_resized,
         tasks=[TaskResponse.model_validate(t) for t in all_tasks],
     )
+
+
+@router.post(
+    "/tasks/{task_id}/restore",
+    response_model=TaskResponse,
+    summary="Restore a resized task to its original description and tip",
+)
+async def restore_task(
+    task_id: uuid.UUID,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(DailyTask).where(DailyTask.id == task_id))
+    task = result.scalar_one_or_none()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    await _load_goal_with_ownership(task.goal_id, current_user_id, db)
+
+    if task.original_description is None:
+        raise HTTPException(status_code=400, detail="Task is not in resized state")
+
+    if task.is_completed:
+        raise HTTPException(status_code=400, detail="Cannot restore a completed task")
+
+    task.description = task.original_description
+    task.tip = task.original_tip
+    task.original_description = None
+    task.original_tip = None
+
+    await db.flush()
+    return TaskResponse.model_validate(task)
