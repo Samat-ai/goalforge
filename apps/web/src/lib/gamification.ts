@@ -76,22 +76,27 @@ export function lastStreakLength(days: string[]): number {
   return count
 }
 
-// ── Star brightness (0–1) — rolling 7-day strength with gradual decay ────────
-// Looks at a 7-day window ending today. Each day is weighted so recent days
-// matter more (recency-weighted): day 0 (today) = 7, day -1 = 6, … day -6 = 1.
-// Total possible weight = 28.  Missing a single day costs ~15-25% depending on
-// recency, rather than resetting to 0.  Rewards sustained effort while forgiving
-// the occasional off day.
-export function starBrightness(days: string[]): number {
+// ── Habit strength (0–1) — resilient decay model ─────────────────────────────
+// Inspired by Loop/uhabits behavior: progress decays gradually on misses.
+// Update rule per day: strength = strength * 0.85 + (completed ? 0.15 : 0)
+// This keeps momentum valuable while avoiding binary streak reset punishment.
+export function habitStrength(days: string[]): number {
   const today = todayStr()
-  const set = new Set(days.filter(d => d <= today))
-  if (set.size === 0) return 0
+  const past = [...new Set(days.filter(d => d <= today))].sort()
+  if (past.length === 0) return 0
 
-  let score = 0
-  const totalWeight = 28 // 7+6+5+4+3+2+1
-  for (let i = 0; i < 7; i++) {
-    const d = daysAgo(today, i)
-    if (set.has(d)) score += 7 - i // today = 7, yesterday = 6, … 6 days ago = 1
+  let strength = 0
+  const completed = new Set(past)
+  let cursor = past[0]
+
+  while (cursor <= today) {
+    const done = completed.has(cursor)
+    strength = strength * 0.85 + (done ? 0.15 : 0)
+    cursor = daysAgo(cursor, -1)
   }
-  return Math.min(1, score / totalWeight)
+
+  return Math.min(1, Math.max(0, strength))
 }
+
+// Backwards-compatible alias used by existing UI components.
+export const starBrightness = habitStrength
