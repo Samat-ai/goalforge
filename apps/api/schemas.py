@@ -45,6 +45,8 @@ class TaskResponse(TaskBase):
     is_completed: bool
     completed_at: datetime | None
     is_rescue_task: bool = False
+    original_description: str | None = None
+    original_tip: str | None = None
 
 
 class RewardDrop(BaseModel):
@@ -60,6 +62,11 @@ class TaskCompleteResponse(TaskResponse):
     # Always present in JSON output — never omitted via exclude_none.
     # Standard tier sets this to None; bonus/crit/jackpot populate it.
     reward_drop: RewardDrop | None = None
+
+
+class EnergyResizeResponse(BaseModel):
+    tasks_resized: int
+    tasks: list[TaskResponse]
 
 
 class TaskCreate(BaseModel):
