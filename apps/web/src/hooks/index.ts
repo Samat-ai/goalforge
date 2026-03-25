@@ -7,3 +7,4 @@ export { usePushSubscriptionsQuery, useEnablePushMutation } from './usePushNotif
 export { useLatestWeeklyReflectionQuery, useCreateWeeklyReflectionMutation } from './useWeeklyReflection'
 export { useWeeklyReviewQuery } from './useWeeklyReview'
 export { useStarLogQuery } from './useStarLog'
+export { useShopRewardsQuery, useShopRewardMutations } from './useShopRewards'

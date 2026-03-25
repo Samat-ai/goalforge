@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Goal, Reward, User
+from models import Goal, Reward, ShopReward, User
 
 
 def _ensure_owner(resource_owner_id: str, current_user_id: str) -> None:
@@ -47,5 +47,17 @@ async def _load_reward_with_ownership(
     reward = result.scalar_one_or_none()
     if reward is None:
         raise HTTPException(status_code=404, detail="Reward not found")
+    _ensure_owner(reward.user_id, current_user_id)
+    return reward
+
+
+async def _load_shop_reward_with_ownership(
+    reward_id: uuid.UUID, current_user_id: str, db: AsyncSession,
+) -> ShopReward:
+    """Load a shop reward and verify ownership. Raises 404 or 403 on failure."""
+    result = await db.execute(select(ShopReward).where(ShopReward.id == reward_id))
+    reward = result.scalar_one_or_none()
+    if reward is None:
+        raise HTTPException(status_code=404, detail="Shop reward not found")
     _ensure_owner(reward.user_id, current_user_id)
     return reward
