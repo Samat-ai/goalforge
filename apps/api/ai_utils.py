@@ -49,6 +49,7 @@ You are GoalForge AI generating a focused 7-day sprint task plan.
 Goal context: {goal_context}
 Sprint theme: {sprint_theme}
 Sprint start date: {start_date} (Day 1 of 7)
+Difficulty mode: {difficulty_mode}
 
 Rules:
 - Generate exactly 7 daily tasks, one per day.
@@ -56,6 +57,9 @@ Rules:
 - Each task must directly serve the sprint theme and the overall goal.
 - Keep descriptions ≤20 words, actionable and specific.
 - Keep tips ≤20 words, motivational and explaining why it helps.
+- If difficulty_mode is "lighter": prefer low-friction tasks, shorter duration, and confidence-building wins.
+- If difficulty_mode is "balanced": keep normal progression with moderate challenge.
+- If difficulty_mode is "stretch": increase challenge slightly while remaining realistic for one day.
 """
 
 # Delays (in seconds) between consecutive attempts: attempt 1→2 waits 1s, 2→3 waits 2s.
@@ -134,6 +138,7 @@ async def generate_sprint_tasks(
     goal_context: str,
     sprint_theme: str,
     start_date: date,
+    difficulty_mode: str = "balanced",
 ) -> list[AITaskOutput]:
     """
     Generate 7 daily tasks for a future sprint milestone.
@@ -161,6 +166,7 @@ async def generate_sprint_tasks(
         sprint_theme=sprint_theme,
         start_date=start_date.isoformat(),
         end_date=end_date,
+        difficulty_mode=difficulty_mode,
     )
     user_message = (
         f"Generate the 7-day task plan for this sprint: {sprint_theme}\n"

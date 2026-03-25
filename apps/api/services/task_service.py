@@ -20,6 +20,50 @@ from utils import user_today
 logger = logging.getLogger(__name__)
 
 
+def difficulty_mode_from_rate(completion_rate: float | None, sample_size: int) -> str:
+    """Classify recent completion trend into a generation difficulty mode."""
+    if completion_rate is None or sample_size < 4:
+        return "balanced"
+    if completion_rate < 0.5:
+        return "lighter"
+    if completion_rate > 0.85:
+        return "stretch"
+    return "balanced"
+
+
+async def compute_adaptive_difficulty_mode(
+    goal_id: uuid.UUID,
+    user_id: str,
+    db: AsyncSession,
+    days: int = 14,
+) -> str:
+    """Compute adaptive difficulty mode from recent assigned-task completion rate."""
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    user_obj = user_result.scalar_one_or_none()
+    end_date = user_today(user_obj.timezone if user_obj else "UTC")
+    start_date = end_date - timedelta(days=days - 1)
+
+    rows = (
+        await db.execute(
+            select(DailyTask.is_completed)
+            .join(Goal, Goal.id == DailyTask.goal_id)
+            .where(
+                Goal.id == goal_id,
+                Goal.user_id == user_id,
+                DailyTask.assigned_date >= start_date,
+                DailyTask.assigned_date <= end_date,
+            )
+        )
+    ).all()
+
+    total = len(rows)
+    if total == 0:
+        return "balanced"
+
+    completed = sum(1 for row in rows if row.is_completed)
+    return difficulty_mode_from_rate(completed / total, total)
+
+
 # ---------------------------------------------------------------------------
 # Sprint task creation helper
 # ---------------------------------------------------------------------------
@@ -97,7 +141,13 @@ async def _pre_generate_sprint(
 
         # 2. Call Gemini with retry (outside any DB transaction)
         try:
-            task_outputs = await generate_sprint_tasks(goal_context, sprint_theme, start_date)
+            difficulty_mode = await compute_adaptive_difficulty_mode(goal_id, user_id, db)
+            task_outputs = await generate_sprint_tasks(
+                goal_context,
+                sprint_theme,
+                start_date,
+                difficulty_mode=difficulty_mode,
+            )
         except AIGenerationError as exc:
             logger.error(
                 "Pre-gen: AI failed for milestone %s (goal %s, theme %r, start %s): %s",
