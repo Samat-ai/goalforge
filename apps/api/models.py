@@ -35,6 +35,9 @@ class User(Base):
     )
 
     goals: Mapped[list["Goal"]] = relationship("Goal", back_populates="user", cascade="all, delete-orphan")
+    shop_rewards: Mapped[list["ShopReward"]] = relationship(
+        "ShopReward", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Goal(Base):
@@ -167,3 +170,32 @@ class Reward(Base):
     acquired_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class ShopReward(Base):
+    __tablename__ = "shop_rewards"
+    __table_args__ = (
+        CheckConstraint("cost > 0", name="ck_shop_reward_cost_positive"),
+        CheckConstraint("redemption_count >= 0", name="ck_shop_reward_redemption_nonnegative"),
+        Index("ix_shop_rewards_user_id", "user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    cost: Mapped[int] = mapped_column(Integer, nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=sa.true()
+    )
+    redemption_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="shop_rewards")

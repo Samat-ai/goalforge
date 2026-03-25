@@ -217,6 +217,34 @@ class RewardResponse(BaseModel):
     acquired_at: datetime
 
 
+class ShopRewardCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=120)
+    cost: int = Field(..., ge=1, le=100000)
+
+
+class ShopRewardUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=120)
+    cost: int | None = Field(default=None, ge=1, le=100000)
+    is_active: bool | None = None
+
+
+class ShopRewardResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    user_id: str
+    title: str
+    cost: int
+    is_active: bool
+    redemption_count: int
+    created_at: datetime
+
+
+class ShopRewardRedeemResponse(BaseModel):
+    reward: ShopRewardResponse
+    remaining_star_points: int
+
+
 # ---------------------------------------------------------------------------
 # Paginated response wrappers
 # ---------------------------------------------------------------------------

@@ -64,6 +64,21 @@ export interface Reward {
   acquired_at: string
 }
 
+export interface ShopReward {
+  id: string
+  user_id: string
+  title: string
+  cost: number
+  is_active: boolean
+  redemption_count: number
+  created_at: string
+}
+
+export interface ShopRewardRedeemResponse {
+  reward: ShopReward
+  remaining_star_points: number
+}
+
 export interface Goal {
   id: string
   user_id: string

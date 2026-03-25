@@ -9,7 +9,7 @@ import GoalCard from '../components/GoalCard'
 import FocusOverlay from '../components/FocusOverlay'
 import RewardModal from '../components/RewardModal'
 import CollectionModal from '../components/CollectionModal'
-import { useGoalsQuery, useProfileQuery, useGoalMutations } from '../hooks'
+import { useGoalsQuery, useProfileQuery, useGoalMutations, useShopRewardMutations, useShopRewardsQuery } from '../hooks'
 import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
 import { todayStr } from '../lib/gamification'
 import type { Goal, RewardDrop } from '../lib/types'
@@ -198,8 +198,12 @@ export default function Dashboard() {
   const [showCollection, setShowCollection] = useState(false)
 
   const { data: rewards = [] } = useRewardsQuery(userId ?? '')
+  const { rewards: shopRewards } = useShopRewardsQuery(userId)
+  const shopMutations = useShopRewardMutations(userId ?? '')
   const equipMutation = useEquipRewardMutation(userId ?? '')
   const mutations = useGoalMutations(userId ?? '', (drop) => setActiveRewardDrop(drop))
+  const [shopTitle, setShopTitle] = useState('')
+  const [shopCost, setShopCost] = useState('50')
 
   useEffect(() => { document.title = 'Dashboard — GoalForge' }, [])
 
@@ -275,6 +279,137 @@ export default function Dashboard() {
             <DoThisNow goals={goals} />
             <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} />
             <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} />
+
+            {/* Star shop */}
+            <section style={{
+              marginTop: 14,
+              marginBottom: 20,
+              border: `1px solid ${T.border}`,
+              background: T.card,
+              borderRadius: 12,
+              padding: '14px 14px 12px',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, letterSpacing: '0.08em' }}>STAR SHOP</div>
+                  <h3 style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 500, color: T.text }}>Redeem your momentum</h3>
+                </div>
+                <div style={{ fontFamily: T.mono, fontSize: 12, color: T.amber }}>Balance: {pts} ⭐</div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                <input
+                  value={shopTitle}
+                  onChange={e => setShopTitle(e.target.value)}
+                  placeholder="Custom reward (e.g. Coffee break)"
+                  maxLength={120}
+                  style={{
+                    flex: 1,
+                    minWidth: 220,
+                    minHeight: 44,
+                    background: T.surface,
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                    color: T.text,
+                    fontFamily: T.mono,
+                    fontSize: 12,
+                  }}
+                />
+                <input
+                  value={shopCost}
+                  onChange={e => setShopCost(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="Cost"
+                  inputMode="numeric"
+                  style={{
+                    width: 96,
+                    minHeight: 44,
+                    background: T.surface,
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                    color: T.text,
+                    fontFamily: T.mono,
+                    fontSize: 12,
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    const costNum = Number(shopCost)
+                    if (!shopTitle.trim() || !Number.isFinite(costNum) || costNum <= 0) return
+                    shopMutations.addReward({ title: shopTitle.trim(), cost: costNum })
+                    setShopTitle('')
+                    setShopCost('50')
+                  }}
+                  disabled={shopMutations.isCreating}
+                  style={{
+                    minHeight: 44,
+                    minWidth: 44,
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '0 14px',
+                    cursor: shopMutations.isCreating ? 'default' : 'pointer',
+                    background: `${T.indigo}22`,
+                    color: T.indigo,
+                    fontFamily: T.mono,
+                    fontSize: 11,
+                    letterSpacing: '0.05em',
+                    opacity: shopMutations.isCreating ? 0.6 : 1,
+                  }}
+                >
+                  Add Reward
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+                {shopRewards.length === 0 && (
+                  <div style={{ fontFamily: T.mono, fontSize: 12, color: T.textDim }}>
+                    No custom rewards yet. Add one to turn stars into something tangible.
+                  </div>
+                )}
+                {shopRewards.map(reward => {
+                  const canRedeem = reward.is_active && pts >= reward.cost
+                  return (
+                    <div key={reward.id} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: `1px solid ${T.border}`,
+                      background: T.surface,
+                    }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontFamily: T.serif, fontSize: 15, color: T.text }}>{reward.title}</div>
+                        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.textDim }}>
+                          {reward.cost} ⭐ · redeemed {reward.redemption_count}x
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => shopMutations.redeemReward(reward.id)}
+                        disabled={!canRedeem || shopMutations.isRedeeming}
+                        style={{
+                          minHeight: 44,
+                          minWidth: 44,
+                          border: `1px solid ${canRedeem ? T.emerald : T.border}`,
+                          borderRadius: 8,
+                          background: canRedeem ? `${T.emerald}15` : `${T.border}20`,
+                          color: canRedeem ? T.emerald : T.textDim,
+                          cursor: canRedeem ? 'pointer' : 'default',
+                          fontFamily: T.mono,
+                          fontSize: 11,
+                          letterSpacing: '0.05em',
+                          padding: '0 12px',
+                        }}
+                      >
+                        Redeem
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
 
             {goals.length === 0 ? (
               <EmptyState onSelect={setAddGoalText} />
