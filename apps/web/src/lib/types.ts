@@ -15,6 +15,25 @@ export interface UserSettings {
   display_name: string | null
 }
 
+export interface WeeklyReflection {
+  id: string
+  user_id: string
+  went_well: string
+  blockers: string
+  week_rating: number
+  coach_recommendation: string
+  created_at: string
+}
+
+export interface Badge {
+  key: string
+  title: string
+  description: string
+  unlocked: boolean
+  current: number
+  target: number
+}
+
 export interface Task {
   id: string
   goal_id: string

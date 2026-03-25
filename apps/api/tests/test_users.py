@@ -90,3 +90,23 @@ async def test_patch_settings_404_user_not_found(client):
         json={"timezone": "UTC"},
     )
     assert resp.status_code == 404
+
+
+async def test_get_badges_returns_progress(client):
+    await create_test_goal(client)
+    resp = await client.get(f"/users/{TEST_USER_ID}/badges")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) >= 4
+    first = data[0]
+    assert {"key", "title", "description", "unlocked", "current", "target"}.issubset(first.keys())
+
+
+async def test_get_badges_403_wrong_user(client):
+    await create_test_goal(client)
+    try:
+        app.dependency_overrides[get_current_user_id] = lambda: OTHER_USER_ID
+        resp = await client.get(f"/users/{TEST_USER_ID}/badges")
+    finally:
+        app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
+    assert resp.status_code == 403

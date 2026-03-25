@@ -217,6 +217,15 @@ class RewardResponse(BaseModel):
     acquired_at: datetime
 
 
+class BadgeResponse(BaseModel):
+    key: str
+    title: str
+    description: str
+    unlocked: bool
+    current: int
+    target: int
+
+
 # ---------------------------------------------------------------------------
 # Paginated response wrappers
 # ---------------------------------------------------------------------------
