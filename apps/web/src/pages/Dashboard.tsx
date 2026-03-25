@@ -9,8 +9,10 @@ import GoalCard from '../components/GoalCard'
 import FocusOverlay from '../components/FocusOverlay'
 import RewardModal from '../components/RewardModal'
 import CollectionModal from '../components/CollectionModal'
+import EnergyModal from '../components/EnergyModal'
 import { useGoalsQuery, useProfileQuery, useGoalMutations } from '../hooks'
 import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
+import { useEnergyResizeMutation } from '../hooks/useEnergyMutations'
 import { todayStr } from '../lib/gamification'
 import type { Goal, RewardDrop } from '../lib/types'
 
@@ -196,12 +198,22 @@ export default function Dashboard() {
   const [focusOpen, setFocusOpen] = useState(false)
   const [activeRewardDrop, setActiveRewardDrop] = useState<RewardDrop | null>(null)
   const [showCollection, setShowCollection] = useState(false)
+  const [showEnergyModal, setShowEnergyModal] = useState(false)
 
   const { data: rewards = [] } = useRewardsQuery(userId ?? '')
   const equipMutation = useEquipRewardMutation(userId ?? '')
   const mutations = useGoalMutations(userId ?? '', (drop) => setActiveRewardDrop(drop))
+  const energyResizeMutation = useEnergyResizeMutation(userId ?? '')
 
   useEffect(() => { document.title = 'Dashboard — GoalForge' }, [])
+
+  // Open EnergyModal if user arrived via ?energy=low (captured in sessionStorage)
+  useEffect(() => {
+    if (sessionStorage.getItem('energy') === 'low') {
+      sessionStorage.removeItem('energy')
+      setShowEnergyModal(true)
+    }
+  }, [])
 
   const error = isError ? 'Failed to load goals.' : null
   const filtered = filter === 'all' ? goals : goals.filter(g => g.status === filter)
@@ -345,6 +357,18 @@ export default function Dashboard() {
           rewards={rewards}
           onEquip={(rewardId) => equipMutation.mutate(rewardId)}
           onClose={() => setShowCollection(false)}
+        />
+      )}
+
+      {showEnergyModal && (
+        <EnergyModal
+          isLoading={energyResizeMutation.isPending}
+          onConfirm={() => {
+            energyResizeMutation.mutate(undefined, {
+              onSettled: () => setShowEnergyModal(false),
+            })
+          }}
+          onDismiss={() => setShowEnergyModal(false)}
         />
       )}
     </div>
