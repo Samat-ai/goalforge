@@ -26,6 +26,13 @@ export interface Task {
   is_completed: boolean
   completed_at: string | null
   is_rescue_task: boolean
+  original_description: string | null
+  original_tip: string | null
+}
+
+export interface EnergyResizeResponse {
+  tasks_resized: number
+  tasks: Task[]
 }
 
 export interface Milestone {
