@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import api from '../lib/api'
 import { queryKeys } from '../lib/queryKeys'
-import type { UserSettings } from '../lib/types'
+import type { UserSettings, UserSettingsUpdatePayload } from '../lib/types'
 
 export function useSettingsQuery(userId: string | undefined) {
   const query = useQuery({
@@ -25,7 +25,7 @@ export function useSaveSettingsMutation(userId: string) {
   const qc = useQueryClient()
 
   const mutation = useMutation({
-    mutationFn: async (payload: { timezone: string; display_name: string | null }) => {
+    mutationFn: async (payload: UserSettingsUpdatePayload) => {
       await api.patch(`/users/${userId}/settings`, payload)
     },
     onSuccess: () => {
