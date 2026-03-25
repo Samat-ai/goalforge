@@ -32,6 +32,16 @@ export interface PushSubscriptionRecord {
   created_at: string
 }
 
+export interface WeeklyReflection {
+  id: string
+  user_id: string
+  went_well: string
+  blockers: string
+  week_rating: number
+  coach_recommendation: string
+  created_at: string
+}
+
 export interface Task {
   id: string
   goal_id: string

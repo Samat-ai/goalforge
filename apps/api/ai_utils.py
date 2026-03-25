@@ -18,7 +18,14 @@ from pydantic import ValidationError
 
 from config import settings
 from exceptions import AIGenerationError
-from schemas import AIGoalOutput, AIRescueOutput, AIRescueTaskItem, AISprintOutput, AITaskOutput
+from schemas import (
+    AIGoalOutput,
+    AIRescueOutput,
+    AIRescueTaskItem,
+    AISprintOutput,
+    AITaskOutput,
+    AIWeeklyCoachOutput,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -269,6 +276,18 @@ Tone: encouraging, zero shame, zero pressure.
 """
 
 
+_WEEKLY_COACH_SYSTEM_PROMPT = """\
+You are GoalForge Coach. Based on weekly reflection and execution metrics,
+write one concise coaching recommendation for next week.
+
+Rules:
+- Be practical and specific (1-3 actions).
+- Keep tone supportive, non-judgmental, and confidence-building.
+- Reference both what worked and what blocked progress.
+- Max 4 sentences.
+"""
+
+
 async def generate_rescue_tasks(
     goal_title: str,
     goal_description: str,
@@ -363,3 +382,40 @@ async def resize_task_for_low_energy(
         return AITaskOutput.model_validate(data)
 
     return await _with_retry(_call, "resize_task_for_low_energy")
+
+
+async def generate_weekly_coach_recommendation(
+    went_well: str,
+    blockers: str,
+    week_rating: int,
+    completion_rate: float,
+    overdue_tasks: int,
+) -> str:
+    """Generate a concise coaching recommendation for the next week."""
+
+    user_message = (
+        "Weekly reflection inputs:\n"
+        f"- Went well: {went_well}\n"
+        f"- Blockers: {blockers}\n"
+        f"- Self rating (1-5): {week_rating}\n"
+        f"- Completion rate: {round(completion_rate * 100)}%\n"
+        f"- Overdue tasks: {overdue_tasks}\n"
+        "Return one recommendation only."
+    )
+
+    async def _attempt() -> str:
+        response = await _client.aio.models.generate_content(
+            model=_MODEL,
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=_WEEKLY_COACH_SYSTEM_PROMPT,
+                temperature=1.0,
+                response_mime_type="application/json",
+                response_schema=AIWeeklyCoachOutput,
+            ),
+        )
+        data = json.loads(response.text)
+        parsed = AIWeeklyCoachOutput.model_validate(data)
+        return parsed.recommendation
+
+    return await _with_retry(_attempt, "generate_weekly_coach_recommendation")

@@ -44,6 +44,9 @@ class User(Base):
     )
 
     goals: Mapped[list["Goal"]] = relationship("Goal", back_populates="user", cascade="all, delete-orphan")
+    weekly_reflections: Mapped[list["WeeklyReflection"]] = relationship(
+        "WeeklyReflection", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Goal(Base):
@@ -203,3 +206,27 @@ class WebPushSubscription(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class WeeklyReflection(Base):
+    __tablename__ = "weekly_reflections"
+    __table_args__ = (
+        CheckConstraint("week_rating >= 1 AND week_rating <= 5", name="ck_weekly_reflection_rating"),
+        Index("ix_weekly_reflections_user_created", "user_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    went_well: Mapped[str] = mapped_column(Text, nullable=False)
+    blockers: Mapped[str] = mapped_column(Text, nullable=False)
+    week_rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    coach_recommendation: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="weekly_reflections")

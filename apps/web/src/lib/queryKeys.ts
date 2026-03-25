@@ -4,4 +4,5 @@ export const queryKeys = {
   profile: (userId: string) => ['profile', userId] as const,
   settings: (userId: string) => ['settings', userId] as const,
   pushSubscriptions: (userId: string) => ['pushSubscriptions', userId] as const,
+  weeklyReflectionLatest: (userId: string) => ['weeklyReflectionLatest', userId] as const,
 }
