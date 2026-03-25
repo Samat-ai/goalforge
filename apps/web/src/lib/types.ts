@@ -16,8 +16,8 @@ export interface UserSettings {
 }
 
 export interface UserSettingsUpdatePayload {
-  timezone: string
-  display_name: string | null
+  timezone?: string | null
+  display_name?: string | null
 }
 
 export interface Task {
