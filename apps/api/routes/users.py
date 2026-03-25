@@ -1,12 +1,11 @@
 """User profile and settings routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import get_current_user_id
 from database import get_db
-from models import User
+from deps import _load_user_with_ownership
 from schemas import UserProfileResponse, UserSettingsUpdate
 
 router = APIRouter()
@@ -21,12 +20,7 @@ async def get_user_profile(
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    if user_id != current_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+    user = await _load_user_with_ownership(user_id, current_user_id, db)
     return {"star_points": user.star_points}
 
 
@@ -40,12 +34,7 @@ async def get_user_settings(
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    if user_id != current_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+    user = await _load_user_with_ownership(user_id, current_user_id, db)
     return user
 
 
@@ -60,12 +49,7 @@ async def update_user_settings(
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    if user_id != current_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+    user = await _load_user_with_ownership(user_id, current_user_id, db)
     if payload.timezone is not None:
         user.timezone = payload.timezone
     if payload.display_name is not None:

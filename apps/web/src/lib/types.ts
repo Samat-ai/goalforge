@@ -15,6 +15,11 @@ export interface UserSettings {
   display_name: string | null
 }
 
+export interface UserSettingsUpdatePayload {
+  timezone: string
+  display_name: string | null
+}
+
 export interface Task {
   id: string
   goal_id: string

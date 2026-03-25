@@ -6,7 +6,25 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Goal, Reward
+from models import Goal, Reward, User
+
+
+def _ensure_owner(resource_owner_id: str, current_user_id: str) -> None:
+    """Raise 403 when current user does not own the target resource."""
+    if resource_owner_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+
+async def _load_user_with_ownership(
+    user_id: str, current_user_id: str, db: AsyncSession,
+) -> User:
+    """Load a user row and verify ownership. Raises 404 or 403 on failure."""
+    _ensure_owner(user_id, current_user_id)
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 
 async def _load_goal_with_ownership(
@@ -17,8 +35,7 @@ async def _load_goal_with_ownership(
     goal = result.scalar_one_or_none()
     if goal is None:
         raise HTTPException(status_code=404, detail="Goal not found")
-    if goal.user_id != current_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    _ensure_owner(goal.user_id, current_user_id)
     return goal
 
 
@@ -30,6 +47,5 @@ async def _load_reward_with_ownership(
     reward = result.scalar_one_or_none()
     if reward is None:
         raise HTTPException(status_code=404, detail="Reward not found")
-    if reward.user_id != current_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    _ensure_owner(reward.user_id, current_user_id)
     return reward
