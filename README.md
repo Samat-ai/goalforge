@@ -66,6 +66,8 @@ npm run dev                 # → http://localhost:5173
 
 See [`CLAUDE.md`](.claude/CLAUDE.md) for detailed architecture docs, data model, API endpoints, and coding conventions.
 
+See [`docs/engineering/README.md`](docs/engineering/README.md) for the engineering operating handbook (architecture source-of-truth, ADR process, testing/release/incident/security runbooks, ownership map, and PR checklist).
+
 ---
 
 ## Contributing
