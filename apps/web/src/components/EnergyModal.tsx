@@ -76,7 +76,7 @@ export default function EnergyModal({ onConfirm, onDismiss, isLoading }: EnergyM
               transition: 'opacity 0.15s',
             }}
           >
-            {isLoading ? 'Simplifying…' : 'Simplify today's tasks'}
+            {isLoading ? 'Simplifying\u2026' : "Simplify today\u2019s tasks"}
           </button>
 
           <button

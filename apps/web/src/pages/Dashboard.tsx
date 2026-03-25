@@ -198,7 +198,11 @@ export default function Dashboard() {
   const [focusOpen, setFocusOpen] = useState(false)
   const [activeRewardDrop, setActiveRewardDrop] = useState<RewardDrop | null>(null)
   const [showCollection, setShowCollection] = useState(false)
-  const [showEnergyModal, setShowEnergyModal] = useState(false)
+  const [showEnergyModal, setShowEnergyModal] = useState(() => {
+    const triggered = sessionStorage.getItem('energy') === 'low'
+    if (triggered) sessionStorage.removeItem('energy')
+    return triggered
+  })
 
   const { data: rewards = [] } = useRewardsQuery(userId ?? '')
   const equipMutation = useEquipRewardMutation(userId ?? '')
@@ -206,14 +210,6 @@ export default function Dashboard() {
   const energyResizeMutation = useEnergyResizeMutation(userId ?? '')
 
   useEffect(() => { document.title = 'Dashboard — GoalForge' }, [])
-
-  // Open EnergyModal if user arrived via ?energy=low (captured in sessionStorage)
-  useEffect(() => {
-    if (sessionStorage.getItem('energy') === 'low') {
-      sessionStorage.removeItem('energy')
-      setShowEnergyModal(true)
-    }
-  }, [])
 
   const error = isError ? 'Failed to load goals.' : null
   const filtered = filter === 'all' ? goals : goals.filter(g => g.status === filter)
