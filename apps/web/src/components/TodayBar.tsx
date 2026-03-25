@@ -6,9 +6,10 @@ import type { Goal } from '../lib/types'
 interface TodayBarProps {
   goals: Goal[]
   onFocusOpen?: () => void
+  onEnergyOpen?: () => void
 }
 
-export default function TodayBar({ goals, onFocusOpen }: TodayBarProps) {
+export default function TodayBar({ goals, onFocusOpen, onEnergyOpen }: TodayBarProps) {
   const today  = todayStr()
   const active = goals.filter(g => g.status === 'active')
 
@@ -25,6 +26,7 @@ export default function TodayBar({ goals, onFocusOpen }: TodayBarProps) {
   const barPct   = hasToday ? (doneCnt / todayAll.length) * 100 : 0
 
   const hasFocusItem = onFocusOpen != null && pickOneThing(goals) !== null
+  const hasPendingToday = hasToday && doneCnt < todayAll.length
 
   return (
     <div
@@ -93,6 +95,34 @@ export default function TodayBar({ goals, onFocusOpen }: TodayBarProps) {
         >
           <span>⚡</span>
           <span>Focus</span>
+        </button>
+      )}
+
+      {onEnergyOpen != null && hasPendingToday && (
+        <button
+          onClick={onEnergyOpen}
+          aria-label="Low energy mode — simplify today's tasks"
+          style={{
+            minHeight: 44,
+            minWidth: 44,
+            padding: '0 14px',
+            borderRadius: 8,
+            border: '1px solid #7c3aed40',
+            background: '#7c3aed12',
+            color: '#a78bfa',
+            fontFamily: T.mono,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.06em',
+            cursor: 'pointer',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+          }}
+        >
+          <span>🌙</span>
+          <span>Low energy</span>
         </button>
       )}
     </div>

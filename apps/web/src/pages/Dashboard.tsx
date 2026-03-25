@@ -285,7 +285,7 @@ export default function Dashboard() {
         {!loading && !error && (
           <>
             <DoThisNow goals={goals} />
-            <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} />
+            <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} onEnergyOpen={() => setShowEnergyModal(true)} />
             <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} />
 
             {goals.length === 0 ? (
