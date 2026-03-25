@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from ai_utils import generate_sprint_tasks
 from auth import get_current_user_id
-from services.task_service import create_sprint_tasks
+from services.task_service import compute_adaptive_difficulty_mode, create_sprint_tasks
 from services.goal_service import _generate_goal_async, PLACEHOLDER_MILESTONE_TITLE
 from database import get_db
 from deps import _load_goal_with_ownership
@@ -89,8 +89,14 @@ async def complete_milestone(
             # No tasks yet — generate synchronously (goal_obj already loaded above)
             goal_context = f"{goal_obj.smart_title}: {goal_obj.smart_description}"
             try:
+                difficulty_mode = await compute_adaptive_difficulty_mode(
+                    goal_id, current_user_id, db
+                )
                 task_outputs = await generate_sprint_tasks(
-                    goal_context, next_ms.sprint_theme, today
+                    goal_context,
+                    next_ms.sprint_theme,
+                    today,
+                    difficulty_mode=difficulty_mode,
                 )
             except AIGenerationError as exc:
                 raise HTTPException(status_code=502, detail=str(exc))
@@ -170,8 +176,14 @@ async def retry_sprint_generation(
 
     goal_context = f"{goal_obj.smart_title}: {goal_obj.smart_description}"
     try:
+        difficulty_mode = await compute_adaptive_difficulty_mode(
+            goal_id, current_user_id, db
+        )
         task_outputs = await generate_sprint_tasks(
-            goal_context, milestone.sprint_theme, today
+            goal_context,
+            milestone.sprint_theme,
+            today,
+            difficulty_mode=difficulty_mode,
         )
     except AIGenerationError as exc:
         raise HTTPException(status_code=502, detail=str(exc))

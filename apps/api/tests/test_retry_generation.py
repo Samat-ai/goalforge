@@ -2,11 +2,13 @@
 
 import uuid
 from unittest.mock import AsyncMock, patch
+from datetime import date, timedelta
 
 from auth import get_current_user_id
 from exceptions import AIGenerationError
 from main import app
 from services.goal_service import PLACEHOLDER_MILESTONE_TITLE
+from schemas import AITaskOutput
 from tests.conftest import OTHER_USER_ID, TEST_USER_ID, create_test_goal
 
 
@@ -36,6 +38,36 @@ async def test_retry_generation_happy_path(client):
     data = resp.json()
     updated_ms = _sorted_milestones(data)
     assert updated_ms[0]["sprint_status"] == "active"
+
+
+async def test_retry_generation_passes_difficulty_mode_to_ai(client):
+    """Adaptive mode should be threaded into generate_sprint_tasks call."""
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+    milestone_id = _sorted_milestones(goal)[0]["id"]
+
+    start = date.today()
+    task_outputs = [
+        AITaskOutput(
+            description=f"Task {i + 1}",
+            tip="Keep going",
+            assigned_date=start + timedelta(days=i),
+        )
+        for i in range(7)
+    ]
+
+    with patch(
+        "routes.milestones.generate_sprint_tasks",
+        new=AsyncMock(return_value=task_outputs),
+    ) as mock_generate:
+        resp = await client.post(
+            f"/goals/{goal_id}/milestones/{milestone_id}/retry-generation"
+        )
+
+    assert resp.status_code == 200
+    called_kwargs = mock_generate.await_args.kwargs
+    assert "difficulty_mode" in called_kwargs
+    assert called_kwargs["difficulty_mode"] in ("lighter", "balanced", "stretch")
 
 
 async def test_retry_generation_deletes_existing_tasks(client):
