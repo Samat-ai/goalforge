@@ -84,6 +84,9 @@ class User(Base):
         back_populates="partner",
         cascade="all, delete-orphan",
     )
+    coach_sessions: Mapped[list["CoachSession"]] = relationship(
+        "CoachSession", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Goal(Base):
@@ -120,6 +123,67 @@ class Goal(Base):
         "DailyTask", back_populates="goal", cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    coach_sessions: Mapped[list["CoachSession"]] = relationship(
+        "CoachSession", back_populates="forged_goal"
+    )
+
+
+class CoachSession(Base):
+    __tablename__ = "coach_sessions"
+    __table_args__ = (
+        Index("ix_coach_sessions_user_created", "user_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    stage: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    is_completed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=sa.false()
+    )
+    forged_goal_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("goals.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="coach_sessions")
+    forged_goal: Mapped["Goal | None"] = relationship("Goal", back_populates="coach_sessions")
+    messages: Mapped[list["CoachMessage"]] = relationship(
+        "CoachMessage",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="CoachMessage.created_at",
+    )
+
+
+class CoachMessage(Base):
+    __tablename__ = "coach_messages"
+    __table_args__ = (
+        CheckConstraint("role IN ('coach', 'user')", name="ck_coach_message_role"),
+        Index("ix_coach_messages_session_created", "session_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("coach_sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(10), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    session: Mapped["CoachSession"] = relationship("CoachSession", back_populates="messages")
 
 
 class Milestone(Base):

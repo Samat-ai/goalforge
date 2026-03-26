@@ -193,3 +193,27 @@ export interface Goal {
   completed_days: string[]
   rescue_mode: boolean
 }
+
+export interface CoachMessage {
+  id: string
+  session_id: string
+  role: 'coach' | 'user'
+  content: string
+  created_at: string
+}
+
+export interface CoachSession {
+  id: string
+  user_id: string
+  stage: number
+  is_completed: boolean
+  forged_goal_id: string | null
+  created_at: string
+  updated_at: string
+  messages: CoachMessage[]
+}
+
+export interface CoachSendMessageResponse {
+  session: CoachSession
+  forged_goal: Goal | null
+}

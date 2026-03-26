@@ -193,6 +193,38 @@ class GoalResponse(BaseModel):
         return (datetime.now(timezone.utc) - last_completed) >= timedelta(hours=48)
 
 
+class CoachMessageCreate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=2000)
+
+
+class CoachMessageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    session_id: uuid.UUID
+    role: Literal["coach", "user"]
+    content: str
+    created_at: datetime
+
+
+class CoachSessionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    user_id: str
+    stage: int
+    is_completed: bool
+    forged_goal_id: uuid.UUID | None
+    created_at: datetime
+    updated_at: datetime
+    messages: list[CoachMessageResponse] = []
+
+
+class CoachSendMessageResponse(BaseModel):
+    session: CoachSessionResponse
+    forged_goal: GoalResponse | None = None
+
+
 # ---------------------------------------------------------------------------
 # User settings schemas
 # ---------------------------------------------------------------------------
@@ -428,6 +460,15 @@ class AIWeeklyCoachOutput(BaseModel):
         min_length=20,
         max_length=800,
         description="Practical coaching recommendation for next week",
+    )
+
+
+class AICoachTurnOutput(BaseModel):
+    acknowledgement: str = Field(
+        ...,
+        min_length=10,
+        max_length=320,
+        description="Empathetic acknowledgement grounded in the user's latest answer",
     )
 
 
