@@ -319,3 +319,48 @@ async def test_delete_user_data_403_wrong_user(client):
     finally:
         app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
     assert resp.status_code == 403
+
+
+# ── Achievement Badges ────────────────────────────────────────────────
+
+
+async def test_get_badges_returns_all_four(client):
+    await create_test_goal(client)
+    resp = await client.get(f"/users/{TEST_USER_ID}/badges")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 4
+    keys = {b["key"] for b in data}
+    assert keys == {"first_light", "streak_spark", "goal_master", "consistency_forge"}
+    for badge in data:
+        assert {"key", "title", "description", "unlocked", "current", "target"}.issubset(badge.keys())
+
+
+async def test_get_badges_first_light_unlocks_on_completion(client):
+    goal = await create_test_goal(client)
+    task_id = goal["daily_tasks"][0]["id"]
+
+    # Before completion — first_light should be locked
+    resp = await client.get(f"/users/{TEST_USER_ID}/badges")
+    first_light = next(b for b in resp.json() if b["key"] == "first_light")
+    assert first_light["unlocked"] is False
+    assert first_light["current"] == 0
+
+    # Complete a task
+    await client.patch(f"/tasks/{task_id}/complete")
+
+    # After completion — first_light should be unlocked
+    resp = await client.get(f"/users/{TEST_USER_ID}/badges")
+    first_light = next(b for b in resp.json() if b["key"] == "first_light")
+    assert first_light["unlocked"] is True
+    assert first_light["current"] == 1
+
+
+async def test_get_badges_403_wrong_user(client):
+    await create_test_goal(client)
+    try:
+        app.dependency_overrides[get_current_user_id] = lambda: OTHER_USER_ID
+        resp = await client.get(f"/users/{TEST_USER_ID}/badges")
+    finally:
+        app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
+    assert resp.status_code == 403

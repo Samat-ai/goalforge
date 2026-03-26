@@ -8,3 +8,4 @@ export { useLatestWeeklyReflectionQuery, useCreateWeeklyReflectionMutation } fro
 export { useWeeklyReviewQuery } from './useWeeklyReview'
 export { useStarLogQuery } from './useStarLog'
 export { useShopRewardsQuery, useShopRewardMutations } from './useShopRewards'
+export { useBadgesQuery } from './useBadges'

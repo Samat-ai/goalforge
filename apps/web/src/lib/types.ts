@@ -42,6 +42,15 @@ export interface WeeklyReflection {
   created_at: string
 }
 
+export interface Badge {
+  key: string
+  title: string
+  description: string
+  unlocked: boolean
+  current: number
+  target: number
+}
+
 export interface WeeklyReviewResponse {
   start_date: string
   end_date: string
