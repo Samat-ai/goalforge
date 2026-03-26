@@ -25,7 +25,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from config import settings
 from database import engine, get_db, Base
 from rate_limiting import limiter, rate_limit_enabled
-from routes import energy, goals, jobs, milestones, push, rewards, shop, tasks, users
+from routes import accountability, energy, goals, jobs, milestones, push, rewards, shop, tasks, users
 
 # ---------------------------------------------------------------------------
 # Structured logging
@@ -150,6 +150,7 @@ app.include_router(rewards.router, tags=["rewards"])
 app.include_router(energy.router, tags=["energy"])
 app.include_router(push.router, tags=["push"])
 app.include_router(shop.router, tags=["shop"])
+app.include_router(accountability.router, tags=["accountability"])
 
 
 # ---------------------------------------------------------------------------

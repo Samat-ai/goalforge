@@ -9,4 +9,5 @@ export const queryKeys = {
   starLog: (userId: string, days: number) => ['starLog', userId, days] as const,
   shopRewards: (userId: string) => ['shopRewards', userId] as const,
   badges: (userId: string) => ['badges', userId] as const,
+  accountability: (userId: string) => ['accountability', userId] as const,
 }

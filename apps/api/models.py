@@ -60,6 +60,30 @@ class User(Base):
     star_logs: Mapped[list["StarLog"]] = relationship(
         "StarLog", back_populates="user", cascade="all, delete-orphan"
     )
+    sent_accountability_invites: Mapped[list["AccountabilityInvite"]] = relationship(
+        "AccountabilityInvite",
+        foreign_keys="AccountabilityInvite.inviter_user_id",
+        back_populates="inviter",
+        cascade="all, delete-orphan",
+    )
+    received_accountability_invites: Mapped[list["AccountabilityInvite"]] = relationship(
+        "AccountabilityInvite",
+        foreign_keys="AccountabilityInvite.invitee_user_id",
+        back_populates="invitee",
+        cascade="all, delete-orphan",
+    )
+    accountability_partners: Mapped[list["AccountabilityPartnership"]] = relationship(
+        "AccountabilityPartnership",
+        foreign_keys="AccountabilityPartnership.user_id",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    partner_of: Mapped[list["AccountabilityPartnership"]] = relationship(
+        "AccountabilityPartnership",
+        foreign_keys="AccountabilityPartnership.partner_user_id",
+        back_populates="partner",
+        cascade="all, delete-orphan",
+    )
 
 
 class Goal(Base):
@@ -277,6 +301,76 @@ class StarLog(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="star_logs")
+
+
+class AccountabilityInvite(Base):
+    __tablename__ = "accountability_invites"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'accepted', 'declined')",
+            name="ck_accountability_invite_status",
+        ),
+        Index("ix_accountability_invites_inviter_status", "inviter_user_id", "status"),
+        Index("ix_accountability_invites_invitee_status", "invitee_user_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    inviter_user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    invitee_user_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
+    target_email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="pending", server_default="pending"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    inviter: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[inviter_user_id],
+        back_populates="sent_accountability_invites",
+    )
+    invitee: Mapped["User | None"] = relationship(
+        "User",
+        foreign_keys=[invitee_user_id],
+        back_populates="received_accountability_invites",
+    )
+
+
+class AccountabilityPartnership(Base):
+    __tablename__ = "accountability_partnerships"
+    __table_args__ = (
+        UniqueConstraint("user_id", "partner_user_id", name="uq_accountability_partnership_pair"),
+        CheckConstraint("user_id <> partner_user_id", name="ck_accountability_partners_not_self"),
+        Index("ix_accountability_partnerships_user_id", "user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    partner_user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship(
+        "User", foreign_keys=[user_id], back_populates="accountability_partners"
+    )
+    partner: Mapped["User"] = relationship(
+        "User", foreign_keys=[partner_user_id], back_populates="partner_of"
+    )
 
 
 class ShopReward(Base):

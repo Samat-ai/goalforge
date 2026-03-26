@@ -1,0 +1,246 @@
+"""Secure accountability invite and partner routes."""
+
+import uuid
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from auth import get_current_user_id
+from database import get_db
+from deps import _ensure_owner, _load_user_with_ownership
+from models import AccountabilityInvite, AccountabilityPartnership, User
+from rate_limiting import _user_key, rate_limit
+from schemas import (
+    AccountabilityInviteActionResponse,
+    AccountabilityInviteCreate,
+    AccountabilityInviteSendResponse,
+    AccountabilityOverviewResponse,
+    AccountabilityPartnerResponse,
+)
+
+router = APIRouter()
+
+_GENERIC_INVITE_MESSAGE = "Invite sent or pending"
+
+
+def _normalize_email(email: str) -> str:
+    return email.strip().lower()
+
+
+@router.post(
+    "/users/{user_id}/accountability-invites",
+    response_model=AccountabilityInviteSendResponse,
+    summary="Send an accountability invite (enumeration-safe)",
+)
+@rate_limit("5/minute", key_func=_user_key)
+async def send_accountability_invite(
+    request: Request,
+    user_id: str,
+    payload: AccountabilityInviteCreate,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    inviter = await _load_user_with_ownership(user_id, current_user_id, db)
+    target_email = _normalize_email(payload.email)
+
+    # Never leak existence details. Self-invites become a no-op with generic response.
+    if target_email == _normalize_email(inviter.email):
+        return AccountabilityInviteSendResponse(message=_GENERIC_INVITE_MESSAGE)
+
+    invitee = (
+        await db.execute(
+            select(User).where(func.lower(User.email) == target_email)
+        )
+    ).scalar_one_or_none()
+
+    invitee_user_id = invitee.id if invitee is not None else None
+
+    if invitee_user_id is not None:
+        partnership_exists = (
+            await db.execute(
+                select(AccountabilityPartnership.id).where(
+                    AccountabilityPartnership.user_id == inviter.id,
+                    AccountabilityPartnership.partner_user_id == invitee_user_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if partnership_exists is not None:
+            return AccountabilityInviteSendResponse(message=_GENERIC_INVITE_MESSAGE)
+
+    pending_invite = (
+        await db.execute(
+            select(AccountabilityInvite.id).where(
+                AccountabilityInvite.inviter_user_id == inviter.id,
+                AccountabilityInvite.target_email == target_email,
+                AccountabilityInvite.status == "pending",
+            )
+        )
+    ).scalar_one_or_none()
+
+    if pending_invite is None:
+        db.add(
+            AccountabilityInvite(
+                id=uuid.uuid4(),
+                inviter_user_id=inviter.id,
+                invitee_user_id=invitee_user_id,
+                target_email=target_email,
+                status="pending",
+            )
+        )
+        await db.flush()
+
+    return AccountabilityInviteSendResponse(message=_GENERIC_INVITE_MESSAGE)
+
+
+@router.get(
+    "/users/{user_id}/accountability-invites",
+    response_model=AccountabilityOverviewResponse,
+    summary="List incoming/outgoing accountability invites and accepted partners",
+)
+async def get_accountability_overview(
+    user_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_owner(user_id, current_user_id)
+
+    incoming = (
+        await db.execute(
+            select(AccountabilityInvite)
+            .where(
+                AccountabilityInvite.invitee_user_id == user_id,
+                AccountabilityInvite.status == "pending",
+            )
+            .order_by(AccountabilityInvite.created_at.desc())
+        )
+    ).scalars().all()
+
+    outgoing = (
+        await db.execute(
+            select(AccountabilityInvite)
+            .where(
+                AccountabilityInvite.inviter_user_id == user_id,
+                AccountabilityInvite.status == "pending",
+            )
+            .order_by(AccountabilityInvite.created_at.desc())
+        )
+    ).scalars().all()
+
+    partner_rows = (
+        await db.execute(
+            select(
+                AccountabilityPartnership,
+                User.email,
+                User.display_name,
+            )
+            .join(User, User.id == AccountabilityPartnership.partner_user_id)
+            .where(AccountabilityPartnership.user_id == user_id)
+            .order_by(AccountabilityPartnership.created_at.desc())
+        )
+    ).all()
+
+    partners = [
+        AccountabilityPartnerResponse(
+            id=row[0].id,
+            user_id=row[0].user_id,
+            partner_user_id=row[0].partner_user_id,
+            partner_email=row[1],
+            partner_display_name=row[2],
+            created_at=row[0].created_at,
+        )
+        for row in partner_rows
+    ]
+
+    return AccountabilityOverviewResponse(
+        incoming=incoming,
+        outgoing=outgoing,
+        partners=partners,
+    )
+
+
+@router.post(
+    "/accountability-invites/{invite_id}/accept",
+    response_model=AccountabilityInviteActionResponse,
+    summary="Accept an accountability invite",
+)
+async def accept_accountability_invite(
+    invite_id: uuid.UUID,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    invite = (
+        await db.execute(
+            select(AccountabilityInvite)
+            .where(AccountabilityInvite.id == invite_id)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+
+    if invite is None:
+        raise HTTPException(status_code=404, detail="Invite not found")
+    if invite.invitee_user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    if invite.status != "pending":
+        raise HTTPException(status_code=400, detail="Invite is no longer pending")
+
+    invite.status = "accepted"
+    invite.responded_at = datetime.now(timezone.utc)
+
+    inviter_id = invite.inviter_user_id
+    invitee_id = current_user_id
+
+    for user_id, partner_user_id in ((inviter_id, invitee_id), (invitee_id, inviter_id)):
+        existing = (
+            await db.execute(
+                select(AccountabilityPartnership.id).where(
+                    AccountabilityPartnership.user_id == user_id,
+                    AccountabilityPartnership.partner_user_id == partner_user_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing is None:
+            db.add(
+                AccountabilityPartnership(
+                    id=uuid.uuid4(),
+                    user_id=user_id,
+                    partner_user_id=partner_user_id,
+                )
+            )
+
+    await db.flush()
+
+    return AccountabilityInviteActionResponse(message="Invite accepted", status="accepted")
+
+
+@router.post(
+    "/accountability-invites/{invite_id}/decline",
+    response_model=AccountabilityInviteActionResponse,
+    summary="Decline an accountability invite",
+)
+async def decline_accountability_invite(
+    invite_id: uuid.UUID,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    invite = (
+        await db.execute(
+            select(AccountabilityInvite)
+            .where(AccountabilityInvite.id == invite_id)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+
+    if invite is None:
+        raise HTTPException(status_code=404, detail="Invite not found")
+    if invite.invitee_user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    if invite.status != "pending":
+        raise HTTPException(status_code=400, detail="Invite is no longer pending")
+
+    invite.status = "declined"
+    invite.responded_at = datetime.now(timezone.utc)
+    await db.flush()
+
+    return AccountabilityInviteActionResponse(message="Invite declined", status="declined")
