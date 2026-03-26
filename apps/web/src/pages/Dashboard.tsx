@@ -22,6 +22,10 @@ import type { Goal, RewardDrop } from '../lib/types'
 
 const WELCOME_DISMISS_KEY = 'welcome_back_dismissed_at'
 const WELCOME_DISMISS_TTL = 24 * 60 * 60 * 1000 // 24 hours
+const PINNED_GOALS_KEY = 'dashboard_pinned_goals'
+
+type SortMode = 'priority' | 'progress' | 'newest'
+type TaskScope = 'any' | 'today' | 'overdue'
 
 function computeWelcomeBack(goals: Goal[], today: string): { daysAway: number; lastCompletedDate: string } | null {
   const allCompletedDays = goals.flatMap(g => g.completed_days).filter(d => d <= today)
@@ -366,6 +370,21 @@ export default function Dashboard() {
   const { badges } = useBadgesQuery(userId)
 
   const [filter, setFilter] = useState<string>('all')
+  const [goalSearch, setGoalSearch] = useState('')
+  const [sortMode, setSortMode] = useState<SortMode>('priority')
+  const [taskScope, setTaskScope] = useState<TaskScope>('any')
+  const [pinnedGoalIds, setPinnedGoalIds] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(PINNED_GOALS_KEY)
+      if (!raw) return []
+      const parsed: unknown = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return []
+      return parsed.filter((value): value is string => typeof value === 'string')
+    } catch {
+      return []
+    }
+  })
+  const [planCopied, setPlanCopied] = useState(false)
   const [addGoalText, setAddGoalText] = useState('')
   const [focusOpen, setFocusOpen] = useState(false)
   const [quickCaptureOpen, setQuickCaptureOpen] = useState(false)
@@ -401,7 +420,85 @@ export default function Dashboard() {
   }, [])
 
   const error = isError ? 'Failed to load goals.' : null
-  const filtered = filter === 'all' ? goals : goals.filter(g => g.status === filter)
+  const today = todayStr()
+
+  const dailyPlanItems = goals
+    .filter(goal => goal.status === 'active')
+    .flatMap(goal =>
+      goal.daily_tasks
+        .filter(task => !task.is_completed && task.assigned_date <= today)
+        .map(task => ({
+          id: task.id,
+          goalTitle: goal.smart_title,
+          description: task.description,
+          assignedDate: task.assigned_date,
+        })),
+    )
+    .sort((a, b) => a.assignedDate.localeCompare(b.assignedDate))
+    .slice(0, 3)
+
+  const normalizedSearch = goalSearch.trim().toLowerCase()
+  const searched = goals.filter(goal => {
+    if (!normalizedSearch) return true
+    const inGoal = `${goal.smart_title} ${goal.smart_description}`.toLowerCase().includes(normalizedSearch)
+    if (inGoal) return true
+    return goal.daily_tasks.some(task => task.description.toLowerCase().includes(normalizedSearch))
+  })
+
+  const byStatus = filter === 'all' ? searched : searched.filter(g => g.status === filter)
+  const byScope = byStatus.filter(goal => {
+    if (taskScope === 'any') return true
+    if (taskScope === 'today') {
+      return goal.daily_tasks.some(task => !task.is_completed && task.assigned_date === today)
+    }
+    return goal.daily_tasks.some(task => !task.is_completed && task.assigned_date < today)
+  })
+
+  const sortedGoals = [...byScope].sort((a, b) => {
+    const aPinned = pinnedGoalIds.includes(a.id)
+    const bPinned = pinnedGoalIds.includes(b.id)
+    if (aPinned !== bPinned) return aPinned ? -1 : 1
+
+    if (sortMode === 'progress') {
+      return b.progress - a.progress
+    }
+
+    if (sortMode === 'newest') {
+      return b.created_at.localeCompare(a.created_at)
+    }
+
+    const aOverdue = a.daily_tasks.filter(t => !t.is_completed && t.assigned_date < today).length
+    const bOverdue = b.daily_tasks.filter(t => !t.is_completed && t.assigned_date < today).length
+    if (aOverdue !== bOverdue) return bOverdue - aOverdue
+
+    const aToday = a.daily_tasks.filter(t => !t.is_completed && t.assigned_date === today).length
+    const bToday = b.daily_tasks.filter(t => !t.is_completed && t.assigned_date === today).length
+    return bToday - aToday
+  })
+
+  function togglePinGoal(goalId: string) {
+    setPinnedGoalIds(prev => {
+      const next = prev.includes(goalId)
+        ? prev.filter(id => id !== goalId)
+        : [...prev, goalId]
+      localStorage.setItem(PINNED_GOALS_KEY, JSON.stringify(next))
+      return next
+    })
+  }
+
+  async function copyDailyPlan() {
+    if (dailyPlanItems.length === 0) return
+    const payload = dailyPlanItems
+      .map((item, idx) => `${idx + 1}. [${item.goalTitle}] ${item.description}`)
+      .join('\n')
+    try {
+      await navigator.clipboard.writeText(payload)
+      setPlanCopied(true)
+      setTimeout(() => setPlanCopied(false), 1500)
+    } catch {
+      setPlanCopied(false)
+    }
+  }
 
   // ── Render ──
   return (
@@ -491,6 +588,135 @@ export default function Dashboard() {
             <WelcomeBackCard goals={goals} onFocus={() => setFocusOpen(true)} />
             <DoThisNow goals={goals} />
             <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} onEnergyOpen={() => setShowEnergyModal(true)} />
+            <section style={{
+              marginBottom: 14,
+              borderRadius: 12,
+              border: `1px solid ${T.border}`,
+              background: T.card,
+              padding: '12px 14px',
+            }}>
+              <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, letterSpacing: '0.1em', marginBottom: 8 }}>
+                COMMAND DECK
+              </div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                <input
+                  value={goalSearch}
+                  onChange={e => setGoalSearch(e.target.value)}
+                  placeholder="Search goals or task text"
+                  style={{
+                    width: '100%',
+                    minHeight: 44,
+                    borderRadius: 8,
+                    border: `1px solid ${T.border}`,
+                    background: T.surface,
+                    color: T.text,
+                    padding: '0 12px',
+                    fontFamily: T.mono,
+                    fontSize: 12,
+                    outline: 'none',
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <select
+                    value={sortMode}
+                    onChange={e => setSortMode(e.target.value as SortMode)}
+                    style={{
+                      minHeight: 44,
+                      minWidth: 170,
+                      borderRadius: 8,
+                      border: `1px solid ${T.border}`,
+                      background: T.surface,
+                      color: T.text,
+                      padding: '0 10px',
+                      fontFamily: T.mono,
+                      fontSize: 12,
+                    }}
+                  >
+                    <option value="priority">Sort: Priority</option>
+                    <option value="progress">Sort: Progress</option>
+                    <option value="newest">Sort: Newest</option>
+                  </select>
+                  {(['any', 'today', 'overdue'] as const).map(scope => (
+                    <button
+                      key={scope}
+                      onClick={() => setTaskScope(scope)}
+                      style={{
+                        minHeight: 44,
+                        minWidth: 44,
+                        padding: '0 12px',
+                        borderRadius: 8,
+                        border: `1px solid ${taskScope === scope ? T.indigo : T.border}`,
+                        background: taskScope === scope ? `${T.indigo}20` : T.surface,
+                        color: taskScope === scope ? T.indigo : T.textDim,
+                        cursor: 'pointer',
+                        fontFamily: T.mono,
+                        fontSize: 11,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                      }}
+                    >
+                      {scope}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <section style={{
+              marginBottom: 14,
+              borderRadius: 12,
+              border: `1px solid ${T.border}`,
+              background: T.card,
+              padding: '12px 14px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, letterSpacing: '0.1em' }}>
+                  TODAY'S TOP 3
+                </div>
+                <button
+                  onClick={() => void copyDailyPlan()}
+                  disabled={dailyPlanItems.length === 0}
+                  style={{
+                    minHeight: 44,
+                    minWidth: 44,
+                    padding: '0 12px',
+                    borderRadius: 8,
+                    border: `1px solid ${T.emerald}50`,
+                    background: `${T.emerald}15`,
+                    color: T.emerald,
+                    cursor: dailyPlanItems.length === 0 ? 'not-allowed' : 'pointer',
+                    opacity: dailyPlanItems.length === 0 ? 0.5 : 1,
+                    fontFamily: T.mono,
+                    fontSize: 11,
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  {planCopied ? 'Copied' : 'Copy Plan'}
+                </button>
+              </div>
+              {dailyPlanItems.length === 0 ? (
+                <div style={{ fontFamily: T.mono, fontSize: 12, color: T.textDim }}>No pending tasks due today.</div>
+              ) : (
+                <div style={{ display: 'grid', gap: 6 }}>
+                  {dailyPlanItems.map((item, idx) => (
+                    <div key={item.id} style={{
+                      borderRadius: 8,
+                      border: `1px solid ${T.border}`,
+                      background: T.surface,
+                      padding: '8px 10px',
+                    }}>
+                      <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, marginBottom: 2 }}>
+                        #{idx + 1} · {item.goalTitle}
+                      </div>
+                      <div style={{ fontFamily: T.serif, fontSize: 14, color: T.text }}>
+                        {item.description}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
             <MomentumCoachCard
               goals={goals}
               onQuickCapture={() => setQuickCaptureOpen(true)}
@@ -564,13 +790,33 @@ export default function Dashboard() {
 
                 {/* Goal list */}
                 <div aria-live="polite" aria-label="Goal list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {filtered.length === 0 && (
+                  {sortedGoals.length === 0 && (
                     <div style={{ textAlign: 'center', padding: '44px 0', color: T.muted, fontSize: 13 }}>
-                      No goals here yet.
+                      No goals match this view.
                     </div>
                   )}
-                  {filtered.map(goal => (
+                  {sortedGoals.map(goal => (
                     <div key={goal.id} id={`goal-card-${goal.id}`}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+                        <button
+                          onClick={() => togglePinGoal(goal.id)}
+                          style={{
+                            minHeight: 44,
+                            minWidth: 44,
+                            padding: '0 12px',
+                            borderRadius: 8,
+                            border: `1px solid ${pinnedGoalIds.includes(goal.id) ? T.amber : T.border}`,
+                            background: pinnedGoalIds.includes(goal.id) ? `${T.amber}16` : T.surface,
+                            color: pinnedGoalIds.includes(goal.id) ? T.amber : T.textDim,
+                            cursor: 'pointer',
+                            fontFamily: T.mono,
+                            fontSize: 11,
+                            letterSpacing: '0.05em',
+                          }}
+                        >
+                          {pinnedGoalIds.includes(goal.id) ? 'Pinned' : 'Pin'}
+                        </button>
+                      </div>
                       <GoalCard goal={goal} onJackpot={(drop) => setActiveRewardDrop(drop)} />
                     </div>
                   ))}
