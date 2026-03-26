@@ -51,6 +51,15 @@ class User(Base):
     shop_rewards: Mapped[list["ShopReward"]] = relationship(
         "ShopReward", back_populates="user", cascade="all, delete-orphan"
     )
+    rewards: Mapped[list["Reward"]] = relationship(
+        "Reward", back_populates="user", cascade="all, delete-orphan"
+    )
+    web_push_subscriptions: Mapped[list["WebPushSubscription"]] = relationship(
+        "WebPushSubscription", back_populates="user", cascade="all, delete-orphan"
+    )
+    star_logs: Mapped[list["StarLog"]] = relationship(
+        "StarLog", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Goal(Base):
@@ -186,6 +195,8 @@ class Reward(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
+    user: Mapped["User"] = relationship("User", back_populates="rewards")
+
 
 class WebPushSubscription(Base):
     __tablename__ = "web_push_subscriptions"
@@ -210,6 +221,8 @@ class WebPushSubscription(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped["User"] = relationship("User", back_populates="web_push_subscriptions")
 
 
 class WeeklyReflection(Base):
@@ -262,6 +275,8 @@ class StarLog(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+    user: Mapped["User"] = relationship("User", back_populates="star_logs")
 
 
 class ShopReward(Base):

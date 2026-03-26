@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/react'
+import { toast } from 'sonner'
 import AppHeader from '../components/AppHeader'
 import { T } from '../lib/theme'
+import api from '../lib/api'
 import { useEnablePushMutation, usePushSubscriptionsQuery, useSettingsQuery, useSaveSettingsMutation, useProfileQuery } from '../hooks'
 import type { UserSettings } from '../lib/types'
 
@@ -194,6 +196,102 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
         </div>
       </div>
 
+      {/* Data controls */}
+      <DataControls userId={userId} />
+
+    </div>
+  )
+}
+
+function DataControls({ userId }: { userId: string }) {
+  const [isExporting, setIsExporting] = useState<null | 'json' | 'csv'>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const busy = !!isExporting || isDeleting
+
+  async function exportData(format: 'json' | 'csv') {
+    if (busy) return
+    setIsExporting(format)
+    try {
+      const response = await api.get(`/users/${userId}/export`, {
+        params: { format },
+        responseType: 'blob',
+      })
+      const ext = format === 'json' ? 'json' : 'csv'
+      const datePart = new Intl.DateTimeFormat('en-CA').format(new Date())
+      const blob = new Blob([response.data], {
+        type: format === 'json' ? 'application/json' : 'text/csv',
+      })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `goalforge-export-${datePart}.${ext}`
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+      toast.success('Export downloaded')
+    } catch {
+      toast.error('Could not export data. Please try again.')
+    } finally {
+      setIsExporting(null)
+    }
+  }
+
+  async function deleteAllData() {
+    if (busy) return
+    const confirmed = window.confirm(
+      'This permanently deletes your GoalForge data (goals, tasks, milestones, rewards). Continue?'
+    )
+    if (!confirmed) return
+    setIsDeleting(true)
+    try {
+      await api.delete(`/users/${userId}`)
+      toast.success('Account data deleted')
+      window.location.href = '/'
+    } catch {
+      toast.error('Could not delete account data. Please try again.')
+      setIsDeleting(false)
+    }
+  }
+
+  const btnBase = {
+    minHeight: 44, minWidth: 44, padding: '10px 16px', borderRadius: 8,
+    fontFamily: T.mono, fontSize: 12,
+    cursor: busy ? 'default' : 'pointer',
+    opacity: busy ? 0.6 : 1,
+  }
+
+  return (
+    <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '18px 20px' }}>
+      <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 10 }}>
+        DATA CONTROLS
+      </div>
+      <p style={{ fontSize: 12, color: T.dim, marginBottom: 14 }}>
+        Export your full GoalForge data or permanently delete your account data.
+      </p>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <button
+          onClick={() => { void exportData('json') }}
+          disabled={busy}
+          style={{ ...btnBase, background: T.surface, color: T.text, border: `1px solid ${T.border}` }}
+        >
+          {isExporting === 'json' ? 'Exporting\u2026' : 'Export JSON'}
+        </button>
+        <button
+          onClick={() => { void exportData('csv') }}
+          disabled={busy}
+          style={{ ...btnBase, background: T.surface, color: T.text, border: `1px solid ${T.border}` }}
+        >
+          {isExporting === 'csv' ? 'Exporting\u2026' : 'Export CSV'}
+        </button>
+        <button
+          onClick={() => { void deleteAllData() }}
+          disabled={busy}
+          style={{ ...btnBase, background: `${T.rose}15`, color: T.rose, border: `1px solid ${T.rose}` }}
+        >
+          {isDeleting ? 'Deleting\u2026' : 'Delete Account Data'}
+        </button>
+      </div>
     </div>
   )
 }

@@ -252,3 +252,67 @@ async def test_get_star_log_403_wrong_user(client):
     finally:
         app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
     assert resp.status_code == 403
+
+
+# ── Data Export & Deletion ────────────────────────────────────────────
+
+
+async def test_export_user_data_json(client):
+    await create_test_goal(client)
+    resp = await client.get(f"/users/{TEST_USER_ID}/export")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["user"]["id"] == TEST_USER_ID
+    assert "exported_at" in data
+    assert isinstance(data["goals"], list)
+    assert isinstance(data["rewards"], list)
+    assert isinstance(data["star_logs"], list)
+    assert isinstance(data["weekly_reflections"], list)
+    assert isinstance(data["shop_rewards"], list)
+    assert isinstance(data["push_subscriptions"], list)
+
+
+async def test_export_user_data_csv(client):
+    await create_test_goal(client)
+    resp = await client.get(f"/users/{TEST_USER_ID}/export?format=csv")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/csv")
+    assert 'attachment; filename="goalforge-export.csv"' in resp.headers["content-disposition"]
+    body = resp.text
+    assert "section,key,value" in body
+
+
+async def test_export_user_data_403_wrong_user(client):
+    await create_test_goal(client)
+    try:
+        app.dependency_overrides[get_current_user_id] = lambda: OTHER_USER_ID
+        resp = await client.get(f"/users/{TEST_USER_ID}/export")
+    finally:
+        app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
+    assert resp.status_code == 403
+
+
+async def test_delete_user_data(client):
+    goal = await create_test_goal(client)
+
+    delete_resp = await client.delete(f"/users/{TEST_USER_ID}")
+    assert delete_resp.status_code == 204
+
+    # Goal should be cascade-deleted
+    goal_resp = await client.get(f"/goals/{goal['id']}")
+    assert goal_resp.status_code == 404
+
+    # Profile auto-recreates the user row (self-healing after deletion)
+    profile_resp = await client.get(f"/users/{TEST_USER_ID}/profile")
+    assert profile_resp.status_code == 200
+    assert profile_resp.json()["star_points"] == 0  # fresh user
+
+
+async def test_delete_user_data_403_wrong_user(client):
+    await create_test_goal(client)
+    try:
+        app.dependency_overrides[get_current_user_id] = lambda: OTHER_USER_ID
+        resp = await client.delete(f"/users/{TEST_USER_ID}")
+    finally:
+        app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
+    assert resp.status_code == 403
