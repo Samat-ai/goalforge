@@ -17,6 +17,9 @@ import { useEnergyResizeMutation } from '../hooks/useEnergyMutations'
 import { dayDiff, todayStr } from '../lib/gamification'
 import type { Goal, RewardDrop } from '../lib/types'
 
+const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
+const e2eUserId = import.meta.env.VITE_E2E_USER_ID ?? 'user_e2e'
+
 // ── WelcomeBackCard (returning-user nudge) ────────────────────────────────────
 
 const WELCOME_DISMISS_KEY = 'welcome_back_dismissed_at'
@@ -266,7 +269,7 @@ function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
 // ── Dashboard (main page) ─────────────────────────────────────────────────────
 export default function Dashboard() {
   const { user } = useUser()
-  const userId = user?.id
+  const userId = user?.id ?? (isE2EMode ? e2eUserId : undefined)
 
   const { goals, isLoading: loading, isError, refetch } = useGoalsQuery(userId)
   const { pts } = useProfileQuery(userId)
