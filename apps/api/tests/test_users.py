@@ -40,10 +40,13 @@ async def test_get_settings_403_wrong_user(client):
     assert resp.status_code == 403
 
 
-async def test_get_settings_404_user_not_found(client):
-    # Do NOT create a goal — user row does not exist yet
+async def test_get_settings_auto_creates_user(client):
+    # User row does not exist yet — endpoint should auto-create it
     resp = await client.get(f"/users/{TEST_USER_ID}/settings")
-    assert resp.status_code == 404
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["id"] == TEST_USER_ID
+    assert data["star_points"] == 0
 
 
 async def test_patch_settings_updates_timezone(client):
