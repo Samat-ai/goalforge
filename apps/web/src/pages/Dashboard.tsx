@@ -14,8 +14,85 @@ import StarShop from '../components/StarShop'
 import { useBadgesQuery, useGoalsQuery, useProfileQuery, useGoalMutations, useShopRewardsQuery, useShopRewardMutations } from '../hooks'
 import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
 import { useEnergyResizeMutation } from '../hooks/useEnergyMutations'
-import { todayStr } from '../lib/gamification'
+import { dayDiff, todayStr } from '../lib/gamification'
 import type { Goal, RewardDrop } from '../lib/types'
+
+// ── WelcomeBackCard (returning-user nudge) ────────────────────────────────────
+
+const WELCOME_DISMISS_KEY = 'welcome_back_dismissed_at'
+const WELCOME_DISMISS_TTL = 24 * 60 * 60 * 1000 // 24 hours
+
+function computeWelcomeBack(goals: Goal[], today: string): { daysAway: number; lastCompletedDate: string } | null {
+  const allCompletedDays = goals.flatMap(g => g.completed_days).filter(d => d <= today)
+  if (allCompletedDays.length === 0) return null
+
+  const lastCompletedDate = allCompletedDays.reduce((latest, cur) => (cur > latest ? cur : latest))
+  const daysAway = dayDiff(lastCompletedDate, today)
+  if (daysAway < 3) return null
+
+  return { daysAway, lastCompletedDate }
+}
+
+function WelcomeBackCard({ goals, onFocus }: { goals: Goal[]; onFocus: () => void }) {
+  const [dismissed, setDismissed] = useState(() => {
+    const ts = localStorage.getItem(WELCOME_DISMISS_KEY)
+    return !!ts && Date.now() - Number(ts) < WELCOME_DISMISS_TTL
+  })
+
+  const today = todayStr()
+  const state = computeWelcomeBack(goals, today)
+
+  if (!state || dismissed) return null
+
+  function dismiss() {
+    localStorage.setItem(WELCOME_DISMISS_KEY, String(Date.now()))
+    setDismissed(true)
+  }
+
+  return (
+    <div className="animate-slide-up" style={{
+      display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+      padding: '14px 18px', borderRadius: 12, marginBottom: 16,
+      background: `${T.indigo}12`, border: `1px solid ${T.indigo}40`,
+      borderLeft: `3px solid ${T.indigo}`,
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: T.mono, fontSize: 11, fontWeight: 600, color: T.indigo, letterSpacing: '0.06em', marginBottom: 3 }}>
+          WELCOME BACK
+        </div>
+        <div style={{ fontFamily: T.serif, fontSize: 14, color: T.text }}>
+          You were away for {state.daysAway} days. No reset needed.
+        </div>
+        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.textDim, marginTop: 2 }}>
+          Last completion: {state.lastCompletedDate}. One tiny win gets momentum back.
+        </div>
+      </div>
+      <button
+        onClick={onFocus}
+        style={{
+          minHeight: 44, minWidth: 44, padding: '9px 18px', borderRadius: 8,
+          cursor: 'pointer', flexShrink: 0,
+          fontFamily: T.mono, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
+          background: `${T.indigo}18`, color: T.indigo, border: `1px solid ${T.indigo}45`,
+        }}
+      >
+        Enter Focus Mode
+      </button>
+      <button
+        onClick={dismiss}
+        aria-label="Dismiss"
+        style={{
+          minHeight: 44, minWidth: 44, padding: '9px 12px', borderRadius: 8,
+          cursor: 'pointer', flexShrink: 0,
+          fontFamily: T.mono, fontSize: 11, color: T.dim,
+          background: 'transparent', border: 'none',
+        }}
+      >
+        ✕
+      </button>
+    </div>
+  )
+}
 
 // ── DoThisNow (blocker resolution CTA) ───────────────────────────────────────
 
@@ -284,6 +361,7 @@ export default function Dashboard() {
 
         {!loading && !error && (
           <>
+            <WelcomeBackCard goals={goals} onFocus={() => setFocusOpen(true)} />
             <DoThisNow goals={goals} />
             <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} onEnergyOpen={() => setShowEnergyModal(true)} />
             <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} />
