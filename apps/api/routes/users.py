@@ -5,7 +5,7 @@ import io
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -20,6 +20,7 @@ from models import (
 )
 from rate_limiting import rate_limit, _user_key
 from schemas import (
+    BadgeResponse,
     StarLogResponse,
     UserProfileResponse,
     UserSettingsUpdate,
@@ -369,6 +370,109 @@ async def get_star_log(
     await db.flush()
     await db.refresh(star_log)
     return star_log
+
+
+# ---------------------------------------------------------------------------
+# Achievement badges (computed, stateless)
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/users/{user_id}/badges",
+    response_model=list[BadgeResponse],
+    summary="Get achievement badge progress",
+)
+@rate_limit("10/minute", key_func=_user_key)
+async def get_user_badges(
+    request: Request,
+    user_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_owner(user_id, current_user_id)
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Optimised SQL aggregations — no ORM hydration
+    completed_tasks = (
+        await db.execute(
+            select(func.count())
+            .select_from(DailyTask)
+            .join(Goal, DailyTask.goal_id == Goal.id)
+            .where(Goal.user_id == user_id, DailyTask.is_completed.is_(True))
+        )
+    ).scalar() or 0
+
+    achieved_goals = (
+        await db.execute(
+            select(func.count())
+            .select_from(Goal)
+            .where(Goal.user_id == user_id, Goal.status == "achieved")
+        )
+    ).scalar() or 0
+
+    # Streak anchored to user's local date
+    today = user_today(user.timezone)
+    completed_dates = (
+        await db.execute(
+            select(DailyTask.assigned_date)
+            .join(Goal, DailyTask.goal_id == Goal.id)
+            .where(
+                Goal.user_id == user_id,
+                DailyTask.is_completed.is_(True),
+                DailyTask.assigned_date <= today,
+            )
+            .distinct()
+            .order_by(DailyTask.assigned_date.desc())
+        )
+    ).scalars().all()
+
+    streak = 0
+    cursor = today
+    for d in completed_dates:
+        if d == cursor:
+            streak += 1
+            cursor -= timedelta(days=1)
+        else:
+            break
+
+    return [
+        BadgeResponse(
+            key="first_light",
+            title="First Light",
+            description="Complete your first task.",
+            unlocked=completed_tasks >= 1,
+            current=min(completed_tasks, 1),
+            target=1,
+        ),
+        BadgeResponse(
+            key="streak_spark",
+            title="Streak Spark",
+            description="Maintain a 3-day streak.",
+            unlocked=streak >= 3,
+            current=min(streak, 3),
+            target=3,
+        ),
+        BadgeResponse(
+            key="goal_master",
+            title="Goal Master",
+            description="Achieve your first full goal.",
+            unlocked=achieved_goals >= 1,
+            current=min(achieved_goals, 1),
+            target=1,
+        ),
+        BadgeResponse(
+            key="consistency_forge",
+            title="Consistency Forge",
+            description="Complete 20 tasks.",
+            unlocked=completed_tasks >= 20,
+            current=min(completed_tasks, 20),
+            target=20,
+        ),
+    ]
 
 
 # ---------------------------------------------------------------------------
