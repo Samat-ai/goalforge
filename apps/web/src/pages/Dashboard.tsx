@@ -11,6 +11,7 @@ import RewardModal from '../components/RewardModal'
 import CollectionModal from '../components/CollectionModal'
 import EnergyModal from '../components/EnergyModal'
 import StarShop from '../components/StarShop'
+import QuickCaptureModal from '../components/QuickCaptureModal'
 import { useBadgesQuery, useGoalsQuery, useProfileQuery, useGoalMutations, useShopRewardsQuery, useShopRewardMutations } from '../hooks'
 import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
 import { useEnergyResizeMutation } from '../hooks/useEnergyMutations'
@@ -263,6 +264,98 @@ function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
   )
 }
 
+function MomentumCoachCard({
+  goals,
+  onQuickCapture,
+  onFocus,
+}: {
+  goals: Goal[]
+  onQuickCapture: () => void
+  onFocus: () => void
+}) {
+  if (goals.length === 0) return null
+
+  const today = todayStr()
+  const active = goals.filter(g => g.status === 'active')
+  const recentTasks = active.flatMap(g =>
+    g.daily_tasks.filter(t => t.assigned_date <= today && dayDiff(t.assigned_date, today) < 7),
+  )
+  const completedRecent = recentTasks.filter(t => t.is_completed).length
+  const overdue = active.flatMap(g => g.daily_tasks.filter(t => !t.is_completed && t.assigned_date < today)).length
+  const completionRate = recentTasks.length > 0 ? completedRecent / recentTasks.length : 0
+
+  let title = 'Momentum Coach'
+  let body = 'Capture one tiny action and finish it before checking anything else.'
+  if (recentTasks.length === 0) {
+    title = 'Start Your Engine'
+    body = 'No tasks logged in the last 7 days. Add one tiny task and claim an easy win.'
+  } else if (completionRate >= 0.8 && overdue === 0) {
+    title = 'You Are In The Zone'
+    body = 'Great consistency this week. Add one stretch task while momentum is high.'
+  } else if (completionRate >= 0.5) {
+    title = 'Solid Base, One Bottleneck'
+    body = 'Clear one overdue task first, then move to today\'s highest-impact task.'
+  }
+
+  return (
+    <section style={{
+      marginBottom: 16,
+      borderRadius: 12,
+      border: `1px solid ${T.border}`,
+      background: T.card,
+      padding: '12px 14px',
+    }}>
+      <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, letterSpacing: '0.1em', marginBottom: 8 }}>
+        COMPETITOR MODE: COACH LOOP
+      </div>
+      <div style={{ fontFamily: T.serif, fontSize: 17, color: T.text, marginBottom: 4 }}>
+        {title}
+      </div>
+      <div style={{ fontFamily: T.mono, fontSize: 12, color: T.textDim, lineHeight: 1.6, marginBottom: 10 }}>
+        {body}
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button
+          onClick={onQuickCapture}
+          style={{
+            minHeight: 44,
+            minWidth: 44,
+            padding: '0 14px',
+            borderRadius: 8,
+            border: `1px solid ${T.indigo}45`,
+            background: `${T.indigo}18`,
+            color: T.indigo,
+            cursor: 'pointer',
+            fontFamily: T.mono,
+            fontSize: 11,
+            letterSpacing: '0.05em',
+          }}
+        >
+          Quick Capture
+        </button>
+        <button
+          onClick={onFocus}
+          style={{
+            minHeight: 44,
+            minWidth: 44,
+            padding: '0 14px',
+            borderRadius: 8,
+            border: `1px solid ${T.orange}45`,
+            background: `${T.orange}16`,
+            color: T.orange,
+            cursor: 'pointer',
+            fontFamily: T.mono,
+            fontSize: 11,
+            letterSpacing: '0.05em',
+          }}
+        >
+          Start Focus
+        </button>
+      </div>
+    </section>
+  )
+}
+
 // ── Dashboard (main page) ─────────────────────────────────────────────────────
 export default function Dashboard() {
   const { user } = useUser()
@@ -275,6 +368,7 @@ export default function Dashboard() {
   const [filter, setFilter] = useState<string>('all')
   const [addGoalText, setAddGoalText] = useState('')
   const [focusOpen, setFocusOpen] = useState(false)
+  const [quickCaptureOpen, setQuickCaptureOpen] = useState(false)
   const [activeRewardDrop, setActiveRewardDrop] = useState<RewardDrop | null>(null)
   const [showCollection, setShowCollection] = useState(false)
   const [showEnergyModal, setShowEnergyModal] = useState(() => {
@@ -291,6 +385,20 @@ export default function Dashboard() {
   const energyResizeMutation = useEnergyResizeMutation(userId ?? '')
 
   useEffect(() => { document.title = 'Dashboard — GoalForge' }, [])
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setQuickCaptureOpen(true)
+      }
+      if (e.key === 'Escape') {
+        setQuickCaptureOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   const error = isError ? 'Failed to load goals.' : null
   const filtered = filter === 'all' ? goals : goals.filter(g => g.status === filter)
@@ -322,6 +430,25 @@ export default function Dashboard() {
           <p style={{ fontSize: 12, color: T.muted }}>
             {goals.filter(g => g.status === 'active').length} active · {goals.length} total
           </p>
+          <button
+            onClick={() => setQuickCaptureOpen(true)}
+            style={{
+              marginTop: 10,
+              minHeight: 44,
+              minWidth: 44,
+              padding: '0 14px',
+              borderRadius: 8,
+              border: `1px solid ${T.indigo}42`,
+              background: `${T.indigo}12`,
+              color: T.indigo,
+              cursor: 'pointer',
+              fontFamily: T.mono,
+              fontSize: 11,
+              letterSpacing: '0.05em',
+            }}
+          >
+            Quick Capture (Ctrl/Cmd+K)
+          </button>
         </div>
 
         {/* Loading */}
@@ -364,6 +491,11 @@ export default function Dashboard() {
             <WelcomeBackCard goals={goals} onFocus={() => setFocusOpen(true)} />
             <DoThisNow goals={goals} />
             <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} onEnergyOpen={() => setShowEnergyModal(true)} />
+            <MomentumCoachCard
+              goals={goals}
+              onQuickCapture={() => setQuickCaptureOpen(true)}
+              onFocus={() => setFocusOpen(true)}
+            />
             <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} />
 
             <StarShop
@@ -455,6 +587,14 @@ export default function Dashboard() {
         completeTask={mutations.completeTask}
         isOpen={focusOpen}
         onClose={() => setFocusOpen(false)}
+      />
+
+      <QuickCaptureModal
+        isOpen={quickCaptureOpen}
+        goals={goals}
+        onClose={() => setQuickCaptureOpen(false)}
+        onAddGoal={mutations.addGoal}
+        onAddTask={mutations.addTask}
       />
 
       {activeRewardDrop && (() => {
