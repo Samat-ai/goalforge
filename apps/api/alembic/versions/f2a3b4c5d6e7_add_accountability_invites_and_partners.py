@@ -45,16 +45,19 @@ def upgrade() -> None:
         "ix_accountability_invites_target_email",
         "accountability_invites",
         ["target_email"],
+        if_not_exists=True,
     )
     op.create_index(
         "ix_accountability_invites_inviter_status",
         "accountability_invites",
         ["inviter_user_id", "status"],
+        if_not_exists=True,
     )
     op.create_index(
         "ix_accountability_invites_invitee_status",
         "accountability_invites",
         ["invitee_user_id", "status"],
+        if_not_exists=True,
     )
 
     op.create_table(
@@ -82,6 +85,7 @@ def upgrade() -> None:
         "ix_accountability_partnerships_user_id",
         "accountability_partnerships",
         ["user_id"],
+        if_not_exists=True,
     )
 
 

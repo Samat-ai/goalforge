@@ -329,6 +329,9 @@ class AccountabilityInviteResponse(BaseModel):
     status: Literal["pending", "accepted", "declined"]
     created_at: datetime
     responded_at: datetime | None
+    # Populated for incoming invites so the UI can display who sent the invite.
+    inviter_email: str | None = None
+    inviter_display_name: str | None = None
 
 
 class AccountabilityPartnerResponse(BaseModel):

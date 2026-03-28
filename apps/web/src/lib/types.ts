@@ -32,6 +32,8 @@ export interface AccountabilityInvite {
   status: 'pending' | 'accepted' | 'declined'
   created_at: string
   responded_at: string | null
+  inviter_email: string | null
+  inviter_display_name: string | null
 }
 
 export interface AccountabilityPartner {

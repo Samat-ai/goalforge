@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from auth import get_current_user_id
 from database import get_db
@@ -15,6 +16,7 @@ from rate_limiting import _user_key, rate_limit
 from schemas import (
     AccountabilityInviteActionResponse,
     AccountabilityInviteCreate,
+    AccountabilityInviteResponse,
     AccountabilityInviteSendResponse,
     AccountabilityOverviewResponse,
     AccountabilityPartnerResponse,
@@ -89,7 +91,6 @@ async def send_accountability_invite(
                 status="pending",
             )
         )
-        await db.flush()
 
     return AccountabilityInviteSendResponse(message=_GENERIC_INVITE_MESSAGE)
 
@@ -106,16 +107,34 @@ async def get_accountability_overview(
 ):
     _ensure_owner(user_id, current_user_id)
 
-    incoming = (
+    # JOIN User (as inviter) so the UI can display who sent each incoming invite.
+    InviterUser = aliased(User)
+    incoming_rows = (
         await db.execute(
-            select(AccountabilityInvite)
+            select(AccountabilityInvite, InviterUser.email, InviterUser.display_name)
+            .join(InviterUser, InviterUser.id == AccountabilityInvite.inviter_user_id)
             .where(
                 AccountabilityInvite.invitee_user_id == user_id,
                 AccountabilityInvite.status == "pending",
             )
             .order_by(AccountabilityInvite.created_at.desc())
         )
-    ).scalars().all()
+    ).all()
+
+    incoming = [
+        AccountabilityInviteResponse(
+            id=row[0].id,
+            inviter_user_id=row[0].inviter_user_id,
+            invitee_user_id=row[0].invitee_user_id,
+            target_email=row[0].target_email,
+            status=row[0].status,
+            created_at=row[0].created_at,
+            responded_at=row[0].responded_at,
+            inviter_email=row[1],
+            inviter_display_name=row[2],
+        )
+        for row in incoming_rows
+    ]
 
     outgoing = (
         await db.execute(
@@ -191,12 +210,12 @@ async def accept_accountability_invite(
     inviter_id = invite.inviter_user_id
     invitee_id = current_user_id
 
-    for user_id, partner_user_id in ((inviter_id, invitee_id), (invitee_id, inviter_id)):
+    for uid, partner_uid in ((inviter_id, invitee_id), (invitee_id, inviter_id)):
         existing = (
             await db.execute(
                 select(AccountabilityPartnership.id).where(
-                    AccountabilityPartnership.user_id == user_id,
-                    AccountabilityPartnership.partner_user_id == partner_user_id,
+                    AccountabilityPartnership.user_id == uid,
+                    AccountabilityPartnership.partner_user_id == partner_uid,
                 )
             )
         ).scalar_one_or_none()
@@ -204,12 +223,10 @@ async def accept_accountability_invite(
             db.add(
                 AccountabilityPartnership(
                     id=uuid.uuid4(),
-                    user_id=user_id,
-                    partner_user_id=partner_user_id,
+                    user_id=uid,
+                    partner_user_id=partner_uid,
                 )
             )
-
-    await db.flush()
 
     return AccountabilityInviteActionResponse(message="Invite accepted", status="accepted")
 
@@ -241,6 +258,5 @@ async def decline_accountability_invite(
 
     invite.status = "declined"
     invite.responded_at = datetime.now(timezone.utc)
-    await db.flush()
 
     return AccountabilityInviteActionResponse(message="Invite declined", status="declined")

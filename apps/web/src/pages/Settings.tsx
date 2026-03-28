@@ -283,8 +283,12 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
                   padding: '9px 10px',
                 }}>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, color: T.text }}>{invite.target_email}</div>
-                    <div style={{ fontFamily: T.mono, fontSize: 10, color: T.dim }}>Pending invite</div>
+                    <div style={{ fontSize: 13, color: T.text }}>
+                      {invite.inviter_display_name ?? invite.inviter_email ?? invite.inviter_user_id}
+                    </div>
+                    <div style={{ fontFamily: T.mono, fontSize: 10, color: T.dim }}>
+                      {invite.inviter_email ? `${invite.inviter_email} · Pending invite` : 'Pending invite'}
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <button
