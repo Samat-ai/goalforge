@@ -220,11 +220,13 @@ test('core loop: login, create goal, complete 3 tasks, and redeem shop reward', 
       const offset = Number(searchParams.get('offset') ?? '0')
 
       // Simulate the async AI generation lifecycle:
-      // - First GET (triggered by invalidateQueries after the 202) returns generating state.
-      // - Second GET (triggered by the 5 s refetchInterval from needsPolling) transitions to active.
+      // - First two GETs (invalidateQueries + possible mount refetch) return generating state.
+      // - Third GET onwards (the 5 s refetchInterval from needsPolling) transitions to active.
+      // Threshold is 3 instead of 2 to absorb any rapid-fire duplicate queries React Query
+      // may fire on CI under load, ensuring `generating…` is always visible before transition.
       if (state.goals.length > 0) {
         state.goalsCallCount++
-        if (state.goalsCallCount >= 2 && state.goals[0].milestones[0].sprint_status === 'generating') {
+        if (state.goalsCallCount >= 3 && state.goals[0].milestones[0].sprint_status === 'generating') {
           state.goals = [makeActiveGoal(state.goals[0].raw_input)]
         }
       }
@@ -328,6 +330,10 @@ test('core loop: login, create goal, complete 3 tasks, and redeem shop reward', 
 
   for (let i = 0; i < 3; i += 1) {
     await page.getByLabel('Mark task complete').first().click()
+    // After the optimistic update the completed button's aria-label flips to 'Task completed',
+    // removing it from this locator's match set. Waiting for the count to drop by 1 proves
+    // the click registered and React re-rendered before we attempt the next click.
+    await expect(page.getByLabel('Mark task complete')).toHaveCount(2 - i)
   }
 
   await expect(page.getByText('Balance: 150 pts')).toBeVisible()
@@ -341,4 +347,8 @@ test('core loop: login, create goal, complete 3 tasks, and redeem shop reward', 
   }).toBeLessThan(beforeRedeem)
 
   await expect(page.getByText('Balance: 110 pts')).toBeVisible()
+
+  // Verify the shop card's redemption counter incremented — confirms the server-side
+  // deduction was acknowledged and the UI reflects the updated redemption_count.
+  await expect(page.getByText('redeemed 1x')).toBeVisible()
 })
