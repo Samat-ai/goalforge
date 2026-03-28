@@ -68,8 +68,9 @@ async def _load_session_for_response(session_id: uuid.UUID, db: AsyncSession) ->
         select(CoachSession)
         .options(
             selectinload(CoachSession.messages),
+            # daily_tasks intentionally excluded: a forged goal may have 90+ tasks and the
+            # coach UI never renders them. The forged_goal handoff only needs milestones.
             selectinload(CoachSession.forged_goal).selectinload(Goal.milestones),
-            selectinload(CoachSession.forged_goal).selectinload(Goal.daily_tasks),
         )
         .where(CoachSession.id == session_id)
     )
@@ -170,6 +171,7 @@ async def send_coach_message(
         select(CoachSession)
         .options(selectinload(CoachSession.messages))
         .where(CoachSession.id == session_id)
+        .with_for_update()
     )
     session = session_result.scalar_one_or_none()
     if session is None:
