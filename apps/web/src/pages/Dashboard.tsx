@@ -275,7 +275,7 @@ export default function Dashboard() {
 
   const { goals, isLoading: loading, isError, refetch } = useGoalsQuery(userId)
   const { pts } = useProfileQuery(userId)
-  const { badges } = useBadgesQuery(userId)
+  const { badges, isLoading: badgesLoading } = useBadgesQuery(userId)
   const unlockedBadgeKeysRef = useRef<Set<string>>(new Set())
   const didInitBadgesRef = useRef(false)
 
@@ -300,6 +300,12 @@ export default function Dashboard() {
   useEffect(() => { document.title = 'Dashboard — GoalForge' }, [])
 
   useEffect(() => {
+    // Do not seed or fire while the query is still loading. useBadgesQuery returns
+    // badges: [] as the default, so without this guard the ref is seeded with an
+    // empty Set on the first render and then confetti fires on every page load for
+    // any user who already has badges.
+    if (badgesLoading) return
+
     const unlockedNow = new Set(badges.filter(b => b.unlocked).map(b => b.key))
 
     if (!didInitBadgesRef.current) {
@@ -315,7 +321,7 @@ export default function Dashboard() {
     }
 
     unlockedBadgeKeysRef.current = unlockedNow
-  }, [badges, fireBadgeConfetti])
+  }, [badges, badgesLoading, fireBadgeConfetti])
 
   const error = isError ? 'Failed to load goals.' : null
   const filtered = filter === 'all' ? goals : goals.filter(g => g.status === filter)
