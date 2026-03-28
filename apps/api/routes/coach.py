@@ -68,9 +68,12 @@ async def _load_session_for_response(session_id: uuid.UUID, db: AsyncSession) ->
         select(CoachSession)
         .options(
             selectinload(CoachSession.messages),
-            # daily_tasks intentionally excluded: a forged goal may have 90+ tasks and the
-            # coach UI never renders them. The forged_goal handoff only needs milestones.
             selectinload(CoachSession.forged_goal).selectinload(Goal.milestones),
+            # GoalResponse (used in CoachSendMessageResponse.forged_goal) serializes
+            # goal.daily_tasks. Without eager loading SQLAlchemy raises MissingGreenlet
+            # in the async context. In practice forged_goal is None during the first
+            # four turns so this load is a no-op until the forge response.
+            selectinload(CoachSession.forged_goal).selectinload(Goal.daily_tasks),
         )
         .where(CoachSession.id == session_id)
     )
