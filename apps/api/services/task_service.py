@@ -219,15 +219,21 @@ async def complete_task_and_award_points(
     task.completed_at = datetime.now(timezone.utc)
     await db.flush()
 
-    # Compute consistency score + roll reward tier
-    try:
-        score = await _reward_service.compute_consistency_score(goal.user_id, db)
-        tier = _reward_service.roll_reward(score)
-        collectible = await _reward_service.pick_collectible(tier, goal.user_id, db)
-    except Exception as exc:
-        logger.warning("Reward roll failed for task %s, falling back to standard: %s", task.id, exc)
+    # User-added tasks are ineligible for drop rolls — they award only the base
+    # +10 standard tier. This prevents farming rare items by spamming custom tasks.
+    if task.is_user_added:
         tier = "standard"
         collectible = None
+    else:
+        # Compute consistency score + roll reward tier
+        try:
+            score = await _reward_service.compute_consistency_score(goal.user_id, db)
+            tier = _reward_service.roll_reward(score)
+            collectible = await _reward_service.pick_collectible(tier, goal.user_id, db)
+        except Exception as exc:
+            logger.warning("Reward roll failed for task %s, falling back to standard: %s", task.id, exc)
+            tier = "standard"
+            collectible = None
 
     result = await _reward_service.award_reward(goal.user_id, tier, collectible, db)
 

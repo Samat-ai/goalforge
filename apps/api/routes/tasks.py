@@ -192,6 +192,7 @@ async def create_task(
     task = DailyTask(
         id=uuid.uuid4(),
         goal_id=goal.id,
+        is_user_added=True,
         milestone_id=milestone_id,
         description=body.description,
         tip=body.tip,
