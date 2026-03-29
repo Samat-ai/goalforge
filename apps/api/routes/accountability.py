@@ -9,9 +9,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from auth import get_current_user_id
+from auth import get_current_user_email, get_current_user_id
 from database import get_db
-from deps import _ensure_owner, _load_user_with_ownership
+from deps import _ensure_owner, _load_user_with_ownership, get_or_create_user
 from models import AccountabilityInvite, AccountabilityPartnership, User
 from rate_limiting import _user_key, rate_limit
 from schemas import (
@@ -43,9 +43,11 @@ async def send_accountability_invite(
     user_id: str,
     payload: AccountabilityInviteCreate,
     current_user_id: str = Depends(get_current_user_id),
+    current_user_email: str = Depends(get_current_user_email),
     db: AsyncSession = Depends(get_db),
 ):
-    inviter = await _load_user_with_ownership(user_id, current_user_id, db)
+    _ensure_owner(user_id, current_user_id)
+    inviter = await get_or_create_user(user_id, current_user_email, db)
     target_email = _normalize_email(payload.email)
 
     # Never leak existence details. Self-invites become a no-op with generic response.

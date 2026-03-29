@@ -9,6 +9,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models import Goal, Reward, ShopReward, User
 
 
+async def get_or_create_user(user_id: str, email: str, db: AsyncSession) -> User:
+    """Load a user row, auto-creating if missing (e.g. new sign-up, post-deletion).
+    Used by any endpoint that is the first API call for a given user session.
+    """
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        user = User(id=user_id, email=email)
+        db.add(user)
+        await db.flush()
+    return user
+
+
 def _ensure_owner(resource_owner_id: str, current_user_id: str) -> None:
     """Raise 403 when current user does not own the target resource."""
     if resource_owner_id != current_user_id:
