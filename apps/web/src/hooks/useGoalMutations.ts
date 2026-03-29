@@ -99,6 +99,7 @@ export function useGoalMutations(userId: string, onJackpot?: (drop: RewardDrop) 
         triggerJackpotCelebration()
         onJackpot?.(drop)
       }
+      qc.invalidateQueries({ queryKey: queryKeys.badges(userId) })
     },
     onError: (_err, _taskId, context) => {
       if (context?.prevGoals) qc.setQueryData(goalsKey, context.prevGoals)

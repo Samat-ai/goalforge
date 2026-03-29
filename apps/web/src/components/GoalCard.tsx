@@ -92,6 +92,8 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
   const todayTasks  = goal.daily_tasks
     .filter(t => t.assigned_date === todayStr())
     .sort((a, b) => a.position - b.position)
+  const completedTodayCount = todayTasks.filter(t => t.is_completed).length
+  const completionRatio = todayTasks.length > 0 ? completedTodayCount / todayTasks.length : 0
   const doneToday   = todayTasks.length > 0 && todayTasks.every(t => t.is_completed)
   const s           = streak(goal.completed_days)
   const lastStreak  = lastStreakLength(goal.completed_days)
@@ -110,10 +112,13 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
 
   return (
     <div
-      className={isAchieved ? 'goal-achieved' : undefined}
+      className={`goal-card-shell ${isAchieved ? 'goal-achieved' : ''}`}
       style={{
         background: T.card, borderRadius: 14, overflow: 'hidden', marginBottom: 1,
         border: `1px solid ${isAbandoned ? T.dim + '40' : open ? T.borderHi : T.border}`,
+        boxShadow: completionRatio > 0 && !isAbandoned
+          ? `0 0 ${Math.round(10 + completionRatio * 18)}px rgba(16,185,129,${(0.08 + completionRatio * 0.12).toFixed(2)})`
+          : 'none',
         opacity: isAbandoned ? 0.5 : 1,
       }}
     >

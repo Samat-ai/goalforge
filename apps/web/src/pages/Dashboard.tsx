@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useUser } from '@clerk/react'
 import { T } from '../lib/theme'
 import AppHeader from '../components/AppHeader'
@@ -16,6 +16,7 @@ import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
 import { useEnergyResizeMutation } from '../hooks/useEnergyMutations'
 import { dayDiff, todayStr } from '../lib/gamification'
 import type { Goal, RewardDrop } from '../lib/types'
+import { useConfetti } from '../components/ConfettiContext'
 
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
 const e2eUserId = import.meta.env.VITE_E2E_USER_ID ?? 'user_e2e'
@@ -270,10 +271,13 @@ function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
 export default function Dashboard() {
   const { user } = useUser()
   const userId = user?.id ?? (isE2EMode ? e2eUserId : undefined)
+  const { fireBadgeConfetti } = useConfetti()
 
   const { goals, isLoading: loading, isError, refetch } = useGoalsQuery(userId)
   const { pts } = useProfileQuery(userId)
-  const { badges } = useBadgesQuery(userId)
+  const { badges, isLoading: badgesLoading } = useBadgesQuery(userId)
+  const unlockedBadgeKeysRef = useRef<Set<string>>(new Set())
+  const didInitBadgesRef = useRef(false)
 
   const [filter, setFilter] = useState<string>('all')
   const [addGoalText, setAddGoalText] = useState('')
@@ -294,6 +298,30 @@ export default function Dashboard() {
   const energyResizeMutation = useEnergyResizeMutation(userId ?? '')
 
   useEffect(() => { document.title = 'Dashboard — GoalForge' }, [])
+
+  useEffect(() => {
+    // Do not seed or fire while the query is still loading. useBadgesQuery returns
+    // badges: [] as the default, so without this guard the ref is seeded with an
+    // empty Set on the first render and then confetti fires on every page load for
+    // any user who already has badges.
+    if (badgesLoading) return
+
+    const unlockedNow = new Set(badges.filter(b => b.unlocked).map(b => b.key))
+
+    if (!didInitBadgesRef.current) {
+      unlockedBadgeKeysRef.current = unlockedNow
+      didInitBadgesRef.current = true
+      return
+    }
+
+    const previous = unlockedBadgeKeysRef.current
+    const hasNewUnlock = Array.from(unlockedNow).some(key => !previous.has(key))
+    if (hasNewUnlock) {
+      fireBadgeConfetti()
+    }
+
+    unlockedBadgeKeysRef.current = unlockedNow
+  }, [badges, badgesLoading, fireBadgeConfetti])
 
   const error = isError ? 'Failed to load goals.' : null
   const filtered = filter === 'all' ? goals : goals.filter(g => g.status === filter)

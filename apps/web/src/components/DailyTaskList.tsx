@@ -71,7 +71,12 @@ function TaskRow({
   const pendingCircleColor = draggable ? T.dim : T.amber
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} className="group">
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      className={`group task-row ${task.is_completed ? 'task-row-complete' : ''}`}
+    >
       {/* Drag handle (draggable + pending) or spacer */}
       {draggable && !task.is_completed ? (
         <button
