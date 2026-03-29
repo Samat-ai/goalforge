@@ -10,7 +10,11 @@ import Settings from './pages/Settings'
 import ErrorBoundary from './components/ErrorBoundary'
 import EnergyParamCapture from './components/EnergyParamCapture'
 
+const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
+
 function AuthGuard({ children }: { children: React.ReactNode }) {
+  if (isE2EMode) return <>{children}</>
+
   return (
     <>
       <Show when="signed-in">{children}</Show>

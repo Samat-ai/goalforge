@@ -8,8 +8,10 @@ import './index.css'
 import App from './App.tsx'
 
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
+const resolvedPublishableKey = publishableKey ?? (isE2EMode ? 'pk_test_e2e_mode' : undefined)
 
-if (!publishableKey) {
+if (!resolvedPublishableKey) {
   throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY in .env.local')
 }
 
@@ -23,9 +25,9 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ClerkProvider publishableKey={publishableKey}>
+    <ClerkProvider publishableKey={resolvedPublishableKey}>
       <QueryClientProvider client={queryClient}>
-        <AuthInterceptor />
+        {!isE2EMode && <AuthInterceptor />}
         <App />
       </QueryClientProvider>
     </ClerkProvider>
