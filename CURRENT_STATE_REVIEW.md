@@ -36,7 +36,7 @@
 
 - **Core Loop Churn Analysis (Input Goal → AI Breakdown → Complete Tasks → Earn Points):**
   - **Highest churn point #1: “AI generation limbo” immediately after goal submission.**
-    - Users see a generating state and must wait/poll (`useGoals` every 5s) before actionable tasks appear.
+    - Users see a generating state and must wait/poll (`useGoals` currently polls every 5s) before actionable tasks appear; this appears to be a current implementation default rather than an adaptive strategy validated by UX/retention telemetry.
     - If generation fails or stalls, first-session motivation collapses before the first dopamine hit.
   - **Highest churn point #2: “No guaranteed first win” in first 2 minutes.**
     - If the first generated tasks feel too large, new users (especially low motivation users) bounce before first completion.
