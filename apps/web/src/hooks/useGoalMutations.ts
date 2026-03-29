@@ -70,18 +70,20 @@ export function useGoalMutations(userId: string, onJackpot?: (drop: RewardDrop) 
     },
     onSuccess: (data) => {
       const drop = data.reward_drop
+      // Correct the optimistic +10 to actual points awarded (0 for user-added tasks)
+      updatePts(data.points_awarded - 10)
 
       if (!drop) {
-        // Standard (+10) — pts already correct from onMutate
-        toast.success('Task completed! +10 pts', { icon: '⚡' })
+        if (data.points_awarded === 0) {
+          toast.success('Task tracked!', { icon: '✓' })
+        } else {
+          toast.success('Task completed! +10 pts', { icon: '⚡' })
+        }
       } else if (drop.tier === 'bonus') {
-        // Correct optimistic +10 to actual points
-        updatePts(drop.points_awarded - 10)
         toast.success(`Bonus! +${drop.points_awarded} pts \u2746`, {
           style: { borderLeft: '3px solid #f59e0b', background: '#1a140a' },
         })
       } else if (drop.tier === 'crit') {
-        updatePts(drop.points_awarded - 10)
         triggerCritCelebration()
         toast.success(
           `CRIT \u2014 ${drop.collectible_display_name ?? 'Lore Fragment'} unlocked (+${drop.points_awarded} \u2b50)`,
@@ -95,7 +97,6 @@ export function useGoalMutations(userId: string, onJackpot?: (drop: RewardDrop) 
           }
         )
       } else if (drop.tier === 'jackpot') {
-        updatePts(drop.points_awarded - 10)
         triggerJackpotCelebration()
         onJackpot?.(drop)
       }

@@ -62,6 +62,9 @@ class TaskCompleteResponse(TaskResponse):
     # Always present in JSON output — never omitted via exclude_none.
     # Standard tier sets this to None; bonus/crit/jackpot populate it.
     reward_drop: RewardDrop | None = None
+    # Actual points awarded — 0 for user-added tasks, 10+ for AI-generated tasks.
+    # Frontend uses this to correct the optimistic +10 applied in onMutate.
+    points_awarded: int = 10
 
 
 class EnergyResizeResponse(BaseModel):

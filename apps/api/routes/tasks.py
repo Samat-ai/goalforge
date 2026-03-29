@@ -106,7 +106,7 @@ async def complete_task(
         )
 
     task_resp = TaskResponse.model_validate(task)
-    return TaskCompleteResponse(**task_resp.model_dump(), reward_drop=reward_drop)
+    return TaskCompleteResponse(**task_resp.model_dump(), reward_drop=reward_drop, points_awarded=reward_result.points_awarded)
 
 
 @router.patch(
