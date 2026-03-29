@@ -215,6 +215,7 @@ async def send_coach_message(
         session.stage = answer_count
         await db.flush()
 
+        await db.refresh(session, attribute_names=["messages"])  # identity map caches old collection; reload before response
         refreshed = await _load_session_for_response(session.id, db)
         return CoachSendMessageResponse(session=refreshed, forged_goal=None)
 
@@ -236,6 +237,7 @@ async def send_coach_message(
         ))
         session.stage = len(_COACH_QUESTION_FLOW)
         await db.flush()
+        await db.refresh(session, attribute_names=["messages"])
         refreshed = await _load_session_for_response(session.id, db)
         return CoachSendMessageResponse(session=refreshed, forged_goal=None)
 
@@ -296,5 +298,6 @@ async def send_coach_message(
 
     await db.flush()
 
+    await db.refresh(session, attribute_names=["messages"])
     refreshed = await _load_session_for_response(session.id, db)
     return CoachSendMessageResponse(session=refreshed, forged_goal=refreshed.forged_goal)
