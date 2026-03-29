@@ -305,9 +305,10 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
                         fontSize: 11,
                         padding: '0 10px',
                         cursor: isAcceptingInvite || isDecliningInvite ? 'default' : 'pointer',
+                        opacity: isAcceptingInvite || isDecliningInvite ? 0.6 : 1,
                       }}
                     >
-                      Accept
+                      {isAcceptingInvite ? 'Accepting…' : 'Accept'}
                     </button>
                     <button
                       onClick={() => declineInvite(invite.id)}
@@ -323,9 +324,10 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
                         fontSize: 11,
                         padding: '0 10px',
                         cursor: isAcceptingInvite || isDecliningInvite ? 'default' : 'pointer',
+                        opacity: isAcceptingInvite || isDecliningInvite ? 0.6 : 1,
                       }}
                     >
-                      Decline
+                      {isDecliningInvite ? 'Declining…' : 'Decline'}
                     </button>
                   </div>
                 </div>

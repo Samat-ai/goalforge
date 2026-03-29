@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -210,23 +211,16 @@ async def accept_accountability_invite(
     inviter_id = invite.inviter_user_id
     invitee_id = current_user_id
 
+    # Use a savepoint per direction so concurrent accepts are idempotent across
+    # both PostgreSQL and SQLite (tests). begin_nested() flushes on exit, surfacing
+    # any UniqueConstraint violation inside the savepoint; we swallow it and continue
+    # so the outer transaction (invite status update) still commits cleanly.
     for uid, partner_uid in ((inviter_id, invitee_id), (invitee_id, inviter_id)):
-        existing = (
-            await db.execute(
-                select(AccountabilityPartnership.id).where(
-                    AccountabilityPartnership.user_id == uid,
-                    AccountabilityPartnership.partner_user_id == partner_uid,
-                )
-            )
-        ).scalar_one_or_none()
-        if existing is None:
-            db.add(
-                AccountabilityPartnership(
-                    id=uuid.uuid4(),
-                    user_id=uid,
-                    partner_user_id=partner_uid,
-                )
-            )
+        try:
+            async with db.begin_nested():
+                db.add(AccountabilityPartnership(id=uuid.uuid4(), user_id=uid, partner_user_id=partner_uid))
+        except IntegrityError:
+            pass  # partnership already exists — idempotent
 
     return AccountabilityInviteActionResponse(message="Invite accepted", status="accepted")
 
