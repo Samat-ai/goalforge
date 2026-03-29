@@ -11,7 +11,7 @@ from database import get_db
 from exceptions import AIGenerationError
 from models import CoachMessage, CoachSession, DailyTask, Goal, Milestone, User
 from rate_limiting import _user_key, rate_limit
-from routes.goals import get_or_create_user
+from deps import get_or_create_user
 from schemas import (
     CoachMessageCreate,
     CoachSendMessageResponse,

@@ -11,6 +11,7 @@ export function useCoachSessionQuery(userId: string | undefined) {
       return data
     },
     enabled: !!userId,
+    staleTime: 60_000,
   })
 
   return {
