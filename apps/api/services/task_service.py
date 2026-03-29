@@ -219,6 +219,19 @@ async def complete_task_and_award_points(
     task.completed_at = datetime.now(timezone.utc)
     await db.flush()
 
+    # User-added tasks earn no points and no drops — they exist to track work,
+    # not to earn rewards. Awarding points would let users farm star points by
+    # spamming add-task + complete indefinitely.
+    if task.is_user_added:
+        return RewardResult(
+            tier="standard",
+            points_awarded=0,
+            collectible_type=None,
+            collectible_key=None,
+            collectible_display_name=None,
+            collectible_body=None,
+        )
+
     # Compute consistency score + roll reward tier
     try:
         score = await _reward_service.compute_consistency_score(goal.user_id, db)

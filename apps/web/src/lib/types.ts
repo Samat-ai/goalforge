@@ -163,6 +163,7 @@ export interface RewardDrop {
 
 export interface TaskCompleteResponse extends Task {
   reward_drop: RewardDrop | null
+  points_awarded: number
 }
 
 export interface Reward {

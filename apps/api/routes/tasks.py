@@ -106,7 +106,7 @@ async def complete_task(
         )
 
     task_resp = TaskResponse.model_validate(task)
-    return TaskCompleteResponse(**task_resp.model_dump(), reward_drop=reward_drop)
+    return TaskCompleteResponse(**task_resp.model_dump(), reward_drop=reward_drop, points_awarded=reward_result.points_awarded)
 
 
 @router.patch(
@@ -192,6 +192,7 @@ async def create_task(
     task = DailyTask(
         id=uuid.uuid4(),
         goal_id=goal.id,
+        is_user_added=True,
         milestone_id=milestone_id,
         description=body.description,
         tip=body.tip,
