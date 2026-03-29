@@ -198,13 +198,14 @@ async def update_goal_status(
     old_status = goal.status
     goal.status = body.status
 
-    # Award 100 star points the first time a goal is achieved (atomic SQL increment)
-    if body.status == "achieved" and old_status != "achieved":
+    # Award 100 star points exactly once per goal (idempotency flag prevents farming via re-activation)
+    if body.status == "achieved" and not goal.achievement_reward_granted:
         await db.execute(
             sql_update(User)
             .where(User.id == goal.user_id)
             .values(star_points=User.star_points + 100)
         )
+        goal.achievement_reward_granted = True
 
     await db.flush()
     return goal
