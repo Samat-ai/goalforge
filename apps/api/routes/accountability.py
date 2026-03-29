@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -106,9 +106,26 @@ async def send_accountability_invite(
 async def get_accountability_overview(
     user_id: str,
     current_user_id: str = Depends(get_current_user_id),
+    current_user_email: str = Depends(get_current_user_email),
     db: AsyncSession = Depends(get_db),
 ):
     _ensure_owner(user_id, current_user_id)
+
+    real_email = _normalize_email(current_user_email)
+    has_real_email = not real_email.endswith("@placeholder.goalforge.app")
+
+    # Match on invitee_user_id (already resolved) OR on target_email when we have
+    # a real email and invitee_user_id was left NULL at send-time (recipient had no
+    # User row yet, or Clerk email was not in JWT at send-time).
+    invitee_filter = AccountabilityInvite.invitee_user_id == user_id
+    if has_real_email:
+        invitee_filter = or_(
+            AccountabilityInvite.invitee_user_id == user_id,
+            and_(
+                AccountabilityInvite.invitee_user_id.is_(None),
+                AccountabilityInvite.target_email == real_email,
+            ),
+        )
 
     # JOIN User (as inviter) so the UI can display who sent each incoming invite.
     InviterUser = aliased(User)
@@ -116,13 +133,16 @@ async def get_accountability_overview(
         await db.execute(
             select(AccountabilityInvite, InviterUser.email, InviterUser.display_name)
             .join(InviterUser, InviterUser.id == AccountabilityInvite.inviter_user_id)
-            .where(
-                AccountabilityInvite.invitee_user_id == user_id,
-                AccountabilityInvite.status == "pending",
-            )
+            .where(invitee_filter, AccountabilityInvite.status == "pending")
             .order_by(AccountabilityInvite.created_at.desc())
         )
     ).all()
+
+    # Backfill invitee_user_id on email-matched invites so accept/decline work correctly.
+    for row in incoming_rows:
+        invite = row[0]
+        if invite.invitee_user_id is None:
+            invite.invitee_user_id = user_id
 
     incoming = [
         AccountabilityInviteResponse(
