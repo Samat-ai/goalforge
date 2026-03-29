@@ -315,6 +315,49 @@ class BadgeResponse(BaseModel):
     target: int
 
 
+class AccountabilityInviteCreate(BaseModel):
+    email: str = Field(..., min_length=3, max_length=320)
+
+
+class AccountabilityInviteResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    inviter_user_id: str
+    invitee_user_id: str | None
+    target_email: str
+    status: Literal["pending", "accepted", "declined"]
+    created_at: datetime
+    responded_at: datetime | None
+    # Populated for incoming invites so the UI can display who sent the invite.
+    inviter_email: str | None = None
+    inviter_display_name: str | None = None
+
+
+class AccountabilityPartnerResponse(BaseModel):
+    id: uuid.UUID
+    user_id: str
+    partner_user_id: str
+    partner_email: str
+    partner_display_name: str | None
+    created_at: datetime
+
+
+class AccountabilityOverviewResponse(BaseModel):
+    incoming: list[AccountabilityInviteResponse]
+    outgoing: list[AccountabilityInviteResponse]
+    partners: list[AccountabilityPartnerResponse]
+
+
+class AccountabilityInviteSendResponse(BaseModel):
+    message: str
+
+
+class AccountabilityInviteActionResponse(BaseModel):
+    message: str
+    status: Literal["accepted", "declined"]
+
+
 # ---------------------------------------------------------------------------
 # Paginated response wrappers
 # ---------------------------------------------------------------------------

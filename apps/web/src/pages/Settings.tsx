@@ -4,7 +4,15 @@ import { toast } from 'sonner'
 import AppHeader from '../components/AppHeader'
 import { T } from '../lib/theme'
 import api from '../lib/api'
-import { useEnablePushMutation, usePushSubscriptionsQuery, useSettingsQuery, useSaveSettingsMutation, useProfileQuery } from '../hooks'
+import {
+  useAccountabilityMutations,
+  useAccountabilityQuery,
+  useEnablePushMutation,
+  usePushSubscriptionsQuery,
+  useSettingsQuery,
+  useSaveSettingsMutation,
+  useProfileQuery,
+} from '../hooks'
 import type { UserSettings } from '../lib/types'
 
 const TIMEZONES = [
@@ -43,10 +51,21 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
   const { save: saveSettings, isSaving: saving } = useSaveSettingsMutation(userId)
   const { subscriptions } = usePushSubscriptionsQuery(userId)
   const { enablePush, isEnabling } = useEnablePushMutation(userId)
+  const { data: accountability } = useAccountabilityQuery(userId)
+  const {
+    sendInvite,
+    acceptInvite,
+    declineInvite,
+    isSendingInvite,
+    isAcceptingInvite,
+    isDecliningInvite,
+  } = useAccountabilityMutations(userId)
+
   const [timezone, setTimezone] = useState(settings.timezone)
   const [displayName, setDisplayName] = useState(settings.display_name ?? '')
   const [reminderEnabled, setReminderEnabled] = useState(settings.reminder_enabled)
   const [reminderHour, setReminderHour] = useState(settings.reminder_hour)
+  const [inviteEmail, setInviteEmail] = useState('')
 
   function save() {
     if (saving) return
@@ -193,6 +212,157 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
         </button>
         <div style={{ fontSize: 11, color: T.dim, fontFamily: T.mono, marginTop: 8 }}>
           Active browser subscriptions: {subscriptions.filter(s => s.is_active).length}
+        </div>
+      </div>
+
+      {/* Accountability partners */}
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '18px 20px' }}>
+        <label style={{ display: 'block', fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 10 }}>
+          ACCOUNTABILITY PARTNERS
+        </label>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            type="email"
+            value={inviteEmail}
+            onChange={e => setInviteEmail(e.target.value)}
+            placeholder="Invite by email"
+            style={{
+              flex: 1,
+              minHeight: 44,
+              background: T.surface,
+              border: `1px solid ${T.border}`,
+              borderRadius: 8,
+              padding: '10px 12px',
+              color: T.text,
+              fontFamily: T.mono,
+              fontSize: 12,
+            }}
+          />
+          <button
+            onClick={() => {
+              const normalized = inviteEmail.trim()
+              if (!normalized || isSendingInvite) return
+              sendInvite(normalized)
+              setInviteEmail('')
+            }}
+            disabled={isSendingInvite}
+            style={{
+              minHeight: 44,
+              minWidth: 44,
+              border: `1px solid ${T.indigo}45`,
+              borderRadius: 8,
+              padding: '0 14px',
+              background: `${T.indigo}18`,
+              color: T.indigo,
+              fontFamily: T.mono,
+              fontSize: 11,
+              letterSpacing: '0.05em',
+              cursor: isSendingInvite ? 'default' : 'pointer',
+              opacity: isSendingInvite ? 0.6 : 1,
+            }}
+          >
+            {isSendingInvite ? 'Sending…' : 'Send Invite'}
+          </button>
+        </div>
+
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.08em', fontFamily: T.mono, marginBottom: 8 }}>
+            INCOMING INVITES
+          </div>
+          {(accountability?.incoming.length ?? 0) === 0 ? (
+            <div style={{ fontSize: 12, color: T.dim }}>No incoming invites.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {accountability?.incoming.map(invite => (
+                <div key={invite.id} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 8,
+                  background: T.surface,
+                  padding: '9px 10px',
+                }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: T.text }}>
+                      {invite.inviter_display_name ?? invite.inviter_email ?? invite.inviter_user_id}
+                    </div>
+                    <div style={{ fontFamily: T.mono, fontSize: 10, color: T.dim }}>
+                      {invite.inviter_email ? `${invite.inviter_email} · Pending invite` : 'Pending invite'}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => acceptInvite(invite.id)}
+                      disabled={isAcceptingInvite || isDecliningInvite}
+                      style={{
+                        minHeight: 44,
+                        minWidth: 44,
+                        borderRadius: 8,
+                        border: `1px solid ${T.emerald}`,
+                        background: `${T.emerald}15`,
+                        color: T.emerald,
+                        fontFamily: T.mono,
+                        fontSize: 11,
+                        padding: '0 10px',
+                        cursor: isAcceptingInvite || isDecliningInvite ? 'default' : 'pointer',
+                        opacity: isAcceptingInvite || isDecliningInvite ? 0.6 : 1,
+                      }}
+                    >
+                      {isAcceptingInvite ? 'Accepting…' : 'Accept'}
+                    </button>
+                    <button
+                      onClick={() => declineInvite(invite.id)}
+                      disabled={isAcceptingInvite || isDecliningInvite}
+                      style={{
+                        minHeight: 44,
+                        minWidth: 44,
+                        borderRadius: 8,
+                        border: `1px solid ${T.rose}`,
+                        background: `${T.rose}15`,
+                        color: T.rose,
+                        fontFamily: T.mono,
+                        fontSize: 11,
+                        padding: '0 10px',
+                        cursor: isAcceptingInvite || isDecliningInvite ? 'default' : 'pointer',
+                        opacity: isAcceptingInvite || isDecliningInvite ? 0.6 : 1,
+                      }}
+                    >
+                      {isDecliningInvite ? 'Declining…' : 'Decline'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.08em', fontFamily: T.mono, marginBottom: 8 }}>
+            ACTIVE PARTNERS
+          </div>
+          {(accountability?.partners.length ?? 0) === 0 ? (
+            <div style={{ fontSize: 12, color: T.dim }}>No partners yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {accountability?.partners.map(partner => (
+                <div key={partner.id} style={{
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 8,
+                  background: T.surface,
+                  padding: '9px 10px',
+                }}>
+                  <div style={{ fontSize: 13, color: T.text }}>
+                    {partner.partner_display_name ?? partner.partner_email}
+                  </div>
+                  <div style={{ fontFamily: T.mono, fontSize: 10, color: T.dim }}>{partner.partner_email}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: 10, fontSize: 11, color: T.dim, fontFamily: T.mono }}>
+          Outgoing pending invites: {accountability?.outgoing.length ?? 0}
         </div>
       </div>
 

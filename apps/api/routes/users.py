@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 from ai_utils import generate_star_log_narrative, generate_weekly_coach_recommendation
 from auth import get_current_user_email, get_current_user_id
 from database import get_db
-from deps import _ensure_owner, _load_user_with_ownership
+from deps import _ensure_owner, _load_user_with_ownership, get_or_create_user as _get_or_create_user
 from exceptions import AIGenerationError
 from models import (
     DailyTask, Goal, Reward, ShopReward, StarLog, User,
@@ -32,16 +32,6 @@ from utils import user_today
 
 router = APIRouter()
 
-
-async def _get_or_create_user(user_id: str, email: str, db: AsyncSession) -> User:
-    """Load user row, auto-creating if missing (e.g. after account deletion)."""
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user is None:
-        user = User(id=user_id, email=email)
-        db.add(user)
-        await db.flush()
-    return user
 
 
 @router.get(

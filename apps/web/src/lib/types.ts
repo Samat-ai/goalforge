@@ -24,6 +24,33 @@ export interface UserSettingsUpdatePayload {
   reminder_hour?: number | null
 }
 
+export interface AccountabilityInvite {
+  id: string
+  inviter_user_id: string
+  invitee_user_id: string | null
+  target_email: string
+  status: 'pending' | 'accepted' | 'declined'
+  created_at: string
+  responded_at: string | null
+  inviter_email: string | null
+  inviter_display_name: string | null
+}
+
+export interface AccountabilityPartner {
+  id: string
+  user_id: string
+  partner_user_id: string
+  partner_email: string
+  partner_display_name: string | null
+  created_at: string
+}
+
+export interface AccountabilityOverview {
+  incoming: AccountabilityInvite[]
+  outgoing: AccountabilityInvite[]
+  partners: AccountabilityPartner[]
+}
+
 export interface PushSubscriptionRecord {
   id: string
   user_id: string
