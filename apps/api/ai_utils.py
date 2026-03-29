@@ -19,6 +19,7 @@ from pydantic import ValidationError
 from config import settings
 from exceptions import AIGenerationError
 from schemas import (
+    AICoachTurnOutput,
     AIGoalOutput,
     AIRescueOutput,
     AIRescueTaskItem,
@@ -68,6 +69,19 @@ Rules:
 - If difficulty_mode is "lighter": prefer low-friction tasks, shorter duration, and confidence-building wins.
 - If difficulty_mode is "balanced": keep normal progression with moderate challenge.
 - If difficulty_mode is "stretch": increase challenge slightly while remaining realistic for one day.
+"""
+
+_COACH_TURN_SYSTEM_PROMPT = """\
+You are GoalForge Coach, an empathetic and practical AI coach.
+
+You are in an intake conversation. Your job is to acknowledge the user's latest
+answer in a grounded way and keep momentum high.
+
+Rules:
+- acknowledgement must reference concrete details from the user's message.
+- Keep acknowledgement to 1-2 concise sentences.
+- No generic hype or cliches.
+- Do not ask a new question; the product asks the next guided question.
 """
 
 # Delays (in seconds) between consecutive attempts: attempt 1→2 waits 1s, 2→3 waits 2s.
@@ -140,6 +154,35 @@ async def generate_smart_goal(raw_input: str, today: date | None = None) -> AIGo
         return AIGoalOutput.model_validate(data)
 
     return await _with_retry(_call, "generate_smart_goal")
+
+
+async def generate_coach_turn(transcript: str, question_focus: str) -> AICoachTurnOutput:
+    """Generate a personalized coach acknowledgement for the latest user answer."""
+
+    user_message = (
+        "Conversation transcript so far:\n"
+        f"{transcript}\n\n"
+        f"Upcoming focus area: {question_focus}\n"
+        "Return acknowledgement only."
+    )
+
+    async def _call() -> AICoachTurnOutput:
+        response = await _client.aio.models.generate_content(
+            model=_MODEL,
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=_COACH_TURN_SYSTEM_PROMPT,
+                response_mime_type="application/json",
+                response_schema=AICoachTurnOutput,
+                temperature=1.0,
+            ),
+        )
+        raw_json: str = response.text
+        logger.debug("Gemini raw response (coach_turn): %s", raw_json)
+        data = json.loads(raw_json)
+        return AICoachTurnOutput.model_validate(data)
+
+    return await _with_retry(_call, "generate_coach_turn")
 
 
 async def generate_sprint_tasks(
