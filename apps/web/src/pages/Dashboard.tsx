@@ -17,6 +17,7 @@ import { useEnergyResizeMutation } from '../hooks/useEnergyMutations'
 import { dayDiff, todayStr } from '../lib/gamification'
 import type { Goal, RewardDrop } from '../lib/types'
 import { useConfetti } from '../components/ConfettiContext'
+import { GoalCardSkeleton } from '../components/ui/Skeleton'
 
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
 const e2eUserId = import.meta.env.VITE_E2E_USER_ID ?? 'user_e2e'
@@ -355,15 +356,11 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Loading */}
+        {/* Loading skeletons */}
         {loading && (
-          <div role="status" aria-label="Loading goals" style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: '50%',
-              border: `2px solid ${T.dim}`, borderTop: `2px solid ${T.orange}`,
-              animation: 'spin 0.75s linear infinite',
-            }} />
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <div role="status" aria-label="Loading goals" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <GoalCardSkeleton />
+            <GoalCardSkeleton />
           </div>
         )}
 

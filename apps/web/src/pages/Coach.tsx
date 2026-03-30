@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import AppHeader from '../components/AppHeader'
 import { T } from '../lib/theme'
+import { CoachPanelSkeleton } from '../components/ui/Skeleton'
 import { useCoachSessionQuery, useProfileQuery, useSendCoachMessageMutation, useStartCoachSessionMutation } from '../hooks'
 
 const TOTAL_INTAKE_QUESTIONS = 5
@@ -85,6 +86,8 @@ export default function Coach() {
             a personalized SMART goal with sprint milestones and your first 7-day task sequence.
           </p>
         </section>
+
+        {isLoading && <CoachPanelSkeleton />}
 
         {!session && !isLoading && (
           <section style={{
