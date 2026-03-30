@@ -486,12 +486,13 @@ export default function Dashboard() {
       />
 
       {activeRewardDrop && (() => {
-        const activeRewardId = activeRewardDrop.collectible_key
-          ? rewards.find(r => r.reward_key === activeRewardDrop.collectible_key)?.id ?? null
+        const drop = activeRewardDrop
+        const activeRewardId = drop.collectible_key
+          ? rewards.find(r => r.reward_key === drop.collectible_key)?.id ?? null
           : null
         return (
           <RewardModal
-            drop={activeRewardDrop}
+            drop={drop}
             rewardId={activeRewardId}
             onEquip={(rewardId) => equipMutation.mutate(rewardId)}
             onClose={() => setActiveRewardDrop(null)}
