@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#0e0e1a"/>
+      <stop offset="100%" stop-color="#07070f"/>
+    </radialGradient>
+    <radialGradient id="aura" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#818cf8" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#818cf8" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background: dark rounded square, subtle gradient for depth -->
+  <rect width="512" height="512" rx="90" fill="url(#bg)"/>
+
+  <!-- Indigo ambient halo -->
+  <ellipse cx="256" cy="256" rx="200" ry="200" fill="url(#aura)"/>
+
+  <!-- ✦ spark — glow layer (blurred duplicate for luminous edge) -->
+  <path
+    d="M256 88 Q285 226 424 256 Q285 286 256 424 Q227 286 88 256 Q227 226 256 88Z"
+    fill="#f97316" opacity="0.55" filter="url(#glow)"
+  />
+
+  <!-- ✦ spark — crisp top layer -->
+  <path
+    d="M256 88 Q285 226 424 256 Q285 286 256 424 Q227 286 88 256 Q227 226 256 88Z"
+    fill="#f97316"
+  />
+</svg>
