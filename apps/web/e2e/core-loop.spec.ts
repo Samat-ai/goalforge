@@ -352,3 +352,75 @@ test('core loop: login, create goal, complete 3 tasks, and redeem shop reward', 
   // deduction was acknowledged and the UI reflects the updated redemption_count.
   await expect(page.getByText('redeemed 1x')).toBeVisible()
 })
+
+test('offline banner appears when network is lost and disappears when restored', async ({ page, context }) => {
+  const userId = 'user_e2e'
+
+  // Set up minimal API mocks so the dashboard can render without errors.
+  await page.route('**/*', async route => {
+    const request = route.request()
+    const url = new URL(request.url())
+    const { pathname, searchParams } = url
+    const method = request.method()
+
+    if (url.port !== '8000') {
+      await route.continue()
+      return
+    }
+
+    if (method === 'GET' && pathname === `/users/${userId}/profile`) {
+      await route.fulfill({ status: 200, headers: jsonHeaders(), body: JSON.stringify({ star_points: 0 }) })
+      return
+    }
+
+    if (method === 'GET' && pathname === `/users/${userId}/goals`) {
+      const limit = Number(searchParams.get('limit') ?? '20')
+      const offset = Number(searchParams.get('offset') ?? '0')
+      await route.fulfill({
+        status: 200,
+        headers: jsonHeaders(),
+        body: JSON.stringify({ items: [], total: 0, limit, offset }),
+      })
+      return
+    }
+
+    if (method === 'GET' && pathname === `/users/${userId}/badges`) {
+      await route.fulfill({ status: 200, headers: jsonHeaders(), body: JSON.stringify([]) })
+      return
+    }
+
+    if (method === 'GET' && pathname === `/users/${userId}/rewards`) {
+      await route.fulfill({ status: 200, headers: jsonHeaders(), body: JSON.stringify([]) })
+      return
+    }
+
+    if (method === 'GET' && pathname === `/users/${userId}/shop-rewards`) {
+      await route.fulfill({ status: 200, headers: jsonHeaders(), body: JSON.stringify([]) })
+      return
+    }
+
+    await route.fulfill({ status: 200, headers: jsonHeaders(), body: JSON.stringify({}) })
+  })
+
+  // Navigate to dashboard — OfflineBanner is mounted at the App level (outside Routes)
+  // so it renders on every page regardless of route.
+  await page.goto('/dashboard')
+  await page.waitForLoadState('networkidle')
+
+  // The banner div is only mounted when offline — it must not exist while online.
+  await expect(page.getByRole('status')).not.toBeAttached()
+
+  // Simulate going offline — Playwright fires the window 'offline' event via CDP.
+  await context.setOffline(true)
+
+  // Banner should slide up and show the offline message.
+  await expect(page.getByRole('status')).toBeVisible()
+  await expect(page.getByRole('status'))
+    .toContainText('You are offline. Live syncing is paused.')
+
+  // Restore network — Playwright fires the window 'online' event.
+  await context.setOffline(false)
+
+  // Banner should disappear (component returns null when online).
+  await expect(page.getByRole('status')).not.toBeAttached()
+})

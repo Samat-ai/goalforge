@@ -10,6 +10,7 @@ import SignUpPage from './pages/SignUpPage'
 import Settings from './pages/Settings'
 import ErrorBoundary from './components/ErrorBoundary'
 import EnergyParamCapture from './components/EnergyParamCapture'
+import OfflineBanner from './components/OfflineBanner'
 
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
 
@@ -29,6 +30,7 @@ export default function App() {
     <BrowserRouter>
       <EnergyParamCapture />
       <Toaster theme="dark" position="bottom-right" richColors />
+      <OfflineBanner />
       <ErrorBoundary>
         <Routes>
           <Route path="/" element={<LandingPage />} />
