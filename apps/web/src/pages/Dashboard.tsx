@@ -10,8 +10,7 @@ import FocusOverlay from '../components/FocusOverlay'
 import RewardModal from '../components/RewardModal'
 import CollectionModal from '../components/CollectionModal'
 import EnergyModal from '../components/EnergyModal'
-import StarShop from '../components/StarShop'
-import { useBadgesQuery, useGoalsQuery, useProfileQuery, useGoalMutations, useShopRewardsQuery, useShopRewardMutations } from '../hooks'
+import { useBadgesQuery, useGoalsQuery, useProfileQuery, useGoalMutations } from '../hooks'
 import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
 import { useEnergyResizeMutation } from '../hooks/useEnergyMutations'
 import { dayDiff, todayStr } from '../lib/gamification'
@@ -280,7 +279,7 @@ export default function Dashboard() {
   const unlockedBadgeKeysRef = useRef<Set<string>>(new Set())
   const didInitBadgesRef = useRef(false)
 
-  const [filter, setFilter] = useState<string>('all')
+  const [filter, setFilter] = useState<string>('active')
   const [addGoalText, setAddGoalText] = useState('')
   const [focusOpen, setFocusOpen] = useState(false)
   const [activeRewardDrop, setActiveRewardDrop] = useState<RewardDrop | null>(null)
@@ -292,8 +291,6 @@ export default function Dashboard() {
   })
 
   const { data: rewards = [] } = useRewardsQuery(userId ?? '')
-  const { rewards: shopRewards } = useShopRewardsQuery(userId)
-  const shopMutations = useShopRewardMutations(userId ?? '')
   const equipMutation = useEquipRewardMutation(userId ?? '')
   const mutations = useGoalMutations(userId ?? '', (drop) => setActiveRewardDrop(drop))
   const energyResizeMutation = useEnergyResizeMutation(userId ?? '')
@@ -325,7 +322,7 @@ export default function Dashboard() {
   }, [badges, badgesLoading, fireBadgeConfetti])
 
   const error = isError ? 'Failed to load goals.' : null
-  const filtered = filter === 'all' ? goals : goals.filter(g => g.status === filter)
+  const filtered = goals.filter(g => g.status === filter)
 
   // ── Render ──
   return (
@@ -394,54 +391,13 @@ export default function Dashboard() {
             <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} onEnergyOpen={() => setShowEnergyModal(true)} />
             <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} />
 
-            <StarShop
-              pts={pts}
-              rewards={shopRewards}
-              onAdd={shopMutations.addReward}
-              onRedeem={shopMutations.redeemReward}
-              isCreating={shopMutations.isCreating}
-              isRedeeming={shopMutations.isRedeeming}
-            />
-
-            {badges.length > 0 && (
-              <section style={{
-                marginBottom: 14,
-                borderRadius: 12,
-                border: `1px solid ${T.border}`,
-                background: T.card,
-                padding: '12px 14px',
-              }}>
-                <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, letterSpacing: '0.1em', marginBottom: 8 }}>
-                  ACHIEVEMENT BADGES
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 8 }}>
-                  {badges.map(badge => (
-                    <div key={badge.key} style={{
-                      borderRadius: 8,
-                      border: `1px solid ${badge.unlocked ? T.emerald : T.border}`,
-                      background: badge.unlocked ? `${T.emerald}10` : T.surface,
-                      padding: '10px',
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                        <div style={{ fontFamily: T.serif, fontSize: 15, color: badge.unlocked ? T.emerald : T.text }}>{badge.title}</div>
-                        <div style={{ fontFamily: T.mono, fontSize: 10, color: badge.unlocked ? T.emerald : T.textDim }}>
-                          {badge.current}/{badge.target}
-                        </div>
-                      </div>
-                      <div style={{ fontFamily: T.mono, fontSize: 11, color: T.textDim, marginTop: 4 }}>{badge.description}</div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
             {goals.length === 0 ? (
               <EmptyState onSelect={setAddGoalText} />
             ) : (
               <>
                 {/* Filter tabs */}
                 <div style={{ display: 'flex', borderBottom: `1px solid ${T.border}`, marginBottom: 18, overflowX: 'auto', scrollbarWidth: 'none' }} className="filter-tabs">
-                  {(['all', 'active', 'achieved', 'abandoned'] as const).map(f => (
+                  {(['active', 'achieved', 'abandoned'] as const).map(f => (
                     <button
                       key={f}
                       onClick={() => setFilter(f)}
@@ -453,7 +409,7 @@ export default function Dashboard() {
                         borderBottom: filter === f ? `2px solid ${T.orange}` : '2px solid transparent',
                       }}
                     >
-                      {f} ({goals.filter(g => f === 'all' ? true : g.status === f).length})
+                      {f} ({goals.filter(g => g.status === f).length})
                     </button>
                   ))}
                 </div>

@@ -89,6 +89,16 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
     setDismissed(true)
   }
 
+  async function handleStartEasyMode() {
+    if (mutations.isTriggeringRescue) return
+    try {
+      await mutations.triggerRescue(goal.id)
+      handleDismiss()
+    } catch {
+      // Error toast is surfaced by the mutation's onError path.
+    }
+  }
+
   const todayTasks  = goal.daily_tasks
     .filter(t => t.assigned_date === todayStr())
     .sort((a, b) => a.position - b.position)
@@ -212,9 +222,10 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
           <Btn
             variant="primary"
             style={{ width: '100%', marginBottom: 10 }}
-            onClick={() => mutations.triggerRescue(goal.id)}
+            onClick={handleStartEasyMode}
+            disabled={mutations.isTriggeringRescue}
           >
-            Start Easy Mode (2 min)
+            {mutations.isTriggeringRescue ? 'Starting easy mode…' : 'Start Easy Mode (2 min)'}
           </Btn>
           <button
             onClick={handleDismiss}
