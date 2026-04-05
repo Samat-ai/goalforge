@@ -280,7 +280,7 @@ export default function Dashboard() {
   const unlockedBadgeKeysRef = useRef<Set<string>>(new Set())
   const didInitBadgesRef = useRef(false)
 
-  const [filter, setFilter] = useState<string>('all')
+  const [filter, setFilter] = useState<string>('active')
   const [addGoalText, setAddGoalText] = useState('')
   const [focusOpen, setFocusOpen] = useState(false)
   const [activeRewardDrop, setActiveRewardDrop] = useState<RewardDrop | null>(null)
@@ -325,7 +325,7 @@ export default function Dashboard() {
   }, [badges, badgesLoading, fireBadgeConfetti])
 
   const error = isError ? 'Failed to load goals.' : null
-  const filtered = filter === 'all' ? goals : goals.filter(g => g.status === filter)
+  const filtered = goals.filter(g => g.status === filter)
 
   // ── Render ──
   return (
@@ -441,7 +441,7 @@ export default function Dashboard() {
               <>
                 {/* Filter tabs */}
                 <div style={{ display: 'flex', borderBottom: `1px solid ${T.border}`, marginBottom: 18, overflowX: 'auto', scrollbarWidth: 'none' }} className="filter-tabs">
-                  {(['all', 'active', 'achieved', 'abandoned'] as const).map(f => (
+                  {(['active', 'achieved', 'abandoned'] as const).map(f => (
                     <button
                       key={f}
                       onClick={() => setFilter(f)}
@@ -453,7 +453,7 @@ export default function Dashboard() {
                         borderBottom: filter === f ? `2px solid ${T.orange}` : '2px solid transparent',
                       }}
                     >
-                      {f} ({goals.filter(g => f === 'all' ? true : g.status === f).length})
+                      {f} ({goals.filter(g => g.status === f).length})
                     </button>
                   ))}
                 </div>
