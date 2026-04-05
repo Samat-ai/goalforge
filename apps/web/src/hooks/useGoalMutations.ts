@@ -335,6 +335,7 @@ export function useGoalMutations(userId: string, onJackpot?: (drop: RewardDrop) 
     },
     isRetryingSprintGeneration: retrySprintGenerationMutation.isPending,
 
-    triggerRescue: (goalId: string) => { triggerRescueMutation.mutate(goalId) },
+    triggerRescue: (goalId: string) => triggerRescueMutation.mutateAsync(goalId),
+    isTriggeringRescue: triggerRescueMutation.isPending,
   }
 }
