@@ -6,6 +6,7 @@ import { STAGES, getStage, getNext, stagePct, streak } from '../lib/gamification
 import { T } from '../lib/theme'
 import {
   useAllGoalsQuery,
+  useBadgesQuery,
   useCreateWeeklyReflectionMutation,
   useLatestWeeklyReflectionQuery,
   useProfileQuery,
@@ -19,6 +20,7 @@ export default function Analytics() {
 
   const { goals, isLoading: loading, isError, refetch } = useAllGoalsQuery(user?.id)
   const { pts } = useProfileQuery(user?.id)
+  const { badges } = useBadgesQuery(user?.id)
   const { reflection } = useLatestWeeklyReflectionQuery(user?.id)
   const { createReflection, isSaving } = useCreateWeeklyReflectionMutation(user?.id ?? '')
   const [wentWell, setWentWell] = useState('')
@@ -241,6 +243,38 @@ export default function Analytics() {
                 </div>
               </div>
             </div>
+
+            {badges.length > 0 && (
+              <section style={{
+                marginBottom: 14,
+                borderRadius: 12,
+                border: `1px solid ${T.border}`,
+                background: T.card,
+                padding: '12px 14px',
+              }}>
+                <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, letterSpacing: '0.1em', marginBottom: 8 }}>
+                  ACHIEVEMENT BADGES
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 8 }}>
+                  {badges.map(badge => (
+                    <div key={badge.key} style={{
+                      borderRadius: 8,
+                      border: `1px solid ${badge.unlocked ? T.emerald : T.border}`,
+                      background: badge.unlocked ? `${T.emerald}10` : T.surface,
+                      padding: '10px',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                        <div style={{ fontFamily: T.serif, fontSize: 15, color: badge.unlocked ? T.emerald : T.text }}>{badge.title}</div>
+                        <div style={{ fontFamily: T.mono, fontSize: 10, color: badge.unlocked ? T.emerald : T.textDim }}>
+                          {badge.current}/{badge.target}
+                        </div>
+                      </div>
+                      <div style={{ fontFamily: T.mono, fontSize: 11, color: T.textDim, marginTop: 4 }}>{badge.description}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* ── How to earn ── */}
             <div style={{
