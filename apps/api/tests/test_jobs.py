@@ -1,10 +1,12 @@
 """Tests for the /api/jobs/trigger-reminders endpoint."""
 
-from datetime import date
+import uuid
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from models import DailyTask, NotificationLog, WebPushSubscription
 from tests.conftest import TEST_USER_ID, create_test_goal
 
 
@@ -40,24 +42,57 @@ async def test_trigger_reminders_sends_one_digest_per_user(client):
     assert len(tasks_arg) == len(today_tasks)
 
 
-async def test_trigger_reminders_skips_when_reminders_disabled(client):
-    await create_test_goal(client)
+async def test_trigger_reminders_skips_when_reminders_disabled(client, db_session):
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
     settings_resp = await client.patch(
         f"/users/{TEST_USER_ID}/settings",
         json={"reminder_enabled": False},
     )
     assert settings_resp.status_code == 200
 
+    # Add push subscription and qualifying streak-saver conditions
+    yesterday = date.today() - timedelta(days=1)
+    db_session.add(DailyTask(
+        id=uuid.uuid4(),
+        goal_id=uuid.UUID(goal_id),
+        milestone_id=None,
+        description="Yesterday task",
+        tip="tip",
+        assigned_date=yesterday,
+        is_completed=True,
+        completed_at=datetime.now(timezone.utc) - timedelta(hours=20),
+    ))
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/disabled-reminders",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
     with (
         patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
         patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_send,
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
     ):
+        class _Now:
+            hour = 19
+
+        mock_user_now.return_value = _Now()
         mock_settings.jobs_api_key = _TEST_JOBS_KEY
         resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
 
     assert resp.status_code == 200
-    assert resp.json()["digest_emails"] == 0
+    data = resp.json()
+    assert data["digest_emails"] == 0
+    assert data["streak_saver_pushes"] == 0
+    assert data["inactivity_nudges"] == 0
     mock_send.assert_not_called()
+    mock_push.assert_not_called()
 
 
 async def test_trigger_reminders_skips_when_local_hour_does_not_match(client):
@@ -128,7 +163,12 @@ async def test_trigger_reminders_no_tasks_today(client):
         resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
 
     assert resp.status_code == 200
-    assert resp.json() == {"rescue_emails": 0, "digest_emails": 0, "push_notifications": 0}
+    data = resp.json()
+    assert data["rescue_emails"] == 0
+    assert data["digest_emails"] == 0
+    assert data["push_notifications"] == 0
+    assert data["streak_saver_pushes"] == 0
+    assert data["inactivity_nudges"] == 0
     mock_send.assert_not_called()
 
 
@@ -178,3 +218,446 @@ async def test_trigger_reminders_sends_rescue_email_when_in_rescue_mode(
     assert data["push_notifications"] == 0
     mock_rescue_email.assert_called_once()
     mock_digest.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_streak_saver_fires_after_6pm_with_no_completion_today(client, db_session):
+    """Streak-Saver sends push when: completed yesterday, not today, hour >= 18."""
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+
+    yesterday = date.today() - timedelta(days=1)
+    db_session.add(DailyTask(
+        id=uuid.uuid4(),
+        goal_id=uuid.UUID(goal_id),
+        milestone_id=None,
+        description="Yesterday task",
+        tip="tip",
+        assigned_date=yesterday,
+        is_completed=True,
+        completed_at=datetime.now(timezone.utc) - timedelta(hours=20),
+    ))
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/streak-test",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+    ):
+        class _Now:
+            hour = 19
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["streak_saver_pushes"] == 1
+    assert data["digest_emails"] == 0
+    assert data["inactivity_nudges"] == 0
+    mock_push.assert_called_once()
+    call_kwargs = mock_push.call_args.kwargs
+    assert "streak" in call_kwargs["title"].lower() or "streak" in call_kwargs["body"].lower()
+
+
+@pytest.mark.asyncio
+async def test_streak_saver_sends_only_once_per_day(client, db_session):
+    """Second cron run on the same local date does not re-send the push."""
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+
+    yesterday = date.today() - timedelta(days=1)
+    db_session.add(DailyTask(
+        id=uuid.uuid4(),
+        goal_id=uuid.UUID(goal_id),
+        milestone_id=None,
+        description="Yesterday task",
+        tip="tip",
+        assigned_date=yesterday,
+        is_completed=True,
+        completed_at=datetime.now(timezone.utc) - timedelta(hours=20),
+    ))
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/dedup-test",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+    ):
+        class _Now:
+            hour = 19
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+
+        resp1 = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+        resp2 = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp1.json()["streak_saver_pushes"] == 1
+    assert resp2.json()["streak_saver_pushes"] == 0
+    assert mock_push.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_streak_saver_does_not_fire_before_6pm(client, db_session):
+    """Streak-Saver is silent before 6 PM local time."""
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+
+    yesterday = date.today() - timedelta(days=1)
+    db_session.add(DailyTask(
+        id=uuid.uuid4(),
+        goal_id=uuid.UUID(goal_id),
+        milestone_id=None,
+        description="Yesterday task",
+        tip="tip",
+        assigned_date=yesterday,
+        is_completed=True,
+        completed_at=datetime.now(timezone.utc) - timedelta(hours=20),
+    ))
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/before-6pm",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+    ):
+        class _Now:
+            hour = 17
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.status_code == 200
+    assert resp.json()["streak_saver_pushes"] == 0
+    mock_push.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_streak_saver_does_not_fire_when_completed_today(client, db_session):
+    """Streak-Saver is silent if the user has already completed a task today."""
+    goal = await create_test_goal(client)
+    today_tasks = [t for t in goal["daily_tasks"] if t["assigned_date"] == str(date.today())]
+    assert today_tasks, "Need at least one task today"
+
+    await client.patch(f"/tasks/{today_tasks[0]['id']}/complete")
+
+    goal_id = goal["id"]
+    yesterday = date.today() - timedelta(days=1)
+    db_session.add(DailyTask(
+        id=uuid.uuid4(),
+        goal_id=uuid.UUID(goal_id),
+        milestone_id=None,
+        description="Yesterday task",
+        tip="tip",
+        assigned_date=yesterday,
+        is_completed=True,
+        completed_at=datetime.now(timezone.utc) - timedelta(hours=20),
+    ))
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/completed-today",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+    ):
+        class _Now:
+            hour = 19
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.json()["streak_saver_pushes"] == 0
+    mock_push.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_inactivity_nudge_fires_when_last_completion_was_30h_ago(client, db_session):
+    """Inactivity Nudge fires when last completion was 24-48 hours ago."""
+    from sqlalchemy import update as sql_update
+
+    goal = await create_test_goal(client)
+    today_tasks = [t for t in goal["daily_tasks"] if t["assigned_date"] == str(date.today())]
+    assert today_tasks
+
+    thirty_hours_ago = datetime.now(timezone.utc) - timedelta(hours=30)
+    await db_session.execute(
+        sql_update(DailyTask)
+        .where(DailyTask.id == uuid.UUID(today_tasks[0]["id"]))
+        .values(is_completed=True, completed_at=thirty_hours_ago)
+    )
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/inactivity-test",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+    ):
+        class _Now:
+            hour = 10
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["inactivity_nudges"] == 1
+    assert data["streak_saver_pushes"] == 0
+    assert data["digest_emails"] == 0
+    mock_push.assert_called_once()
+    call_kwargs = mock_push.call_args.kwargs
+    assert "Companion" in call_kwargs["title"] or "misses" in call_kwargs["body"]
+
+
+@pytest.mark.asyncio
+async def test_inactivity_nudge_does_not_fire_when_churned_beyond_48h(client, db_session):
+    """Users whose last completion was >48h ago are left alone (churned)."""
+    from sqlalchemy import update as sql_update
+
+    goal = await create_test_goal(client)
+    today_tasks = [t for t in goal["daily_tasks"] if t["assigned_date"] == str(date.today())]
+    assert today_tasks
+
+    fifty_hours_ago = datetime.now(timezone.utc) - timedelta(hours=50)
+    await db_session.execute(
+        sql_update(DailyTask)
+        .where(DailyTask.id == uuid.UUID(today_tasks[0]["id"]))
+        .values(is_completed=True, completed_at=fifty_hours_ago)
+    )
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/churned-test",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+    ):
+        class _Now:
+            hour = 10
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.json()["inactivity_nudges"] == 0
+    mock_push.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_inactivity_nudge_does_not_fire_for_never_engaged_user(client, db_session):
+    """Users who have never completed a task do not get the inactivity nudge."""
+    await create_test_goal(client)
+
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/never-engaged",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+    ):
+        class _Now:
+            hour = 10
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.json()["inactivity_nudges"] == 0
+    mock_push.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_streak_saver_overrides_regular_digest(client, db_session):
+    """When streak-saver fires, the regular digest is skipped for that user."""
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+
+    await client.patch(f"/users/{TEST_USER_ID}/settings", json={"reminder_hour": 18})
+
+    yesterday = date.today() - timedelta(days=1)
+    db_session.add(DailyTask(
+        id=uuid.uuid4(),
+        goal_id=uuid.UUID(goal_id),
+        milestone_id=None,
+        description="Yesterday task",
+        tip="tip",
+        assigned_date=yesterday,
+        is_completed=True,
+        completed_at=datetime.now(timezone.utc) - timedelta(hours=20),
+    ))
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/override-digest",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_digest,
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+    ):
+        class _Now:
+            hour = 18
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    data = resp.json()
+    assert data["streak_saver_pushes"] == 1
+    assert data["digest_emails"] == 0
+    mock_digest.assert_not_called()
+    mock_push.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_triggers_do_not_fire_without_push_subscriptions(client, db_session):
+    """Neither streak-saver nor inactivity nudge fires when user has no push subscriptions."""
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+
+    # Set up qualifying conditions for streak-saver (completed yesterday, not today, hour >= 18)
+    yesterday = date.today() - timedelta(days=1)
+    db_session.add(DailyTask(
+        id=uuid.uuid4(),
+        goal_id=uuid.UUID(goal_id),
+        milestone_id=None,
+        description="Yesterday task",
+        tip="tip",
+        assigned_date=yesterday,
+        is_completed=True,
+        completed_at=datetime.now(timezone.utc) - timedelta(hours=20),
+    ))
+    await db_session.commit()
+    # NOTE: No WebPushSubscription added
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+    ):
+        class _Now:
+            hour = 19
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["streak_saver_pushes"] == 0
+    assert data["inactivity_nudges"] == 0
+    mock_push.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_streak_saver_takes_priority_over_inactivity_nudge(client, db_session):
+    """When both triggers are eligible, streak-saver wins and inactivity nudge is skipped."""
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+
+    # A task completed ~30h ago qualifies for BOTH:
+    # - Inactivity nudge (24-48h window)
+    # - Streak-saver: it was "yesterday" in terms of assigned_date, and today has no completion
+    yesterday = date.today() - timedelta(days=1)
+    thirty_hours_ago = datetime.now(timezone.utc) - timedelta(hours=30)
+    db_session.add(DailyTask(
+        id=uuid.uuid4(),
+        goal_id=uuid.UUID(goal_id),
+        milestone_id=None,
+        description="Yesterday task completed 30h ago",
+        tip="tip",
+        assigned_date=yesterday,
+        is_completed=True,
+        completed_at=thirty_hours_ago,
+    ))
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/priority-test",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+    ):
+        class _Now:
+            hour = 19  # >= 18, so streak-saver is eligible
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    data = resp.json()
+    assert data["streak_saver_pushes"] == 1
+    assert data["inactivity_nudges"] == 0
+    assert mock_push.call_count == 1  # only one push sent
