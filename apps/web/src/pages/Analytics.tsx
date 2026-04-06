@@ -60,17 +60,41 @@ export default function Analytics() {
       return d >= lastWeekStart && d < thisWeekStart
     }).length
 
-    // 90-day heatmap data
-    const heatmapDays: { date: string; count: number }[] = []
+    // Week-aligned heatmap data (~13 weeks, Sun-Sat columns)
     const tasksByDate = new Map<string, number>()
     for (const t of completedTasks) {
       if (!t.completed_at) continue
       const d = new Intl.DateTimeFormat('en-CA').format(new Date(t.completed_at))
       tasksByDate.set(d, (tasksByDate.get(d) ?? 0) + 1)
     }
-    for (let i = 89; i >= 0; i--) {
-      const d = daysAgo(today, i)
-      heatmapDays.push({ date: d, count: tasksByDate.get(d) ?? 0 })
+
+    // Find the Sunday 13 weeks ago
+    const todayDate = new Date(today + 'T12:00:00')
+    const todayDow = todayDate.getDay() // 0=Sun
+    const endOfWeekSat = new Date(todayDate)
+    endOfWeekSat.setDate(todayDate.getDate() + (6 - todayDow)) // this Saturday
+    const startSunday = new Date(endOfWeekSat)
+    startSunday.setDate(endOfWeekSat.getDate() - (13 * 7 - 1)) // 13 weeks back
+
+    const heatmapWeeks: { date: string; count: number; dow: number }[][] = []
+    const heatmapMonthLabels: { col: number; label: string }[] = []
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    let prevMonth = -1
+    const cursor = new Date(startSunday)
+    for (let week = 0; week < 13; week++) {
+      const weekDays: { date: string; count: number; dow: number }[] = []
+      for (let dow = 0; dow < 7; dow++) {
+        const d = new Intl.DateTimeFormat('en-CA').format(cursor)
+        const isFuture = d > today
+        weekDays.push({ date: d, count: isFuture ? -1 : (tasksByDate.get(d) ?? 0), dow })
+        // Month label on first day of a new month in this column
+        if (dow === 0 && cursor.getMonth() !== prevMonth) {
+          heatmapMonthLabels.push({ col: week, label: monthNames[cursor.getMonth()] })
+          prevMonth = cursor.getMonth()
+        }
+        cursor.setDate(cursor.getDate() + 1)
+      }
+      heatmapWeeks.push(weekDays)
     }
 
     // 7-day velocity
@@ -103,7 +127,8 @@ export default function Analytics() {
       thisWeekCount,
       lastWeekCount,
       completedTasksTotal: completedTasks.length,
-      heatmapDays,
+      heatmapWeeks,
+      heatmapMonthLabels,
       velocityDays,
       timeOfDay,
     }
@@ -214,44 +239,88 @@ export default function Analytics() {
                 TRENDS
               </div>
 
-              {/* 90-day Completion Heatmap */}
+              {/* Completion Heatmap */}
               <div style={{
                 background: T.card, border: `1px solid ${T.border}`, borderRadius: 12,
-                padding: '16px 18px', marginBottom: 14,
+                padding: '16px 18px', marginBottom: 14, overflowX: 'auto',
               }}>
                 <div style={{ fontSize: 11, color: T.textDim, fontFamily: T.mono, marginBottom: 12 }}>
-                  Completion Heatmap — last 90 days
+                  Completion Heatmap
                 </div>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(13, 1fr)',
-                  gridTemplateRows: 'repeat(7, 1fr)',
-                  gap: 3,
-                  gridAutoFlow: 'column',
-                }}>
-                  {analytics.heatmapDays.map((d, i) => {
-                    const intensity = d.count === 0 ? 0 : d.count <= 2 ? 1 : d.count <= 4 ? 2 : 3
-                    const colors = [T.surface, `${T.emerald}40`, `${T.emerald}80`, T.emerald]
-                    return (
-                      <div
-                        key={i}
-                        title={`${d.date}: ${d.count} task${d.count !== 1 ? 's' : ''}`}
-                        style={{
-                          aspectRatio: '1',
-                          borderRadius: 2,
-                          background: colors[intensity],
-                          minWidth: 0,
-                        }}
-                      />
-                    )
-                  })}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, justifyContent: 'flex-end' }}>
-                  <span style={{ fontSize: 9, color: T.dim, fontFamily: T.mono }}>Less</span>
-                  {[T.surface, `${T.emerald}40`, `${T.emerald}80`, T.emerald].map((c, i) => (
-                    <div key={i} style={{ width: 10, height: 10, borderRadius: 2, background: c }} />
-                  ))}
-                  <span style={{ fontSize: 9, color: T.dim, fontFamily: T.mono }}>More</span>
+                <div style={{ display: 'flex', gap: 0 }}>
+                  {/* Y-axis day labels */}
+                  <div style={{
+                    display: 'grid', gridTemplateRows: 'repeat(7, 12px)', gap: 2,
+                    paddingRight: 6, paddingTop: 18,
+                  }}>
+                    {['', 'Mon', '', 'Wed', '', 'Fri', ''].map((label, i) => (
+                      <div key={i} style={{
+                        fontSize: 9, color: T.dim, fontFamily: T.mono,
+                        lineHeight: '12px', textAlign: 'right',
+                      }}>
+                        {label}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Grid area */}
+                  <div>
+                    {/* X-axis month labels */}
+                    <div style={{ display: 'flex', height: 14, marginBottom: 2 }}>
+                      {analytics.heatmapWeeks.map((_, weekIdx) => {
+                        const monthLabel = analytics.heatmapMonthLabels.find(m => m.col === weekIdx)
+                        return (
+                          <div key={weekIdx} style={{
+                            width: 14, fontSize: 9, color: T.dim,
+                            fontFamily: T.mono, textAlign: 'left',
+                          }}>
+                            {monthLabel?.label ?? ''}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Heatmap cells */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateRows: 'repeat(7, 12px)',
+                      gridAutoFlow: 'column',
+                      gridAutoColumns: '12px',
+                      gap: 2,
+                    }}>
+                      {analytics.heatmapWeeks.flatMap(week =>
+                        week.map(d => {
+                          if (d.count < 0) {
+                            // Future day — invisible spacer
+                            return <div key={d.date} style={{ borderRadius: 2 }} />
+                          }
+                          const intensity = d.count === 0 ? 0 : d.count <= 2 ? 1 : d.count <= 4 ? 2 : 3
+                          const colors = [T.surface, `${T.emerald}40`, `${T.emerald}80`, T.emerald]
+                          return (
+                            <div
+                              key={d.date}
+                              title={`${d.date}: ${d.count} task${d.count !== 1 ? 's' : ''}`}
+                              style={{
+                                aspectRatio: '1',
+                                borderRadius: 2,
+                                background: colors[intensity],
+                                minWidth: 0,
+                              }}
+                            />
+                          )
+                        })
+                      )}
+                    </div>
+
+                    {/* Legend */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, justifyContent: 'flex-end' }}>
+                      <span style={{ fontSize: 9, color: T.dim, fontFamily: T.mono }}>Less</span>
+                      {[T.surface, `${T.emerald}40`, `${T.emerald}80`, T.emerald].map((c, i) => (
+                        <div key={i} style={{ width: 10, height: 10, borderRadius: 2, background: c }} />
+                      ))}
+                      <span style={{ fontSize: 9, color: T.dim, fontFamily: T.mono }}>More</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
