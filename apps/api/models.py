@@ -481,7 +481,7 @@ class NotificationLog(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "type", "sent_date", name="uq_notification_log_user_type_date"),
         CheckConstraint(
-            "type IN ('streak_saver', 'inactivity_nudge', 'digest')",
+            "type IN ('streak_saver', 'inactivity_nudge')",
             name="ck_notification_log_type",
         ),
         Index("ix_notification_logs_user_id", "user_id"),

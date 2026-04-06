@@ -32,7 +32,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.CheckConstraint(
-            "type IN ('streak_saver', 'inactivity_nudge', 'digest')",
+            "type IN ('streak_saver', 'inactivity_nudge')",
             name="ck_notification_log_type",
         ),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
