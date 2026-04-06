@@ -84,6 +84,24 @@ export function lastStreakLength(days: string[]): number {
   return count
 }
 
+// ── Best streak (all-time personal record) ───────────────────────────────────
+export function bestStreak(days: string[]): number {
+  const today = todayStr()
+  const sorted = [...days].filter(d => d <= today).sort()
+  if (!sorted.length) return 0
+  let max = 1
+  let run = 1
+  for (let i = 1; i < sorted.length; i++) {
+    if (dayDiff(sorted[i - 1], sorted[i]) === 1) {
+      run++
+      if (run > max) max = run
+    } else if (sorted[i] !== sorted[i - 1]) {
+      run = 1
+    }
+  }
+  return max
+}
+
 // ── Habit strength (0–1) — exponential smoothing with 30-day window ──────────
 // Inspired by Loop/uhabits: strength decays gradually on misses instead of
 // resetting to 0.  Update rule per day: strength = strength × 0.85 + (done ? 0.15 : 0)
