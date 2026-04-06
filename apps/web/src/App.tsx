@@ -6,7 +6,7 @@ import LandingPage from './pages/LandingPage'
 import Dashboard from './pages/Dashboard'
 import Analytics from './pages/Analytics'
 import Coach from './pages/Coach'
-import Shop from './pages/Shop'
+import Stars from './pages/Stars'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
 import Settings from './pages/Settings'
@@ -52,7 +52,7 @@ export default function App() {
           <Route path="/sign-up/*" element={<SignUpPage />} />
           <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
           <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
-          <Route path="/shop" element={<AuthGuard><Shop /></AuthGuard>} />
+          <Route path="/stars" element={<AuthGuard><Stars /></AuthGuard>} />
           <Route path="/coach" element={<AuthGuard><Coach /></AuthGuard>} />
           <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
           <Route path="*" element={<div className="p-8 text-center">404 - Page Not Found</div>} />
