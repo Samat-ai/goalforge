@@ -10,6 +10,7 @@ import FocusOverlay from '../components/FocusOverlay'
 import RewardModal from '../components/RewardModal'
 import CollectionModal from '../components/CollectionModal'
 import EnergyModal from '../components/EnergyModal'
+import CompanionWidget from '../components/CompanionWidget'
 import { useBadgesQuery, useGoalsQuery, useProfileQuery, useGoalMutations } from '../hooks'
 import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
 import { useEnergyResizeMutation } from '../hooks/useEnergyMutations'
@@ -475,6 +476,8 @@ export default function Dashboard() {
           onDismiss={() => setShowEnergyModal(false)}
         />
       )}
+
+      <CompanionWidget pts={pts} />
     </div>
   )
 }
