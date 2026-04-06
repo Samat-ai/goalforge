@@ -18,7 +18,6 @@ export interface UserSettings {
 }
 
 export interface UserSettingsUpdatePayload {
-  timezone?: string | null
   display_name?: string | null
   reminder_enabled?: boolean | null
   reminder_hour?: number | null

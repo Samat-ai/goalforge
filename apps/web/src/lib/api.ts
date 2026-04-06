@@ -6,6 +6,19 @@ const api = axios.create({
   timeout: 10_000,
 })
 
+// Attach browser timezone to every request for silent backend sync
+api.interceptors.request.use((config) => {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    if (tz) {
+      config.headers['X-User-Timezone'] = tz
+    }
+  } catch {
+    // Intl not available — skip silently
+  }
+  return config
+})
+
 // Auth token injection is handled by AuthInterceptor component
 
 export default api
