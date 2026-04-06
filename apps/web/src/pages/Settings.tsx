@@ -15,37 +15,6 @@ import {
 } from '../hooks'
 import type { UserSettings } from '../lib/types'
 
-const TIMEZONES = [
-  'UTC',
-  'America/New_York',
-  'America/Chicago',
-  'America/Denver',
-  'America/Los_Angeles',
-  'America/Anchorage',
-  'America/Honolulu',
-  'America/Toronto',
-  'America/Vancouver',
-  'America/Sao_Paulo',
-  'America/Mexico_City',
-  'Europe/London',
-  'Europe/Paris',
-  'Europe/Berlin',
-  'Europe/Amsterdam',
-  'Europe/Moscow',
-  'Africa/Cairo',
-  'Asia/Dubai',
-  'Asia/Kolkata',
-  'Asia/Dhaka',
-  'Asia/Bangkok',
-  'Asia/Shanghai',
-  'Asia/Tokyo',
-  'Asia/Seoul',
-  'Asia/Singapore',
-  'Australia/Sydney',
-  'Australia/Melbourne',
-  'Pacific/Auckland',
-  'Pacific/Honolulu',
-]
 
 function SettingsForm({ settings, userId }: { settings: UserSettings; userId: string }) {
   const { save: saveSettings, isSaving: saving } = useSaveSettingsMutation(userId)
@@ -61,7 +30,6 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
     isDecliningInvite,
   } = useAccountabilityMutations(userId)
 
-  const [timezone, setTimezone] = useState(settings.timezone)
   const [displayName, setDisplayName] = useState(settings.display_name ?? '')
   const [reminderEnabled, setReminderEnabled] = useState(settings.reminder_enabled)
   const [reminderHour, setReminderHour] = useState(settings.reminder_hour)
@@ -70,7 +38,6 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
   function save() {
     if (saving) return
     saveSettings({
-      timezone,
       display_name: displayName.trim() || null,
       reminder_enabled: reminderEnabled,
       reminder_hour: reminderHour,
@@ -104,31 +71,20 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
         </div>
       </div>
 
-      {/* Timezone */}
+      {/* Timezone (auto-detected) */}
       <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '18px 20px' }}>
         <label style={{ display: 'block', fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 10 }}>
           TIMEZONE
         </label>
-        <select
-          value={timezone}
-          onChange={e => setTimezone(e.target.value)}
-          style={{
-            width: '100%', background: T.surface, border: `1px solid ${T.border}`,
-            borderRadius: 7, padding: '10px 13px', color: T.text, fontFamily: T.mono,
-            fontSize: 13, outline: 'none', cursor: 'pointer', appearance: 'none',
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2371717a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
-            backgroundRepeat: 'no-repeat', backgroundPosition: 'right 13px center',
-            paddingRight: 36,
-          }}
-          onFocus={e => { e.currentTarget.style.borderColor = T.orange }}
-          onBlur={e => { e.currentTarget.style.borderColor = T.border }}
-        >
-          {TIMEZONES.map(tz => (
-            <option key={tz} value={tz}>{tz}</option>
-          ))}
-        </select>
+        <div style={{
+          width: '100%', background: T.surface, border: `1px solid ${T.border}`,
+          borderRadius: 7, padding: '10px 13px', color: T.textDim, fontFamily: T.mono,
+          fontSize: 13,
+        }}>
+          {settings.timezone}
+        </div>
         <div style={{ fontSize: 11, color: T.dim, fontFamily: T.mono, marginTop: 7 }}>
-          Used to localise your daily task schedule.
+          Automatically detected from your browser. Updates when you travel.
         </div>
       </div>
 

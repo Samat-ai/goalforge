@@ -49,14 +49,16 @@ async def test_get_settings_auto_creates_user(client):
     assert data["star_points"] == 0
 
 
-async def test_patch_settings_updates_timezone(client):
+async def test_patch_settings_no_longer_changes_timezone(client):
+    """PATCH /settings ignores timezone — it's now auto-detected from header."""
     await create_test_goal(client)
     resp = await client.patch(
         f"/users/{TEST_USER_ID}/settings",
         json={"timezone": "America/New_York"},
     )
     assert resp.status_code == 200
-    assert resp.json()["timezone"] == "America/New_York"
+    # timezone stays UTC — PATCH no longer handles it
+    assert resp.json()["timezone"] == "UTC"
 
 
 async def test_patch_settings_updates_display_name(client):
@@ -73,13 +75,13 @@ async def test_patch_settings_partial_update(client):
     await create_test_goal(client)
     resp = await client.patch(
         f"/users/{TEST_USER_ID}/settings",
-        json={"timezone": "Europe/London"},
+        json={"reminder_hour": 14},
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["timezone"] == "Europe/London"
-    # display_name was never set, so it should still be None
-    assert data["display_name"] is None
+    assert data["reminder_hour"] == 14
+    # display_name and reminder_enabled unchanged
+    assert data["reminder_enabled"] is True
 
 
 async def test_patch_settings_updates_reminder_preferences(client):

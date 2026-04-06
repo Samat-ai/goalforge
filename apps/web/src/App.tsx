@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Show } from '@clerk/react'
 import { Toaster } from 'sonner'
@@ -5,7 +6,7 @@ import LandingPage from './pages/LandingPage'
 import Dashboard from './pages/Dashboard'
 import Analytics from './pages/Analytics'
 import Coach from './pages/Coach'
-import Shop from './pages/Shop'
+import Stars from './pages/Stars'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
 import Settings from './pages/Settings'
@@ -14,6 +15,17 @@ import EnergyParamCapture from './components/EnergyParamCapture'
 import OfflineBanner from './components/OfflineBanner'
 
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
+
+function useToasterPosition(): 'bottom-right' | 'top-center' {
+  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 639px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    const handler = (e: MediaQueryListEvent) => setMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return mobile ? 'top-center' : 'bottom-right'
+}
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   if (isE2EMode) return <>{children}</>
@@ -30,7 +42,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <EnergyParamCapture />
-      <Toaster theme="dark" position="bottom-right" richColors />
+      <Toaster theme="dark" position={useToasterPosition()} richColors />
       <OfflineBanner />
       <ErrorBoundary>
         <Routes>
@@ -39,7 +51,7 @@ export default function App() {
           <Route path="/sign-up/*" element={<SignUpPage />} />
           <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
           <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
-          <Route path="/shop" element={<AuthGuard><Shop /></AuthGuard>} />
+          <Route path="/stars" element={<AuthGuard><Stars /></AuthGuard>} />
           <Route path="/coach" element={<AuthGuard><Coach /></AuthGuard>} />
           <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
           <Route path="*" element={<div className="p-8 text-center">404 - Page Not Found</div>} />

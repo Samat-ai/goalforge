@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 from ai_utils import generate_star_log_narrative, generate_weekly_coach_recommendation
 from auth import get_current_user_email, get_current_user_id
 from database import get_db
-from deps import _ensure_owner, _load_user_with_ownership, get_or_create_user as _get_or_create_user
+from deps import _ensure_owner, _load_user_with_ownership, get_or_create_user as _get_or_create_user, sync_timezone_from_header
 from exceptions import AIGenerationError
 from models import (
     DailyTask, Goal, Reward, ShopReward, StarLog, User,
@@ -39,6 +39,7 @@ router = APIRouter()
     summary="Get user profile (star_points etc.)",
 )
 async def get_user_profile(
+    request: Request,
     user_id: str,
     current_user_id: str = Depends(get_current_user_id),
     current_user_email: str = Depends(get_current_user_email),
@@ -46,6 +47,7 @@ async def get_user_profile(
 ):
     _ensure_owner(user_id, current_user_id)
     user = await _get_or_create_user(user_id, current_user_email, db)
+    await sync_timezone_from_header(request, user, db)
     return {"star_points": user.star_points}
 
 
@@ -55,6 +57,7 @@ async def get_user_profile(
     summary="Get user settings (timezone, display_name)",
 )
 async def get_user_settings(
+    request: Request,
     user_id: str,
     current_user_id: str = Depends(get_current_user_id),
     current_user_email: str = Depends(get_current_user_email),
@@ -62,6 +65,7 @@ async def get_user_settings(
 ):
     _ensure_owner(user_id, current_user_id)
     user = await _get_or_create_user(user_id, current_user_email, db)
+    await sync_timezone_from_header(request, user, db)
     return user
 
 
@@ -77,8 +81,6 @@ async def update_user_settings(
     db: AsyncSession = Depends(get_db),
 ):
     user = await _load_user_with_ownership(user_id, current_user_id, db)
-    if payload.timezone is not None:
-        user.timezone = payload.timezone
     if payload.display_name is not None:
         user.display_name = payload.display_name
     if payload.reminder_enabled is not None:
