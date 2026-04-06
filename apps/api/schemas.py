@@ -245,7 +245,6 @@ class UserProfileResponse(BaseModel):
 
 
 class UserSettingsUpdate(BaseModel):
-    timezone: str | None = None
     display_name: str | None = Field(default=None, max_length=60)
     reminder_enabled: bool | None = None
     reminder_hour: int | None = Field(default=None, ge=0, le=23)

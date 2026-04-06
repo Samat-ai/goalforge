@@ -1,12 +1,16 @@
 """FastAPI shared dependencies and helpers."""
 
+import logging
 import uuid
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Goal, Reward, ShopReward, User
+
+logger = logging.getLogger(__name__)
 
 
 async def get_or_create_user(user_id: str, email: str, db: AsyncSession) -> User:
@@ -80,3 +84,20 @@ async def _load_shop_reward_with_ownership(
         raise HTTPException(status_code=404, detail="Shop reward not found")
     _ensure_owner(reward.user_id, current_user_id)
     return reward
+
+
+async def sync_timezone_from_header(
+    request: Request,
+    user: User,
+    db: AsyncSession,
+) -> None:
+    """Silently sync user timezone from X-User-Timezone header if valid and changed."""
+    tz_header = request.headers.get("X-User-Timezone")
+    if not tz_header or tz_header == user.timezone:
+        return
+    try:
+        ZoneInfo(tz_header)
+    except (ZoneInfoNotFoundError, KeyError, TypeError):
+        logger.warning("Invalid timezone header ignored: %s", tz_header)
+        return
+    user.timezone = tz_header
