@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useUser } from '@clerk/react'
 import AppHeader from '../components/AppHeader'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { getStage, streak, bestStreak, todayStr, daysAgo } from '../lib/gamification'
 import { T } from '../lib/theme'
 import {
@@ -207,11 +208,347 @@ export default function Analytics() {
               )}
             </section>
 
-            {/* ═══ SECTION 2: TRENDS — filled in by Task 4 ═══ */}
+            {/* ═══ SECTION 2: TRENDS ═══ */}
+            <section style={{ marginBottom: 28 }}>
+              <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 14 }}>
+                TRENDS
+              </div>
 
-            {/* ═══ SECTION 3: REFLECTION — filled in by Task 5 ═══ */}
+              {/* 90-day Completion Heatmap */}
+              <div style={{
+                background: T.card, border: `1px solid ${T.border}`, borderRadius: 12,
+                padding: '16px 18px', marginBottom: 14,
+              }}>
+                <div style={{ fontSize: 11, color: T.textDim, fontFamily: T.mono, marginBottom: 12 }}>
+                  Completion Heatmap — last 90 days
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(13, 1fr)',
+                  gridTemplateRows: 'repeat(7, 1fr)',
+                  gap: 3,
+                  gridAutoFlow: 'column',
+                }}>
+                  {analytics.heatmapDays.map((d, i) => {
+                    const intensity = d.count === 0 ? 0 : d.count <= 2 ? 1 : d.count <= 4 ? 2 : 3
+                    const colors = [T.surface, `${T.emerald}40`, `${T.emerald}80`, T.emerald]
+                    return (
+                      <div
+                        key={i}
+                        title={`${d.date}: ${d.count} task${d.count !== 1 ? 's' : ''}`}
+                        style={{
+                          aspectRatio: '1',
+                          borderRadius: 2,
+                          background: colors[intensity],
+                          minWidth: 0,
+                        }}
+                      />
+                    )
+                  })}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, justifyContent: 'flex-end' }}>
+                  <span style={{ fontSize: 9, color: T.dim, fontFamily: T.mono }}>Less</span>
+                  {[T.surface, `${T.emerald}40`, `${T.emerald}80`, T.emerald].map((c, i) => (
+                    <div key={i} style={{ width: 10, height: 10, borderRadius: 2, background: c }} />
+                  ))}
+                  <span style={{ fontSize: 9, color: T.dim, fontFamily: T.mono }}>More</span>
+                </div>
+              </div>
 
-            {/* ═══ SECTION 4: HALL OF FAME — filled in by Task 5 ═══ */}
+              {/* Charts row: Velocity + Time-of-Day */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                {/* 7-Day Velocity */}
+                <div style={{
+                  background: T.card, border: `1px solid ${T.border}`, borderRadius: 12,
+                  padding: '16px 18px',
+                }}>
+                  <div style={{ fontSize: 11, color: T.textDim, fontFamily: T.mono, marginBottom: 12 }}>
+                    7-Day Velocity
+                  </div>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <BarChart data={analytics.velocityDays} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                      <XAxis dataKey="label" tick={{ fontSize: 10, fill: T.muted }} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: T.dim }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontFamily: T.mono, fontSize: 11 }}
+                        labelStyle={{ color: T.text }}
+                        itemStyle={{ color: T.orange }}
+                        cursor={{ fill: `${T.orange}10` }}
+                      />
+                      <Bar dataKey="count" name="Tasks" fill={T.orange} radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Time-of-Day Distribution */}
+                <div style={{
+                  background: T.card, border: `1px solid ${T.border}`, borderRadius: 12,
+                  padding: '16px 18px',
+                }}>
+                  <div style={{ fontSize: 11, color: T.textDim, fontFamily: T.mono, marginBottom: 12 }}>
+                    Time of Day
+                  </div>
+                  {analytics.timeOfDay.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={180}>
+                      <PieChart>
+                        <Pie
+                          data={analytics.timeOfDay}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={45}
+                          outerRadius={70}
+                          paddingAngle={3}
+                          dataKey="value"
+                          nameKey="name"
+                        >
+                          {analytics.timeOfDay.map((entry, i) => {
+                            const palette = [T.amber, T.orange, T.indigo, T.emerald]
+                            return <Cell key={entry.name} fill={palette[i % palette.length]} />
+                          })}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, fontFamily: T.mono, fontSize: 11 }}
+                          itemStyle={{ color: T.text }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 180, color: T.dim, fontSize: 12, fontFamily: T.mono }}>
+                      Complete tasks to see your pattern
+                    </div>
+                  )}
+                  {analytics.timeOfDay.length > 0 && (
+                    <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+                      {analytics.timeOfDay.map((entry, i) => {
+                        const palette = [T.amber, T.orange, T.indigo, T.emerald]
+                        return (
+                          <div key={entry.name} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: 2, background: palette[i % palette.length] }} />
+                            <span style={{ fontSize: 10, color: T.muted, fontFamily: T.mono }}>{entry.name} ({entry.value})</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* ═══ SECTION 3: REFLECTION ═══ */}
+            <section style={{ marginBottom: 28 }}>
+              <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 14 }}>
+                REFLECTION
+              </div>
+
+              {/* Weekly Reflection Form */}
+              <div style={{
+                background: T.card,
+                border: `1px solid ${T.border}`,
+                borderRadius: 12,
+                padding: '16px 16px 14px',
+                marginBottom: 14,
+              }}>
+                <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 10 }}>
+                  WEEKLY REFLECTION RITUAL
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <textarea
+                    value={wentWell}
+                    onChange={e => setWentWell(e.target.value)}
+                    placeholder="What went well this week?"
+                    rows={2}
+                    style={{
+                      width: '100%', resize: 'vertical', minHeight: 44, borderRadius: 8,
+                      border: `1px solid ${T.border}`, background: T.surface, color: T.text,
+                      padding: '10px 12px', fontFamily: T.mono, fontSize: 12,
+                    }}
+                  />
+                  <textarea
+                    value={blockers}
+                    onChange={e => setBlockers(e.target.value)}
+                    placeholder="What blocked you?"
+                    rows={2}
+                    style={{
+                      width: '100%', resize: 'vertical', minHeight: 44, borderRadius: 8,
+                      border: `1px solid ${T.border}`, background: T.surface, color: T.text,
+                      padding: '10px 12px', fontFamily: T.mono, fontSize: 12,
+                    }}
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <label style={{ fontFamily: T.mono, fontSize: 11, color: T.muted }}>Week rating</label>
+                    <select
+                      value={weekRating}
+                      onChange={e => setWeekRating(Number(e.target.value))}
+                      style={{
+                        minHeight: 44, borderRadius: 8, border: `1px solid ${T.border}`,
+                        background: T.surface, color: T.text, padding: '0 10px',
+                        fontFamily: T.mono, fontSize: 12,
+                      }}
+                    >
+                      {[1, 2, 3, 4, 5].map(v => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                    <button
+                      onClick={() => {
+                        if (wentWell.trim().length < 5 || blockers.trim().length < 5) return
+                        createReflection({
+                          went_well: wentWell.trim(),
+                          blockers: blockers.trim(),
+                          week_rating: weekRating,
+                        })
+                        setWentWell('')
+                        setBlockers('')
+                      }}
+                      disabled={isSaving}
+                      style={{
+                        minHeight: 44, minWidth: 44, borderRadius: 8,
+                        border: `1px solid ${T.indigo}`, background: `${T.indigo}18`,
+                        color: T.indigo, padding: '0 14px', fontFamily: T.mono,
+                        fontSize: 11, letterSpacing: '0.05em',
+                        cursor: isSaving ? 'default' : 'pointer',
+                        opacity: isSaving ? 0.6 : 1,
+                      }}
+                    >
+                      Save Reflection
+                    </button>
+                  </div>
+
+                  {reflection && (
+                    <div style={{
+                      marginTop: 4, borderRadius: 8, border: `1px solid ${T.emerald}40`,
+                      background: `${T.emerald}10`, padding: '10px 12px',
+                    }}>
+                      <div style={{ fontFamily: T.mono, fontSize: 10, color: T.emerald, letterSpacing: '0.08em', marginBottom: 4 }}>
+                        AI COACH RECOMMENDATION
+                      </div>
+                      <div style={{ fontSize: 12, color: T.text, lineHeight: 1.6 }}>
+                        {reflection.coach_recommendation}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Achievement Badges */}
+              {badges.length > 0 && (
+                <div style={{
+                  borderRadius: 12, border: `1px solid ${T.border}`,
+                  background: T.card, padding: '12px 14px',
+                }}>
+                  <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted, letterSpacing: '0.1em', marginBottom: 8 }}>
+                    ACHIEVEMENT BADGES
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 8 }}>
+                    {badges.map(badge => (
+                      <div key={badge.key} style={{
+                        borderRadius: 8,
+                        border: `1px solid ${badge.unlocked ? T.emerald : T.border}`,
+                        background: badge.unlocked ? `${T.emerald}10` : T.surface,
+                        padding: '10px',
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                          <div style={{ fontFamily: T.serif, fontSize: 15, color: badge.unlocked ? T.emerald : T.text }}>{badge.title}</div>
+                          <div style={{ fontFamily: T.mono, fontSize: 10, color: badge.unlocked ? T.emerald : T.textDim }}>
+                            {badge.current}/{badge.target}
+                          </div>
+                        </div>
+                        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.textDim, marginTop: 4 }}>{badge.description}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* ═══ SECTION 4: HALL OF FAME ═══ */}
+            <section>
+              <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 14 }}>
+                HALL OF FAME — {achieved.length} {achieved.length === 1 ? 'GOAL' : 'GOALS'} ACHIEVED
+              </div>
+
+              {achieved.length === 0 && (
+                <div style={{
+                  background: T.card, border: `1px dashed ${T.border}`, borderRadius: 12,
+                  padding: '36px 22px', textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: 28, marginBottom: 10 }}>🏆</div>
+                  <div style={{ fontSize: 13, color: T.muted, fontFamily: T.mono }}>
+                    No goals achieved yet. Complete your first goal to unlock the Hall of Fame.
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {achieved.map(g => {
+                  const s = streak(g.completed_days)
+                  return (
+                    <div key={g.id} style={{
+                      background: T.card, border: `1px solid ${T.amber}40`,
+                      borderLeft: `3px solid ${T.amber}`,
+                      borderRadius: '0 12px 12px 0', padding: '18px',
+                      position: 'relative', overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        position: 'absolute', top: -30, right: -30,
+                        width: 100, height: 100, borderRadius: '50%',
+                        background: `radial-gradient(circle, ${T.amber}12, transparent)`,
+                        pointerEvents: 'none',
+                      }} />
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                        <span style={{ fontSize: 28, flexShrink: 0 }}>🏆</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                            <span style={{
+                              fontSize: 10, padding: '2px 8px', borderRadius: 20,
+                              fontFamily: T.mono, textTransform: 'uppercase', letterSpacing: '0.07em',
+                              border: `1px solid ${T.amber}50`, background: `${T.amber}15`, color: T.amber,
+                            }}>
+                              {g.goal_type}
+                            </span>
+                            {s > 0 && (
+                              <span style={{
+                                fontSize: 10, padding: '2px 8px', borderRadius: 20,
+                                fontFamily: T.mono, textTransform: 'uppercase', letterSpacing: '0.07em',
+                                border: `1px solid ${T.orange}50`, background: `${T.orange}15`, color: T.orange,
+                              }}>
+                                {s}d streak
+                              </span>
+                            )}
+                            <span style={{
+                              fontSize: 10, padding: '2px 8px', borderRadius: 20,
+                              fontFamily: T.mono, textTransform: 'uppercase', letterSpacing: '0.07em',
+                              border: `1px solid ${T.emerald}50`, background: `${T.emerald}15`, color: T.emerald,
+                            }}>
+                              {g.completed_days.length} days completed
+                            </span>
+                          </div>
+                          <div style={{ fontFamily: T.serif, fontSize: 16, color: T.amber, marginBottom: 4, lineHeight: 1.4 }}>
+                            {g.smart_title}
+                          </div>
+                          <div style={{ fontSize: 12, color: T.textDim, lineHeight: 1.6, marginBottom: 4 }}>
+                            {g.smart_description}
+                          </div>
+                          <div style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }}>"{g.raw_input}"</div>
+                          {g.progress > 0 && (
+                            <div style={{ marginTop: 10 }}>
+                              <div style={{ height: 4, background: T.dim, borderRadius: 2, overflow: 'hidden' }}>
+                                <div style={{
+                                  height: '100%', borderRadius: 2, background: T.amber,
+                                  width: `${g.progress}%`, transition: 'width 0.7s',
+                                }} />
+                              </div>
+                              <div style={{ fontSize: 9, color: T.dim, fontFamily: T.mono, marginTop: 3 }}>
+                                {g.progress}% progress tracked
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
           </>
         )}
 
