@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Show } from '@clerk/react'
 import { Toaster } from 'sonner'
@@ -15,6 +16,18 @@ import OfflineBanner from './components/OfflineBanner'
 
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
 
+function useToasterPosition(): 'bottom-right' | 'top-center' {
+  const [mobile, setMobile] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    setMobile(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return mobile ? 'top-center' : 'bottom-right'
+}
+
 function AuthGuard({ children }: { children: React.ReactNode }) {
   if (isE2EMode) return <>{children}</>
 
@@ -30,7 +43,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <EnergyParamCapture />
-      <Toaster theme="dark" position="bottom-right" richColors />
+      <Toaster theme="dark" position={useToasterPosition()} richColors />
       <OfflineBanner />
       <ErrorBoundary>
         <Routes>
