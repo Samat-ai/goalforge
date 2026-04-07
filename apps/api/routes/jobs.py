@@ -14,6 +14,7 @@ from models import Goal, NotificationLog, User, WebPushSubscription
 from services.email_service import TaskDigestItem, send_reminder_digest, send_rescue_email
 from services.push_service import send_push_digest
 from services.rescue_service import goal_is_rescue_mode
+from services.star_log_service import get_or_create_star_log
 from utils import user_now, user_today
 
 router = APIRouter()
@@ -75,6 +76,7 @@ async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
     push_count = 0
     streak_saver_count = 0
     inactivity_count = 0
+    star_log_count = 0
 
     for user in users:
         active_goals = [g for g in user.goals if g.status == "active"]
@@ -161,6 +163,34 @@ async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
             inactivity_count += 1
             continue  # skip regular digest for disengaged users
 
+        # ── Sunday Star Log ───────────────────────────────────────────────
+        if (
+            today_local.weekday() == 6
+            and now_local.hour == user.reminder_hour
+            and push_subs
+            and not await _already_notified(db, user.id, "weekly_star_log", today_local)
+        ):
+            star_log = await get_or_create_star_log(
+                user_id=user.id,
+                timezone=user.timezone,
+                db=db,
+            )
+            highlight = star_log.highlights[0] if star_log.highlights else "Your week awaits"
+            body = f"{star_log.chapter_title} — {highlight}. Tap to read your Companion's journey."
+            if len(body) > 150:
+                body = body[:147] + "..."
+            for sub in push_subs:
+                await send_push_digest(
+                    sub,
+                    title="Your new Star Log is ready ✨",
+                    body=body,
+                    db=db,
+                    url="/stars",
+                )
+            db.add(NotificationLog(user_id=user.id, type="weekly_star_log", sent_date=today_local))
+            star_log_count += 1
+            continue  # Sunday star log replaces daily digest
+
         # ── Regular digest (existing) ──────────────────────────────────────
         if now_local.hour != user.reminder_hour:
             continue
@@ -197,4 +227,5 @@ async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
         "push_notifications": push_count,
         "streak_saver_pushes": streak_saver_count,
         "inactivity_nudges": inactivity_count,
+        "star_log_pushes": star_log_count,
     }

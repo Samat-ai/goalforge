@@ -210,7 +210,7 @@ async def test_get_weekly_review_403_wrong_user(client):
 
 
 @patch(
-    "routes.users.generate_star_log_narrative",
+    "services.star_log_service.generate_star_log_narrative",
     new_callable=AsyncMock,
     return_value=SimpleNamespace(
         chapter_title="Week of Ignition",
