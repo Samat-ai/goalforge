@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     dev_email_override: str | None = None  # if set, all emails route here (dev/testing only)
     vapid_private_key: str = ""
     vapid_subject: str = ""
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_pro_price_id: str = ""
     db_pool_size: int = 10
     db_max_overflow: int = 20
     db_pool_timeout: int = 30

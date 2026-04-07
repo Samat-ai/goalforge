@@ -10,6 +10,7 @@ import Stars from './pages/Stars'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
 import Settings from './pages/Settings'
+import Billing from './pages/Billing'
 import ErrorBoundary from './components/ErrorBoundary'
 import EnergyParamCapture from './components/EnergyParamCapture'
 import OfflineBanner from './components/OfflineBanner'
@@ -54,6 +55,7 @@ export default function App() {
           <Route path="/stars" element={<AuthGuard><Stars /></AuthGuard>} />
           <Route path="/coach" element={<AuthGuard><Coach /></AuthGuard>} />
           <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
+          <Route path="/billing" element={<AuthGuard><Billing /></AuthGuard>} />
           <Route path="*" element={<div className="p-8 text-center">404 - Page Not Found</div>} />
         </Routes>
       </ErrorBoundary>

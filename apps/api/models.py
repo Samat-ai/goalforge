@@ -91,6 +91,9 @@ class User(Base):
     notification_logs: Mapped[list["NotificationLog"]] = relationship(
         "NotificationLog", back_populates="user", cascade="all, delete-orphan"
     )
+    subscription: Mapped["Subscription | None"] = relationship(
+        "Subscription", back_populates="user", uselist=False
+    )
 
 
 class Goal(Base):
@@ -500,3 +503,34 @@ class NotificationLog(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="notification_logs")
+
+
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+    __table_args__ = (
+        CheckConstraint("plan IN ('free', 'pro')", name="ck_subscription_plan"),
+        CheckConstraint(
+            "status IN ('active', 'canceled', 'past_due')",
+            name="ck_subscription_status",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False, index=True
+    )
+    stripe_customer_id: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
+    plan: Mapped[str] = mapped_column(String, nullable=False, default="free", server_default="free")
+    status: Mapped[str] = mapped_column(String, nullable=False, default="active", server_default="active")
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="subscription")

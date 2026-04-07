@@ -217,3 +217,21 @@ export interface CoachSendMessageResponse {
   session: CoachSession
   forged_goal: Goal | null
 }
+
+// ---------------------------------------------------------------------------
+// Billing / Subscription
+// ---------------------------------------------------------------------------
+
+export interface Subscription {
+  plan: 'free' | 'pro'
+  status: 'active' | 'canceled' | 'past_due'
+  current_period_end: string | null
+}
+
+export interface CheckoutSessionResponse {
+  url: string
+}
+
+export interface PortalSessionResponse {
+  url: string
+}
