@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -661,3 +661,284 @@ async def test_streak_saver_takes_priority_over_inactivity_nudge(client, db_sess
     assert data["streak_saver_pushes"] == 1
     assert data["inactivity_nudges"] == 0
     assert mock_push.call_count == 1  # only one push sent
+
+
+# ---------------------------------------------------------------------------
+# Sunday Star Log push notification tests
+# ---------------------------------------------------------------------------
+
+_SUNDAY = date(2026, 4, 5)   # weekday() == 6
+_MONDAY = date(2026, 4, 6)   # weekday() == 0
+
+
+def _make_mock_star_log(chapter_title="The Week of Breakthroughs", highlights=None):
+    star_log = MagicMock()
+    star_log.chapter_title = chapter_title
+    star_log.highlights = highlights if highlights is not None else [
+        "Completed 5 tasks",
+        "3-day streak",
+    ]
+    return star_log
+
+
+@pytest.mark.asyncio
+async def test_sunday_star_log_push_fires_at_reminder_hour(client, db_session):
+    """On Sunday at reminder_hour, the star log push is sent (not a regular digest)."""
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/star-log-test",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
+    mock_star_log = _make_mock_star_log()
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.user_today", return_value=_SUNDAY),
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+        patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_digest,
+        patch("routes.jobs.get_or_create_star_log", new=AsyncMock(return_value=mock_star_log)),
+    ):
+        class _Now:
+            hour = 9  # matches default reminder_hour
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["star_log_pushes"] == 1
+    assert data["digest_emails"] == 0
+    mock_push.assert_called_once()
+    call_kwargs = mock_push.call_args.kwargs
+    assert "Star Log" in call_kwargs["title"]
+    assert call_kwargs["url"] == "/stars"
+
+
+@pytest.mark.asyncio
+async def test_sunday_star_log_does_not_fire_at_wrong_hour(client, db_session):
+    """On Sunday but at a different hour than reminder_hour, no star log push is sent."""
+    await create_test_goal(client)
+
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/star-log-wrong-hour",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.user_today", return_value=_SUNDAY),
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+        patch("routes.jobs.get_or_create_star_log", new=AsyncMock()) as mock_star_log_fn,
+    ):
+        class _Now:
+            hour = 15  # user's reminder_hour is 9, so this does NOT match
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["star_log_pushes"] == 0
+    assert data["digest_emails"] == 0
+    mock_push.assert_not_called()
+    mock_star_log_fn.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_streak_saver_takes_priority_over_sunday_star_log(client, db_session):
+    """On Sunday, streak-saver fires first and the star log branch is never reached."""
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+
+    # Set reminder_hour to 19 so both streak-saver (>= 18) and star log (== reminder_hour)
+    # would be eligible at hour 19 — but streak-saver wins in the priority chain.
+    await client.patch(f"/users/{TEST_USER_ID}/settings", json={"reminder_hour": 19})
+
+    # Add a completed task for yesterday
+    yesterday = _SUNDAY - timedelta(days=1)
+    db_session.add(DailyTask(
+        id=uuid.uuid4(),
+        goal_id=uuid.UUID(goal_id),
+        milestone_id=None,
+        description="Yesterday task",
+        tip="tip",
+        assigned_date=yesterday,
+        is_completed=True,
+        completed_at=datetime.now(timezone.utc) - timedelta(hours=20),
+    ))
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/streak-vs-star-log",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.user_today", return_value=_SUNDAY),
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+        patch("routes.jobs.get_or_create_star_log", new=AsyncMock()) as mock_star_log_fn,
+    ):
+        class _Now:
+            hour = 19  # >= 18 (streak-saver) and == reminder_hour (star log)
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["streak_saver_pushes"] == 1
+    assert data["star_log_pushes"] == 0
+    mock_push.assert_called_once()
+    mock_star_log_fn.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_sunday_star_log_dedup_sends_only_once(client, db_session):
+    """Second cron run on the same Sunday does not re-send the star log push."""
+    await create_test_goal(client)
+
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/star-log-dedup",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
+    mock_star_log = _make_mock_star_log()
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.user_today", return_value=_SUNDAY),
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+        patch("routes.jobs.get_or_create_star_log", new=AsyncMock(return_value=mock_star_log)),
+    ):
+        class _Now:
+            hour = 9
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+
+        resp1 = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+        resp2 = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp1.json()["star_log_pushes"] == 1
+    assert resp2.json()["star_log_pushes"] == 0
+    assert mock_push.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_non_sunday_sends_regular_digest_not_star_log(client, db_session):
+    """On a non-Sunday weekday at reminder_hour, the regular digest fires (not the star log)."""
+    goal = await create_test_goal(client)
+    goal_id = goal["id"]
+
+    # Add a pending task explicitly on _MONDAY so the digest filter finds it
+    # (tasks from create_test_goal use date.today(), but we mock user_today to _MONDAY)
+    db_session.add(DailyTask(
+        id=uuid.uuid4(),
+        goal_id=uuid.UUID(goal_id),
+        milestone_id=None,
+        description="Monday pending task",
+        tip="Get it done.",
+        assigned_date=_MONDAY,
+        is_completed=False,
+    ))
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/non-sunday-digest",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.user_today", return_value=_MONDAY),
+        patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_digest,
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+        patch("routes.jobs.get_or_create_star_log", new=AsyncMock()) as mock_star_log_fn,
+    ):
+        class _Now:
+            hour = 9  # matches default reminder_hour
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["star_log_pushes"] == 0
+    assert data["digest_emails"] >= 1
+    mock_star_log_fn.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_sunday_star_log_fallback_body_when_no_highlights(client, db_session):
+    """Star log push is still sent when the star log has no highlights; body contains chapter title."""
+    await create_test_goal(client)
+
+    db_session.add(WebPushSubscription(
+        id=uuid.uuid4(),
+        user_id=TEST_USER_ID,
+        endpoint="https://push.example.com/star-log-fallback",
+        p256dh="dGVzdA==",
+        auth="dGVzdA==",
+        is_active=True,
+    ))
+    await db_session.commit()
+
+    mock_star_log = _make_mock_star_log(
+        chapter_title="Quiet Orbit",
+        highlights=["No completed tasks in this window"],
+    )
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.user_today", return_value=_SUNDAY),
+        patch("routes.jobs.send_push_digest", new=AsyncMock()) as mock_push,
+        patch("routes.jobs.get_or_create_star_log", new=AsyncMock(return_value=mock_star_log)),
+    ):
+        class _Now:
+            hour = 9
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["star_log_pushes"] == 1
+    mock_push.assert_called_once()
+    call_kwargs = mock_push.call_args.kwargs
+    assert "Quiet Orbit" in call_kwargs["body"]
