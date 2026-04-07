@@ -4,6 +4,7 @@ import { UserButton, useUser } from '@clerk/react'
 import { getStage } from '../lib/gamification'
 import { T } from '../lib/theme'
 import { useRewardsQuery } from '../hooks/useRewards'
+import ThemeToggle from './ThemeToggle'
 
 const THEME_KEY_TO_CLASS: Record<string, string> = {
   neon_cyberpunk: 'theme-neon-cyberpunk',
@@ -40,14 +41,17 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
   return (
     <>
     <a href="#main-content" className="skip-link">Skip to content</a>
-    <div style={{
-      position: 'sticky', top: 0, zIndex: 100,
-      background: `${T.bg}f0`, backdropFilter: 'blur(10px)',
-      borderBottom: `1px solid ${T.border}`,
-      height: 54, padding: '0 12px',
-      display: 'flex', alignItems: 'center', gap: 0,
-    }}>
-      <span style={{ fontFamily: T.serif, fontSize: 21, color: T.text, marginRight: 28, letterSpacing: '-0.3px' }}>
+    <div
+      className="dark:bg-[#07070ff0] bg-white/95"
+      style={{
+        position: 'sticky', top: 0, zIndex: 100,
+        backdropFilter: 'blur(10px)',
+        borderBottom: `1px solid var(--border-color)`,
+        height: 54, padding: '0 12px',
+        display: 'flex', alignItems: 'center', gap: 0,
+        transition: 'background 0.3s ease, border-color 0.3s ease',
+      }}>
+      <span style={{ fontFamily: T.serif, fontSize: 21, color: 'var(--text-primary)', marginRight: 28, letterSpacing: '-0.3px' }}>
         Goal<span style={{ color: T.orange }}>Forge</span>
       </span>
 
@@ -56,7 +60,7 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
           background: 'none', border: 'none', cursor: 'pointer',
           height: 54, padding: '0 14px', fontFamily: T.mono, fontSize: 12,
           letterSpacing: '0.04em', display: 'flex', alignItems: 'center',
-          color: location.pathname === `/${v}` ? T.text : T.muted,
+          color: location.pathname === `/${v}` ? 'var(--text-primary)' : 'var(--text-muted)',
           borderBottom: location.pathname === `/${v}` ? `2px solid ${T.orange}` : '2px solid transparent',
           textDecoration: 'none',
         }}>
@@ -106,8 +110,10 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
           </button>
         )}
 
+        <ThemeToggle />
+
         {user?.firstName && (
-          <span style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }} className="hidden sm:inline">
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: T.mono }} className="hidden sm:inline">
             {user.firstName}
           </span>
         )}
