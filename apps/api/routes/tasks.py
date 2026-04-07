@@ -1,5 +1,6 @@
 """Daily task routes."""
 
+import logging
 import uuid
 from datetime import date
 
@@ -12,6 +13,7 @@ from ai_utils import regenerate_single_task
 from auth import get_current_user_id
 from database import get_db
 from deps import _load_goal_with_ownership
+from exceptions import AIGenerationError
 from models import DailyTask, Goal, Milestone, User
 from rate_limiting import _user_key, rate_limit
 from schemas import (
@@ -24,6 +26,8 @@ from schemas import (
 )
 from services.task_service import complete_task_and_award_points
 from utils import user_today
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -270,8 +274,15 @@ async def regenerate_task(
             assigned_date=task.assigned_date,
             current_description=task.description,
         )
-    except Exception:
+    except AIGenerationError as exc:
+        logger.error(
+            "regenerate_task: AI generation failed for task %s (%s: %s)",
+            task_id, type(exc).__name__, exc,
+        )
         raise HTTPException(status_code=503, detail="AI generation failed. Please try again.")
+    except Exception as exc:
+        logger.exception("regenerate_task: unexpected error for task %s", task_id)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred.")
 
     task.description = new_task.description
     task.tip = new_task.tip

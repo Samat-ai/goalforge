@@ -5,11 +5,12 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import delete as sql_delete, update as sql_update
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_utils import generate_smart_goal
 from database import engine
-from exceptions import AIGenerationError
+from exceptions import AIGenerationError, GoalGenerationError
 from models import DailyTask, Goal, Milestone
 from utils import user_today
 
@@ -40,6 +41,7 @@ async def _generate_goal_async(
     async with AsyncSession(engine) as db:
         today = user_today(user_timezone)
 
+        # --- AI call ---
         try:
             ai_output = await generate_smart_goal(raw_input, today=today)
         except AIGenerationError as exc:
@@ -54,7 +56,20 @@ async def _generate_goal_async(
                     .values(sprint_status="failed")
                 )
             return
+        except Exception as exc:
+            logger.exception(
+                "_generate_goal_async: unexpected error during AI call for goal %s (user %s)",
+                goal_id, user_id,
+            )
+            async with db.begin():
+                await db.execute(
+                    sql_update(Milestone)
+                    .where(Milestone.goal_id == goal_id)
+                    .values(sprint_status="failed")
+                )
+            return
 
+        # --- DB write ---
         try:
             async with db.begin():
                 # Update goal with AI-generated fields
@@ -109,7 +124,7 @@ async def _generate_goal_async(
                         assigned_date=task_data.assigned_date,
                     ))
 
-        except Exception as exc:
+        except SQLAlchemyError as exc:
             logger.error(
                 "_generate_goal_async: DB write failed for goal %s: %s", goal_id, exc
             )
@@ -120,7 +135,23 @@ async def _generate_goal_async(
                         .where(Milestone.goal_id == goal_id)
                         .values(sprint_status="failed")
                     )
-            except Exception as inner:
+            except SQLAlchemyError as inner:
+                logger.error(
+                    "_generate_goal_async: could not set failed status for goal %s: %s",
+                    goal_id, inner,
+                )
+        except Exception as exc:
+            logger.exception(
+                "_generate_goal_async: unexpected error during DB write for goal %s", goal_id
+            )
+            try:
+                async with db.begin():
+                    await db.execute(
+                        sql_update(Milestone)
+                        .where(Milestone.goal_id == goal_id)
+                        .values(sprint_status="failed")
+                    )
+            except SQLAlchemyError as inner:
                 logger.error(
                     "_generate_goal_async: could not set failed status for goal %s: %s",
                     goal_id, inner,

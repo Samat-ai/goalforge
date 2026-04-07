@@ -6,11 +6,12 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import func, select, update as sql_update
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_utils import generate_sprint_tasks
 from database import engine
-from exceptions import AIGenerationError
+from exceptions import AIGenerationError, SprintGenerationError
 from models import DailyTask, Goal, Milestone, User
 from schemas import AITaskOutput
 from services import reward_service as _reward_service
@@ -135,8 +136,11 @@ async def _pre_generate_sprint(
                     .where(Milestone.id == milestone_id)
                     .values(sprint_status="generating", generation_started_at=datetime.now(timezone.utc))
                 )
-        except Exception as exc:
+        except SQLAlchemyError as exc:
             logger.error("Pre-gen: could not set generating status for %s: %s", milestone_id, exc)
+            return
+        except Exception:
+            logger.exception("Pre-gen: unexpected error setting generating status for %s", milestone_id)
             return
 
         # 2. Call Gemini with retry (outside any DB transaction)
@@ -152,6 +156,18 @@ async def _pre_generate_sprint(
             logger.error(
                 "Pre-gen: AI failed for milestone %s (goal %s, theme %r, start %s): %s",
                 milestone_id, goal_id, sprint_theme, start_date, exc,
+            )
+            async with db.begin():
+                await db.execute(
+                    sql_update(Milestone)
+                    .where(Milestone.id == milestone_id)
+                    .values(sprint_status="failed")
+                )
+            return
+        except Exception:
+            logger.exception(
+                "Pre-gen: unexpected error during AI call for milestone %s (goal %s)",
+                milestone_id, goal_id,
             )
             async with db.begin():
                 await db.execute(
@@ -183,7 +199,7 @@ async def _pre_generate_sprint(
                         .where(Milestone.id == milestone_id)
                         .values(sprint_status="ready")
                     )
-        except Exception as exc:
+        except SQLAlchemyError as exc:
             logger.error("Pre-gen: DB write failed for milestone %s: %s", milestone_id, exc)
             try:
                 async with db.begin():
@@ -192,7 +208,23 @@ async def _pre_generate_sprint(
                         .where(Milestone.id == milestone_id)
                         .values(sprint_status="failed")
                     )
-            except Exception as inner_exc:
+            except SQLAlchemyError as inner_exc:
+                logger.error(
+                    "Pre-gen: could not write failed status for milestone %s: %s",
+                    milestone_id, inner_exc,
+                )
+        except Exception:
+            logger.exception(
+                "Pre-gen: unexpected error during DB write for milestone %s", milestone_id
+            )
+            try:
+                async with db.begin():
+                    await db.execute(
+                        sql_update(Milestone)
+                        .where(Milestone.id == milestone_id)
+                        .values(sprint_status="failed")
+                    )
+            except SQLAlchemyError as inner_exc:
                 logger.error(
                     "Pre-gen: could not write failed status for milestone %s: %s",
                     milestone_id, inner_exc,
@@ -237,8 +269,12 @@ async def complete_task_and_award_points(
         score = await _reward_service.compute_consistency_score(goal.user_id, db)
         tier = _reward_service.roll_reward(score)
         collectible = await _reward_service.pick_collectible(tier, goal.user_id, db)
-    except Exception as exc:
-        logger.warning("Reward roll failed for task %s, falling back to standard: %s", task.id, exc)
+    except SQLAlchemyError as exc:
+        logger.warning("Reward roll failed (DB error) for task %s, falling back to standard: %s", task.id, exc)
+        tier = "standard"
+        collectible = None
+    except Exception:
+        logger.exception("Reward roll failed (unexpected error) for task %s, falling back to standard", task.id)
         tier = "standard"
         collectible = None
 
