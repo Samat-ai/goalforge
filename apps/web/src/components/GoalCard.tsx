@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Share2 } from 'lucide-react'
 import { T } from '../lib/theme'
 import { todayStr, streak, starBrightness, lastStreakLength } from '../lib/gamification'
 import { StarIcon } from './GamificationSvgs'
@@ -7,8 +8,10 @@ import Btn from './ui/Btn'
 import SprintRail from './SprintRail'
 import DailyTaskList from './DailyTaskList'
 import GoalHeatmap from './GoalHeatmap'
+import ShareModal from './ShareModal'
 import { useGoalMutations } from '../hooks'
 import { useTaskRestoreMutation } from '../hooks/useEnergyMutations'
+import { useProfileQuery } from '../hooks'
 import type { Goal, RewardDrop } from '../lib/types'
 
 export interface GoalCardProps {
@@ -19,11 +22,13 @@ export interface GoalCardProps {
 export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
   const mutations = useGoalMutations(goal.user_id, onJackpot)
   const restoreTaskMutation = useTaskRestoreMutation(goal.user_id)
+  const { pts } = useProfileQuery(goal.user_id)
 
   const [open, setOpen] = useState(false)
   const [completingMilestone, setCompletingMilestone] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmAbandon, setConfirmAbandon] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
   const deleteTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abandonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -292,6 +297,24 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
       {/* ── Status actions ── */}
       {!isGenerating && !isAbandoned && !isAchieved && (
         <div style={{ padding: '0 18px 14px', display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Share Progress */}
+          <button
+            onClick={e => { e.stopPropagation(); setShowShareModal(true) }}
+            aria-label="Share progress card"
+            style={{
+              cursor: 'pointer', minHeight: 44, minWidth: 44,
+              padding: '9px 14px', borderRadius: 8, fontFamily: T.mono,
+              fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
+              background: 'transparent',
+              color: T.orange,
+              border: `1px solid ${T.orange}40`,
+              transition: 'background 0.15s, border-color 0.15s',
+              display: 'flex', alignItems: 'center', gap: 5,
+            }}
+          >
+            <Share2 size={13} />
+            Share
+          </button>
           {allMilestonesComplete ? (
             <button
               onClick={() => mutations.changeStatus(goal.id, 'achieved')}
@@ -384,6 +407,15 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
             {confirmDelete ? 'Sure? Delete' : 'Delete'}
           </button>
         </div>
+      )}
+
+      {/* ── Share Modal ── */}
+      {showShareModal && (
+        <ShareModal
+          goal={goal}
+          pts={pts}
+          onClose={() => setShowShareModal(false)}
+        />
       )}
 
       {/* ── Expanded section ── */}

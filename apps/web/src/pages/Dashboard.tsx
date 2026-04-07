@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useUser } from '@clerk/react'
+import { Share2 } from 'lucide-react'
 import { T } from '../lib/theme'
 import AppHeader from '../components/AppHeader'
 import { Creature } from '../components/GamificationSvgs'
@@ -11,6 +12,7 @@ import RewardModal from '../components/RewardModal'
 import CollectionModal from '../components/CollectionModal'
 import EnergyModal from '../components/EnergyModal'
 import CompanionWidget from '../components/CompanionWidget'
+import ShareModal from '../components/ShareModal'
 import { useBadgesQuery, useGoalsQuery, useProfileQuery, useGoalMutations } from '../hooks'
 import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
 import { useEnergyResizeMutation } from '../hooks/useEnergyMutations'
@@ -285,6 +287,7 @@ export default function Dashboard() {
   const [focusOpen, setFocusOpen] = useState(false)
   const [activeRewardDrop, setActiveRewardDrop] = useState<RewardDrop | null>(null)
   const [showCollection, setShowCollection] = useState(false)
+  const [showOverallShare, setShowOverallShare] = useState(false)
   const [showEnergyModal, setShowEnergyModal] = useState(() => {
     const triggered = sessionStorage.getItem('energy') === 'low'
     if (triggered) sessionStorage.removeItem('energy')
@@ -390,6 +393,29 @@ export default function Dashboard() {
             <WelcomeBackCard goals={goals} onFocus={() => setFocusOpen(true)} />
             <DoThisNow goals={goals} />
             <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} onEnergyOpen={() => setShowEnergyModal(true)} />
+
+            {/* Overall share button — shown when there are active goals with some progress */}
+            {goals.some(g => g.status === 'active' && g.completed_days.length > 0) && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                <button
+                  onClick={() => setShowOverallShare(true)}
+                  aria-label="Share your overall progress"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    minHeight: 38, padding: '0 14px', borderRadius: 9,
+                    cursor: 'pointer', fontFamily: T.mono,
+                    fontSize: 11, fontWeight: 600, letterSpacing: '0.05em',
+                    background: `${T.orange}12`, color: T.orange,
+                    border: `1px solid ${T.orange}35`,
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  <Share2 size={13} />
+                  Share Progress
+                </button>
+              </div>
+            )}
+
             <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} />
 
             {goals.length === 0 ? (
@@ -478,6 +504,20 @@ export default function Dashboard() {
       )}
 
       <CompanionWidget pts={pts} />
+
+      {showOverallShare && (() => {
+        // Pick the active goal with the most completed days to feature on the share card
+        const featuredGoal = goals
+          .filter(g => g.status === 'active')
+          .sort((a, b) => b.completed_days.length - a.completed_days.length)[0]
+        return featuredGoal ? (
+          <ShareModal
+            goal={featuredGoal}
+            pts={pts}
+            onClose={() => setShowOverallShare(false)}
+          />
+        ) : null
+      })()}
     </div>
   )
 }
