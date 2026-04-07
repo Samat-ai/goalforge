@@ -134,6 +134,7 @@ async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
                     sub,
                     title="Your streak is at risk 🔥",
                     body="You haven't completed a task today — keep your streak alive before midnight",
+                    db=db,
                 )
             db.add(NotificationLog(user_id=user.id, type="streak_saver", sent_date=today_local))
             streak_saver_count += 1
@@ -154,6 +155,7 @@ async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
                     sub,
                     title="Your Companion misses you ✨",
                     body="It's been a while. Come back for just one small win today.",
+                    db=db,
                 )
             db.add(NotificationLog(user_id=user.id, type="inactivity_nudge", sent_date=today_local))
             inactivity_count += 1
@@ -185,6 +187,7 @@ async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
                     sub,
                     title="GoalForge reminder",
                     body=f"You have {len(tasks)} pending task{'s' if len(tasks) != 1 else ''} today.",
+                    db=db,
                 )
                 push_count += 1
 
