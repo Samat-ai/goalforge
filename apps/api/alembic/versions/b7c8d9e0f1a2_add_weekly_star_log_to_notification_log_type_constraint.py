@@ -1,12 +1,12 @@
 """Add weekly_star_log to notification_log type constraint.
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: b7c8d9e0f1a2
 Revises: f3a4b5c6d7e8
 Create Date: 2026-04-07
 """
 from alembic import op
 
-revision = "a1b2c3d4e5f6"
+revision = "b7c8d9e0f1a2"
 down_revision = "f3a4b5c6d7e8"
 branch_labels = None
 depends_on = None
