@@ -15,6 +15,7 @@ from deps import _load_goal_with_ownership
 from models import DailyTask, Goal, Milestone, User
 from rate_limiting import _user_key, rate_limit
 from schemas import EnergyResizeResponse, TaskResponse
+from services.subscription_service import require_pro
 from utils import user_today
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,8 @@ async def energy_resize(
 ):
     if current_user_id != user_id:
         raise HTTPException(status_code=403, detail="Forbidden")
+
+    await require_pro(user_id, db, "energy_resize")
 
     user_result = await db.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()

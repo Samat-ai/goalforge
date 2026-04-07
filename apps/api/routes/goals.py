@@ -13,6 +13,7 @@ from database import get_db
 from deps import _load_goal_with_ownership
 from models import Goal, Milestone, User
 from services.goal_service import _generate_goal_async, PLACEHOLDER_MILESTONE_TITLE
+from services.subscription_service import check_goal_limit
 from services.rescue_service import _execute_rescue_sprint
 from rate_limiting import _user_key, rate_limit
 from schemas import (
@@ -57,6 +58,7 @@ async def create_goal(
     if user_id != current_user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     user = await get_or_create_user(user_id, current_user_email, db)
+    await check_goal_limit(user_id, db)
     user_timezone = user.timezone  # capture before session closes
 
     today = user_today(user_timezone)

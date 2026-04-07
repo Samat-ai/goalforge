@@ -12,6 +12,7 @@ from exceptions import AIGenerationError
 from models import CoachMessage, CoachSession, DailyTask, Goal, Milestone, User
 from rate_limiting import _user_key, rate_limit
 from deps import get_or_create_user
+from services.subscription_service import require_pro
 from schemas import (
     CoachMessageCreate,
     CoachSendMessageResponse,
@@ -97,6 +98,7 @@ async def start_coach_session(
     if user_id != current_user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
+    await require_pro(user_id, db, "ai_coaching")
     await get_or_create_user(user_id, current_user_email, db)
 
     existing_result = await db.execute(

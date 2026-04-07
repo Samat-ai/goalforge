@@ -232,6 +232,18 @@ class CoachSendMessageResponse(BaseModel):
 # User settings schemas
 # ---------------------------------------------------------------------------
 
+class PlanInfo(BaseModel):
+    plan: Literal["free", "pro"] = "free"
+    limits: dict = {
+        "max_goals": 2,
+        "coaching": False,
+        "energy_resize": False,
+        "analytics_days": 7,
+        "accountability": False,
+        "data_export": False,
+    }
+
+
 class UserProfileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
