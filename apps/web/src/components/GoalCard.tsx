@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { T } from '../lib/theme'
 import { todayStr, streak, starBrightness, lastStreakLength } from '../lib/gamification'
-import { StarIcon } from './GamificationSvgs'
-import Badge from './ui/Badge'
 import Btn from './ui/Btn'
-import SprintRail from './SprintRail'
 import DailyTaskList from './DailyTaskList'
 import GoalHeatmap from './GoalHeatmap'
+import GoalCardHeader from './goal-card/GoalCardHeader'
+import GoalCardMilestones from './goal-card/GoalCardMilestones'
+import GoalCardActions from './goal-card/GoalCardActions'
 import { useGoalMutations } from '../hooks'
 import { useTaskRestoreMutation } from '../hooks/useEnergyMutations'
 import type { Goal, RewardDrop } from '../lib/types'
@@ -134,123 +134,37 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
     >
 
       {/* ── Header row (click to expand) ── */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-expanded={open}
-        aria-label={`${goal.smart_title} — click to ${open ? 'collapse' : 'expand'}`}
-        onClick={() => setOpen(o => !o)}
-        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o) } }}
-        style={{ padding: '16px 18px', cursor: 'pointer', display: 'flex', gap: 14, alignItems: 'flex-start' }}
-      >
-        <StarIcon b={b} size={52} />
+      <GoalCardHeader
+        goal={goal}
+        open={open}
+        onToggle={() => setOpen(o => !o)}
+        isGenerating={isGenerating}
+        isAbandoned={isAbandoned}
+        isAchieved={isAchieved}
+        doneToday={doneToday}
+        s={s}
+        lastStreak={lastStreak}
+        b={b}
+        days={days}
+        dl={dl}
+      />
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-            {!isGenerating && <Badge color={T.indigo}>{goal.goal_type}</Badge>}
-            {isGenerating && <Badge color={T.muted}>generating…</Badge>}
-            {isAbandoned  && <Badge color={T.muted}>abandoned</Badge>}
-            {isAchieved   && <Badge color={T.amber}>✦ achieved</Badge>}
-            {doneToday && !isAbandoned && !isAchieved && <Badge color={T.emerald}>✓ done today</Badge>}
-            {s > 0 && !isAbandoned && <Badge color={T.amber}>{s}d streak</Badge>}
-            {s === 0 && lastStreak >= 2 && !isAbandoned && !isAchieved && <Badge color={T.dim}>last streak: {lastStreak}d</Badge>}
-            {goal.target_date && <Badge color={days < 0 ? T.rose : T.muted}>{dl}</Badge>}
-          </div>
-          <div style={{ fontSize: 15, color: isAbandoned ? T.muted : T.text, fontFamily: T.serif, lineHeight: 1.45, marginBottom: 3 }}>
-            {goal.smart_title}
-          </div>
-          <div style={{ fontSize: 12, color: T.textDim, lineHeight: 1.6, marginBottom: 3 }}>
-            {goal.smart_description}
-          </div>
-          <div style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }}>"{goal.raw_input}"</div>
-        </div>
-
-        <span style={{ color: T.dim, fontSize: 15, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
-          ▾
-        </span>
-      </div>
-
-      {/* ── Generating skeleton ── */}
-      {isGenerating && (
-        <div style={{ padding: '0 18px 18px' }}>
-          <div style={{
-            padding: '14px 16px',
-            background: `${T.indigo}10`,
-            borderRadius: 10,
-            border: `1px solid ${T.indigo}30`,
-            display: 'flex', alignItems: 'center', gap: 12,
-          }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: '50%',
-              background: `${T.indigo}20`, border: `1.5px solid ${T.indigo}50`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 14, animation: 'pulse 1.5s ease-in-out infinite',
-              color: T.indigo, flexShrink: 0,
-            }}>✦</div>
-            <div>
-              <div style={{ fontSize: 13, color: T.text, fontFamily: T.serif, marginBottom: 3 }}>
-                Building your plan…
-              </div>
-              <div style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }}>
-                AI is generating milestones and tasks — this takes a few seconds
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Recovery Sprint card — replaces SprintRail + DailyTaskList ── */}
-      {isRescueMode && !dismissed && !isAbandoned && !isAchieved && (
-        <div style={{ padding: '0 18px 22px' }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: '#2d1f4e', border: '1px solid #5b21b6',
-            borderRadius: 20, padding: '3px 10px',
-            fontSize: 10, fontWeight: 600, letterSpacing: '0.08em',
-            color: T.amber, fontFamily: T.mono,
-            textTransform: 'uppercase', marginBottom: 14,
-          }}>
-            ✦ EASY MODE
-          </div>
-          <div style={{ fontSize: 17, fontWeight: 700, color: T.text, marginBottom: 6, lineHeight: 1.3 }}>
-            Let's make today easy.
-          </div>
-          <div style={{ fontSize: 13, color: T.muted, lineHeight: 1.6, marginBottom: 18 }}>
-            It looks like you've been busy. We paused your schedule and set up two quick wins
-            for today — no pressure, no catching up.
-          </div>
-          <Btn
-            variant="primary"
-            style={{ width: '100%', marginBottom: 10 }}
-            onClick={handleStartEasyMode}
-            disabled={mutations.isTriggeringRescue}
-          >
-            {mutations.isTriggeringRescue ? 'Starting easy mode…' : 'Start Easy Mode (2 min)'}
-          </Btn>
-          <button
-            onClick={handleDismiss}
-            style={{
-              display: 'block', width: '100%', textAlign: 'center',
-              fontSize: 12, color: T.muted, background: 'none', border: 'none',
-              textDecoration: 'underline', cursor: 'pointer', padding: 4, minHeight: 44,
-            }}
-          >
-            I'm feeling good — show my full plan
-          </button>
-        </div>
-      )}
-
-      {/* ── Sprint Rail ── */}
-      {(!isRescueMode || dismissed) && !isGenerating && !isAbandoned && !isAchieved && goal.milestones.length > 0 && (
-        <SprintRail
-          milestones={goal.milestones}
-          activeMilestone={activeMilestone}
-          milestonesTotal={goal.milestones_total}
-          failedMilestone={failedMilestone}
-          onRetryGeneration={(milestoneId) => mutations.retrySprintGeneration(goal.id, milestoneId)}
-          isRetrying={mutations.isRetryingSprintGeneration}
-        />
-      )}
+      {/* ── Milestones section (generating skeleton, rescue mode, sprint rail) ── */}
+      <GoalCardMilestones
+        goal={goal}
+        isRescueMode={isRescueMode}
+        dismissed={dismissed}
+        isGenerating={isGenerating}
+        isAbandoned={isAbandoned}
+        isAchieved={isAchieved}
+        activeMilestone={activeMilestone}
+        failedMilestone={failedMilestone}
+        isTriggeringRescue={mutations.isTriggeringRescue}
+        isRetryingSprintGeneration={mutations.isRetryingSprintGeneration}
+        onStartEasyMode={handleStartEasyMode}
+        onDismiss={handleDismiss}
+        onRetryGeneration={(milestoneId) => mutations.retrySprintGeneration(goal.id, milestoneId)}
+      />
 
       {/* ── Abandoned banner ── */}
       {isAbandoned && (
@@ -290,101 +204,30 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
       )}
 
       {/* ── Status actions ── */}
-      {!isGenerating && !isAbandoned && !isAchieved && (
-        <div style={{ padding: '0 18px 14px', display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
-          {allMilestonesComplete ? (
-            <button
-              onClick={() => mutations.changeStatus(goal.id, 'achieved')}
-              style={{
-                cursor: 'pointer', padding: '5px 14px', borderRadius: 8,
-                fontFamily: T.mono, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
-                background: `${T.amber}20`, color: T.amber, border: `1px solid ${T.amber}60`,
-                boxShadow: `0 0 14px ${T.amber}50`,
-              }}
-            >
-              ✦ Ascend to Achieved
-            </button>
-          ) : allSprintTasksDone && activeMilestone ? (
-            <button
-              onClick={async () => {
-                setCompletingMilestone(true)
-                await mutations.completeMilestone(goal.id, activeMilestone.id)
-                setCompletingMilestone(false)
-              }}
-              disabled={completingMilestone}
-              style={{
-                cursor: completingMilestone ? 'default' : 'pointer',
-                padding: '5px 14px', borderRadius: 8,
-                fontFamily: T.mono, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
-                background: `${T.indigo}20`, color: T.indigo, border: `1px solid ${T.indigo}55`,
-                boxShadow: `0 0 12px ${T.indigo}35`, opacity: completingMilestone ? 0.6 : 1,
-              }}
-            >
-              {completingMilestone
-                ? '···'
-                : `✦ Complete Sprint → ${nextMilestone ? 'Start ' + nextMilestone.title : 'Final Lap'}`}
-            </button>
-          ) : doneToday ? (
-            <span style={{
-              padding: '5px 12px', borderRadius: 8, fontFamily: T.mono, fontSize: 11,
-              background: `${T.emerald}15`, color: T.emerald, border: `1px solid ${T.emerald}40`,
-              letterSpacing: '0.04em',
-            }}>
-              ✓ Today's Work Done
-            </span>
-          ) : null}
-          <button
-            onClick={handleAbandonClick}
-            aria-label={confirmAbandon ? 'Confirm abandon goal' : 'Abandon goal'}
-            style={{
-              cursor: 'pointer', minHeight: 44, minWidth: 44,
-              padding: '9px 14px', borderRadius: 8, fontFamily: T.mono,
-              fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
-              background: confirmAbandon ? `${T.amber}15` : 'transparent',
-              color: confirmAbandon ? T.amber : T.muted,
-              border: confirmAbandon ? `1px solid ${T.amber}60` : `1px solid ${T.border}`,
-              transition: 'background 0.15s, border-color 0.15s, color 0.15s',
-            }}
-          >
-            {confirmAbandon ? 'Sure? Abandon' : '✕ Abandon'}
-          </button>
-          <button
-            onClick={handleDeleteClick}
-            aria-label={confirmDelete ? 'Confirm delete goal' : 'Delete goal'}
-            style={{
-              cursor: 'pointer', minHeight: 44, minWidth: 44,
-              padding: '9px 14px', borderRadius: 8, fontFamily: T.mono,
-              fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
-              background: confirmDelete ? `${T.rose}25` : 'transparent',
-              color: T.rose,
-              border: confirmDelete ? `1px solid ${T.rose}80` : `1px solid ${T.rose}40`,
-              transition: 'background 0.15s, border-color 0.15s',
-            }}
-          >
-            {confirmDelete ? 'Sure? Delete' : 'Delete'}
-          </button>
-        </div>
-      )}
-      {(isAbandoned || isAchieved) && (
-        <div style={{ padding: '0 18px 14px', display: 'flex', gap: 7 }}>
-          {isAbandoned && <Btn onClick={() => mutations.changeStatus(goal.id, 'active')} variant="ghost" small>▶ Revive</Btn>}
-          <button
-            onClick={handleDeleteClick}
-            aria-label={confirmDelete ? 'Confirm delete goal' : 'Delete goal'}
-            style={{
-              cursor: 'pointer', minHeight: 44, minWidth: 44,
-              padding: '9px 14px', borderRadius: 8, fontFamily: T.mono,
-              fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
-              background: confirmDelete ? `${T.rose}25` : 'transparent',
-              color: T.rose,
-              border: confirmDelete ? `1px solid ${T.rose}80` : `1px solid ${T.rose}40`,
-              transition: 'background 0.15s, border-color 0.15s',
-            }}
-          >
-            {confirmDelete ? 'Sure? Delete' : 'Delete'}
-          </button>
-        </div>
-      )}
+      <GoalCardActions
+        goal={goal}
+        isGenerating={isGenerating}
+        isAbandoned={isAbandoned}
+        isAchieved={isAchieved}
+        allMilestonesComplete={allMilestonesComplete}
+        allSprintTasksDone={allSprintTasksDone}
+        activeMilestone={activeMilestone}
+        nextMilestone={nextMilestone}
+        doneToday={doneToday}
+        completingMilestone={completingMilestone}
+        confirmAbandon={confirmAbandon}
+        confirmDelete={confirmDelete}
+        onAchieve={() => mutations.changeStatus(goal.id, 'achieved')}
+        onCompleteMilestone={async () => {
+          if (!activeMilestone) return
+          setCompletingMilestone(true)
+          await mutations.completeMilestone(goal.id, activeMilestone.id)
+          setCompletingMilestone(false)
+        }}
+        onAbandonClick={handleAbandonClick}
+        onDeleteClick={handleDeleteClick}
+        onRevive={() => mutations.changeStatus(goal.id, 'active')}
+      />
 
       {/* ── Expanded section ── */}
       {open && (
