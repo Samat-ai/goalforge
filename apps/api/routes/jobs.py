@@ -13,8 +13,8 @@ from database import get_db
 from models import Goal, NotificationLog, User, WebPushSubscription
 from services.email_service import TaskDigestItem, send_reminder_digest, send_rescue_email
 from services.push_service import send_push_digest
-from services.star_log_service import get_or_create_star_log
 from services.rescue_service import goal_is_rescue_mode
+from services.star_log_service import get_or_create_star_log
 from utils import user_now, user_today
 
 router = APIRouter()
