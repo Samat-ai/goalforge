@@ -10,6 +10,8 @@ import Stars from './pages/Stars'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
 import Settings from './pages/Settings'
+import Onboarding from './pages/Onboarding'
+import OnboardingGuard from './components/OnboardingGuard'
 import ErrorBoundary from './components/ErrorBoundary'
 import EnergyParamCapture from './components/EnergyParamCapture'
 import OfflineBanner from './components/OfflineBanner'
@@ -49,11 +51,66 @@ export default function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/sign-in/*" element={<SignInPage />} />
           <Route path="/sign-up/*" element={<SignUpPage />} />
-          <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
-          <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
-          <Route path="/stars" element={<AuthGuard><Stars /></AuthGuard>} />
-          <Route path="/coach" element={<AuthGuard><Coach /></AuthGuard>} />
-          <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
+          {/* Onboarding — authenticated but intentionally before OnboardingGuard */}
+          <Route
+            path="/onboarding"
+            element={
+              <AuthGuard>
+                <Onboarding />
+              </AuthGuard>
+            }
+          />
+          {/* Authenticated + onboarding-complete routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <AuthGuard>
+                <OnboardingGuard>
+                  <Dashboard />
+                </OnboardingGuard>
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <AuthGuard>
+                <OnboardingGuard>
+                  <Analytics />
+                </OnboardingGuard>
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/stars"
+            element={
+              <AuthGuard>
+                <OnboardingGuard>
+                  <Stars />
+                </OnboardingGuard>
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/coach"
+            element={
+              <AuthGuard>
+                <OnboardingGuard>
+                  <Coach />
+                </OnboardingGuard>
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <AuthGuard>
+                <OnboardingGuard>
+                  <Settings />
+                </OnboardingGuard>
+              </AuthGuard>
+            }
+          />
           <Route path="*" element={<div className="p-8 text-center">404 - Page Not Found</div>} />
         </Routes>
       </ErrorBoundary>
