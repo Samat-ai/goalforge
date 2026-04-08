@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     db_max_overflow: int = 20
     db_pool_timeout: int = 30
     db_pool_recycle: int = 1800
+    sentry_dsn: str = ""
+    sentry_traces_sample_rate: float = 0.1
 
 
 settings = Settings()

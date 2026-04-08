@@ -7,6 +7,9 @@ import AuthInterceptor from './components/AuthInterceptor'
 import './index.css'
 import App from './App.tsx'
 import { ConfettiProvider } from './components/ConfettiContext'
+import { initSentry } from "./lib/sentry"
+
+initSentry(import.meta.env.VITE_SENTRY_DSN, import.meta.env.MODE)
 
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
