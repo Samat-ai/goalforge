@@ -2,7 +2,7 @@
 
 import csv
 import io
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, select
@@ -29,7 +29,7 @@ from schemas import (
     WeeklyReflectionResponse,
     WeeklyReviewResponse,
 )
-from utils import user_today
+from utils import user_today, utc_now
 
 router = APIRouter()
 
@@ -434,7 +434,7 @@ async def export_user_data(
     )
     push_subs = push_subs_result.scalars().all()
 
-    exported_at = datetime.now(timezone.utc).isoformat()
+    exported_at = utc_now().isoformat()
 
     if format == "csv":
         output = io.StringIO()

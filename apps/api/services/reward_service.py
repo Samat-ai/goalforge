@@ -162,18 +162,13 @@ async def compute_consistency_score(user_id: str, db: AsyncSession) -> int:
     Count distinct calendar days in the last 14 days on which the user
     completed at least one task. Uses user's timezone for window-start calculation.
     """
-    from utils import user_today  # avoid circular at module level
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    from utils import get_user_tz, user_today  # avoid circular at module level
 
     user_result = await db.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
     tz_str = (user.timezone if user and user.timezone else "UTC") or "UTC"
 
-    try:
-        user_tz = ZoneInfo(tz_str)
-    except (ZoneInfoNotFoundError, KeyError, TypeError):
-        user_tz = ZoneInfo("UTC")
-
+    user_tz = get_user_tz(tz_str)
     today = user_today(tz_str)
     window_start_date = today - timedelta(days=13)  # 14-day window inclusive
     window_start_dt = datetime.combine(window_start_date, time.min).replace(tzinfo=user_tz)

@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import func, select, update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +15,7 @@ from models import DailyTask, Goal, Milestone, User
 from schemas import AITaskOutput
 from services import reward_service as _reward_service
 from services.reward_service import RewardResult
-from utils import user_today
+from utils import user_today, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +133,7 @@ async def _pre_generate_sprint(
                 await db.execute(
                     sql_update(Milestone)
                     .where(Milestone.id == milestone_id)
-                    .values(sprint_status="generating", generation_started_at=datetime.now(timezone.utc))
+                    .values(sprint_status="generating", generation_started_at=utc_now())
                 )
         except Exception as exc:
             logger.error("Pre-gen: could not set generating status for %s: %s", milestone_id, exc)
@@ -216,7 +216,7 @@ async def complete_task_and_award_points(
     Returns a RewardResult describing what was awarded (tier, points, collectible).
     """
     task.is_completed = True
-    task.completed_at = datetime.now(timezone.utc)
+    task.completed_at = utc_now()
     await db.flush()
 
     # User-added tasks earn no points and no drops — they exist to track work,
