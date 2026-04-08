@@ -24,7 +24,8 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from config import settings
 from database import engine, get_db, Base
-from rate_limiting import limiter, rate_limit_enabled
+from middleware.rate_limit_middleware import UserIdMiddleware
+from rate_limiting import create_limiter
 from routes import accountability, coach, energy, goals, jobs, milestones, push, rewards, shop, tasks, users
 
 # ---------------------------------------------------------------------------
@@ -131,10 +132,11 @@ async def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded)
     )
 
 
-if rate_limit_enabled:
-    app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-    app.add_middleware(SlowAPIMiddleware)
+limiter = create_limiter(settings.redis_url)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(UserIdMiddleware)
+app.add_middleware(SlowAPIMiddleware)
 
 
 # ---------------------------------------------------------------------------
