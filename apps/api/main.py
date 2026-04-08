@@ -25,6 +25,9 @@ from slowapi.middleware import SlowAPIMiddleware
 from config import settings
 from database import engine, get_db, Base
 from rate_limiting import limiter, rate_limit_enabled
+from sentry_setup import init_sentry
+
+init_sentry(settings.sentry_dsn, settings.environment, settings.sentry_traces_sample_rate)
 from routes import accountability, coach, energy, goals, jobs, milestones, push, rewards, shop, tasks, users
 
 # ---------------------------------------------------------------------------
