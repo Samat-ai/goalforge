@@ -1,0 +1,77 @@
+{% extends "base_email.html.j2" %}
+
+{% block content %}
+  <!-- Header -->
+  <h2 style="margin:0 0 4px;color:#f1f5f9;font-size:20px;font-weight:700;">
+    Your Week {{ week_number }} Star Log &#11088;
+  </h2>
+  <p style="margin:0 0 28px;color:#94a3b8;font-size:14px;">
+    Hi {{ display_name }}, here's a look at your journey this week.
+  </p>
+
+  <!-- AI-generated narrative -->
+  <div style="margin-bottom:28px;color:#cbd5e1;font-size:14px;line-height:1.8;">
+    {% for paragraph in narrative.split('\n\n') %}
+      {% if paragraph.strip() %}
+    <p style="margin:0 0 14px;">{{ paragraph.strip() }}</p>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <!-- Stats box -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;background:#1e293b;border-radius:10px;overflow:hidden;">
+    <tr>
+      <td style="padding:16px;text-align:center;border-right:1px solid #0f172a;">
+        <p style="margin:0;color:#4ade80;font-size:26px;font-weight:700;">{{ stats.tasks_completed }}</p>
+        <p style="margin:4px 0 0;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Tasks Done</p>
+      </td>
+      <td style="padding:16px;text-align:center;border-right:1px solid #0f172a;">
+        <p style="margin:0;color:#fbbf24;font-size:26px;font-weight:700;">{{ stats.stars_earned }}</p>
+        <p style="margin:4px 0 0;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Stars Earned</p>
+      </td>
+      <td style="padding:16px;text-align:center;">
+        <p style="margin:0;color:#f472b6;font-size:26px;font-weight:700;">{{ stats.streak_days }}</p>
+        <p style="margin:4px 0 0;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Streak Days</p>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Evolution stage -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;">
+    <tr>
+      <td style="padding:16px 20px;">
+        <table cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td>
+              <span style="color:#a5b4fc;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Current Evolution Stage</span>
+              <p style="margin:6px 0 0;color:#e2e8f0;font-size:18px;font-weight:700;">
+                &#127775; {{ stats.stage_name }}
+              </p>
+            </td>
+            <td style="text-align:right;vertical-align:middle;">
+              <span style="display:inline-block;padding:6px 14px;background:#1e293b;border-radius:20px;color:#a5b4fc;font-size:12px;font-weight:600;">
+                Week {{ week_number }}
+              </span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <!-- CTA button -->
+  <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+    <tr>
+      <td style="border-radius:8px;background:linear-gradient(135deg,#4338ca,#6366f1);">
+        <a href="{{ app_url }}/star-log" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+          Read Full Log &rarr;
+        </a>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Motivational close -->
+  <p style="margin:0;color:#64748b;font-size:13px;line-height:1.6;">
+    Keep forging forward &mdash; every star you earn is proof of your commitment. See you next week! &#9889;
+  </p>
+{% endblock %}
