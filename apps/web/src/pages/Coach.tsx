@@ -6,6 +6,8 @@ import AppHeader from '../components/AppHeader'
 import { T } from '../lib/theme'
 import { CoachPanelSkeleton } from '../components/ui/Skeleton'
 import { useCoachSessionQuery, useProfileQuery, useSendCoachMessageMutation, useStartCoachSessionMutation } from '../hooks'
+import UpgradePrompt from '../components/UpgradePrompt'
+import { useUpgradePrompt } from '../hooks/useUpgradePrompt'
 
 const TOTAL_INTAKE_QUESTIONS = 5
 
@@ -20,6 +22,11 @@ export default function Coach() {
 
   const [draft, setDraft] = useState('')
   const feedRef = useRef<HTMLDivElement | null>(null)
+
+  const { activeFeature, showUpgrade, hideUpgrade } = useUpgradePrompt()
+
+  // Free plan: hard-coded to 'free' until billing integration exists.
+  const plan = 'free'
 
   const answeredCount = session ? session.messages.filter(m => m.role === 'user').length : 0
   const progressPct = Math.min(100, Math.round((answeredCount / TOTAL_INTAKE_QUESTIONS) * 100))
@@ -101,7 +108,13 @@ export default function Coach() {
               You will get a real plan, not a motivational speech.
             </div>
             <button
-              onClick={() => { void handleStart() }}
+              onClick={() => {
+                if (plan === 'free') {
+                  showUpgrade('coaching')
+                  return
+                }
+                void handleStart()
+              }}
               disabled={isStarting}
               style={{
                 minHeight: 44,
@@ -287,6 +300,14 @@ export default function Coach() {
           </section>
         )}
       </main>
+
+      {activeFeature && (
+        <UpgradePrompt
+          variant="modal"
+          feature={activeFeature}
+          onClose={hideUpgrade}
+        />
+      )}
     </div>
   )
 }

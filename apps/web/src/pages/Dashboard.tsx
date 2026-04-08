@@ -18,6 +18,9 @@ import { dayDiff, todayStr } from '../lib/gamification'
 import type { Goal, RewardDrop } from '../lib/types'
 import { useConfetti } from '../components/ConfettiContext'
 import { GoalCardSkeleton } from '../components/ui/Skeleton'
+import GoalLimitBanner from '../components/GoalLimitBanner'
+import UpgradePrompt from '../components/UpgradePrompt'
+import { useUpgradePrompt } from '../hooks/useUpgradePrompt'
 
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
 const e2eUserId = import.meta.env.VITE_E2E_USER_ID ?? 'user_e2e'
@@ -291,6 +294,22 @@ export default function Dashboard() {
     return triggered
   })
 
+  const { activeFeature, showUpgrade, hideUpgrade } = useUpgradePrompt()
+
+  // Free plan: hard-coded to 'free' until billing integration exists.
+  // Replace with real plan data from useProfileQuery when available.
+  const plan = 'free'
+  const FREE_GOAL_LIMIT = 2
+  const activeGoalCount = goals.filter(g => g.status === 'active').length
+
+  function handleAddGoal(text: string) {
+    if (plan === 'free' && activeGoalCount >= FREE_GOAL_LIMIT) {
+      showUpgrade('goals')
+      return
+    }
+    mutations.addGoal(text)
+  }
+
   const { data: rewards = [] } = useRewardsQuery(userId ?? '')
   const equipMutation = useEquipRewardMutation(userId ?? '')
   const mutations = useGoalMutations(userId ?? '', (drop) => setActiveRewardDrop(drop))
@@ -341,6 +360,7 @@ export default function Dashboard() {
       `}</style>
 
       <AppHeader pts={pts} onOpenCollection={() => setShowCollection(true)} />
+      <GoalLimitBanner plan={plan} goalCount={activeGoalCount} />
 
       <main id="main-content" style={{ maxWidth: 1100, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
 
@@ -390,7 +410,7 @@ export default function Dashboard() {
             <WelcomeBackCard goals={goals} onFocus={() => setFocusOpen(true)} />
             <DoThisNow goals={goals} />
             <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} onEnergyOpen={() => setShowEnergyModal(true)} />
-            <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} />
+            <AddGoal onAdd={handleAddGoal} value={addGoalText} onChange={setAddGoalText} />
 
             {goals.length === 0 ? (
               <EmptyState onSelect={setAddGoalText} />
@@ -468,7 +488,12 @@ export default function Dashboard() {
       {showEnergyModal && (
         <EnergyModal
           isLoading={energyResizeMutation.isPending}
+          isProGated={plan === 'free'}
           onConfirm={() => {
+            if (plan === 'free') {
+              setShowEnergyModal(false)
+              return
+            }
             energyResizeMutation.mutate(undefined, {
               onSettled: () => setShowEnergyModal(false),
             })
@@ -478,6 +503,14 @@ export default function Dashboard() {
       )}
 
       <CompanionWidget pts={pts} />
+
+      {activeFeature && (
+        <UpgradePrompt
+          variant="modal"
+          feature={activeFeature}
+          onClose={hideUpgrade}
+        />
+      )}
     </div>
   )
 }
