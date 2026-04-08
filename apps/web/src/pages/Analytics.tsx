@@ -11,6 +11,7 @@ import {
   useLatestWeeklyReflectionQuery,
   useProfileQuery,
 } from '../hooks'
+import { useAnalyticsOverview } from '../hooks/useAnalytics'
 
 // ── Analytics page ────────────────────────────────────────────────────────────
 export default function Analytics() {
@@ -21,6 +22,7 @@ export default function Analytics() {
   const { badges } = useBadgesQuery(user?.id)
   const { reflection } = useLatestWeeklyReflectionQuery(user?.id)
   const { createReflection, isSaving } = useCreateWeeklyReflectionMutation(user?.id ?? '')
+  const { overview } = useAnalyticsOverview(user?.id)
   const [wentWell, setWentWell] = useState('')
   const [blockers, setBlockers] = useState('')
   const [weekRating, setWeekRating] = useState(3)
@@ -68,13 +70,13 @@ export default function Analytics() {
       tasksByDate.set(d, (tasksByDate.get(d) ?? 0) + 1)
     }
 
-    // Find the Sunday 13 weeks ago
+    // Find the Sunday 13 weeks ago (covers ~90 days)
     const todayDate = new Date(today + 'T12:00:00')
     const todayDow = todayDate.getDay() // 0=Sun
     const endOfWeekSat = new Date(todayDate)
     endOfWeekSat.setDate(todayDate.getDate() + (6 - todayDow)) // this Saturday
     const startSunday = new Date(endOfWeekSat)
-    startSunday.setDate(endOfWeekSat.getDate() - (13 * 7 - 1)) // 13 weeks back
+    startSunday.setDate(endOfWeekSat.getDate() - (13 * 7 - 1)) // 13 weeks back (~90 days)
 
     const heatmapWeeks: { date: string; count: number; dow: number }[][] = []
     const heatmapMonthLabels: { col: number; label: string }[] = []
@@ -200,6 +202,30 @@ export default function Analytics() {
 
         {!loading && analytics && (
           <>
+            {/* ═══ STATS OVERVIEW (server-computed) ═══ */}
+            {overview && (
+              <section style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 12 }}>
+                  STATS OVERVIEW
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(148px, 1fr))', gap: 10 }}>
+                  {[
+                    { label: 'Current Streak', value: `${overview.current_streak_days}d`, color: T.amber },
+                    { label: 'Longest Streak', value: `${overview.longest_streak_days}d`, color: T.indigo },
+                    { label: 'Tasks Completed', value: overview.total_tasks_completed, color: T.emerald },
+                    { label: 'Active Days / 30', value: overview.active_days_last_30, color: T.orange },
+                    { label: 'Peak Hour', value: `${overview.most_active_hour}:00`, color: T.rose },
+                    { label: 'Avg Tasks / Day', value: overview.average_tasks_per_day.toFixed(1), color: T.textDim },
+                  ].map(s => (
+                    <div key={s.label} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 9, padding: '13px 15px' }}>
+                      <div style={{ fontFamily: T.mono, fontSize: 24, color: s.color }}>{s.value}</div>
+                      <div style={{ fontSize: 10, color: T.muted, fontFamily: T.mono, marginTop: 2 }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* ═══ SECTION 1: OVERVIEW ═══ */}
             <section style={{ marginBottom: 28 }}>
               <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 14 }}>
@@ -245,7 +271,7 @@ export default function Analytics() {
                 padding: '16px 18px', marginBottom: 14, overflowX: 'auto',
               }}>
                 <div style={{ fontSize: 11, color: T.textDim, fontFamily: T.mono, marginBottom: 12 }}>
-                  Completion Heatmap
+                  Completion Heatmap (90 days)
                 </div>
                 <div style={{ display: 'flex', gap: 0 }}>
                   {/* Y-axis day labels */}

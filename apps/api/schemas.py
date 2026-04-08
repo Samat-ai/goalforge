@@ -494,3 +494,79 @@ class StarLogResponse(BaseModel):
     highlights: list[str]
     is_fallback: bool
     created_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# Enhanced analytics schemas
+# ---------------------------------------------------------------------------
+
+class AnalyticsOverview(BaseModel):
+    total_tasks_completed: int
+    total_goals_created: int
+    total_goals_achieved: int
+    current_streak_days: int
+    longest_streak_days: int
+    average_tasks_per_day: float
+    most_active_hour: int
+    active_days_last_30: int
+
+
+class HeatmapDay(BaseModel):
+    date: str
+    count: int
+    goals_active: int
+
+
+class HeatmapResponse(BaseModel):
+    data: list[HeatmapDay]
+    max_count: int
+
+
+class StreakPeriod(BaseModel):
+    start_date: str
+    end_date: str
+    length: int
+
+
+class StreakHistory(BaseModel):
+    current_streak: int
+    longest_streak: int
+    streak_history: list[StreakPeriod]
+
+
+class GoalMetrics(BaseModel):
+    goal_id: str
+    smart_title: str
+    goal_type: str
+    status: str
+    tasks_completed: int
+    tasks_total: int
+    completion_rate: float
+    days_active: int
+    milestones_completed: int
+    milestones_total: int
+
+
+class GoalPerformance(BaseModel):
+    goals: list[GoalMetrics]
+
+
+class HourlyCount(BaseModel):
+    hour: int
+    count: int
+
+
+class ActivityByHour(BaseModel):
+    hourly: list[HourlyCount]
+    peak_hour: int
+
+
+class WeekVelocity(BaseModel):
+    week_start: str
+    tasks_completed: int
+    week_number: int
+
+
+class VelocityResponse(BaseModel):
+    weeks: list[WeekVelocity]
+    trend: Literal["improving", "declining", "stable"]
