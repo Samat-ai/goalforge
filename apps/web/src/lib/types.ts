@@ -1,3 +1,15 @@
+/**
+ * Hand-maintained frontend types for GoalForge.
+ *
+ * ⚠️  MIGRATION IN PROGRESS
+ * These types are being replaced by auto-generated types from the OpenAPI spec.
+ * See: src/lib/api-types.generated.ts  (generated)
+ *      src/lib/api-client.ts           (type-safe fetch client)
+ *
+ * To regenerate types: npm run generate:types  (requires running API server)
+ * New code should prefer api-types.generated.ts over this file.
+ */
+
 // Shared data interfaces used across Dashboard and its sub-components
 
 export interface PaginatedGoalsResponse {
