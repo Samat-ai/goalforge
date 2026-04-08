@@ -327,7 +327,7 @@ export default function Dashboard() {
 
   // ── Render ──
   return (
-    <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.mono }}>
+    <div className="dark:bg-[#07070f] bg-white" style={{ minHeight: '100vh', color: 'var(--text-primary)', fontFamily: T.mono, transition: 'background 0.3s ease, color 0.3s ease' }}>
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         ::-webkit-scrollbar { width: 4px; }
@@ -346,10 +346,10 @@ export default function Dashboard() {
 
         {/* Page heading */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontFamily: T.serif, fontWeight: 400, color: T.text, marginBottom: 3 }} className="text-[26px] sm:text-[32px] lg:text-[38px]">
+          <h1 style={{ fontFamily: T.serif, fontWeight: 400, color: 'var(--text-primary)', marginBottom: 3 }} className="text-[26px] sm:text-[32px] lg:text-[38px]">
             Your Goals
           </h1>
-          <p style={{ fontSize: 12, color: T.muted }}>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
             {goals.filter(g => g.status === 'active').length} active · {goals.length} total
           </p>
         </div>
