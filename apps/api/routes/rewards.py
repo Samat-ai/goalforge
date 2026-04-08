@@ -11,20 +11,23 @@ from auth import get_current_user_id
 from database import get_db
 from deps import _load_reward_with_ownership
 from models import Reward
+from collectibles import BY_KEY
 from schemas import RewardResponse
-from services.reward_service import get_collectible_info
 
 router = APIRouter()
 
 
 def _to_reward_response(reward: Reward) -> RewardResponse:
-    info = get_collectible_info(reward.reward_key) or {}
+    c = BY_KEY.get(reward.reward_key)
+    lore_text = c.description if (c and c.reward_type == "lore") else None
     return RewardResponse(
         id=reward.id,
         reward_type=reward.reward_type,
         reward_key=reward.reward_key,
-        display_name=info.get("display_name", reward.reward_key),
-        body=info.get("body"),
+        display_name=c.display_name if c else reward.reward_key,
+        description=lore_text,
+        rarity=c.rarity if c else None,
+        body=lore_text,
         is_equipped=reward.is_equipped,
         acquired_at=reward.acquired_at,
     )
