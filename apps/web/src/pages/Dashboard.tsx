@@ -6,6 +6,7 @@ import { Creature } from '../components/GamificationSvgs'
 import TodayBar from '../components/TodayBar'
 import AddGoal from '../components/AddGoal'
 import GoalCard from '../components/GoalCard'
+import GoalSearch from '../components/GoalSearch'
 import FocusOverlay from '../components/FocusOverlay'
 import RewardModal from '../components/RewardModal'
 import CollectionModal from '../components/CollectionModal'
@@ -345,13 +346,33 @@ export default function Dashboard() {
       <main id="main-content" style={{ maxWidth: 1100, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
 
         {/* Page heading */}
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontFamily: T.serif, fontWeight: 400, color: T.text, marginBottom: 3 }} className="text-[26px] sm:text-[32px] lg:text-[38px]">
-            Your Goals
-          </h1>
-          <p style={{ fontSize: 12, color: T.muted }}>
-            {goals.filter(g => g.status === 'active').length} active · {goals.length} total
-          </p>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 style={{ fontFamily: T.serif, fontWeight: 400, color: T.text, marginBottom: 3 }} className="text-[26px] sm:text-[32px] lg:text-[38px]">
+                Your Goals
+              </h1>
+              <p style={{ fontSize: 12, color: T.muted }}>
+                {goals.filter(g => g.status === 'active').length} active · {goals.length} total
+              </p>
+            </div>
+          </div>
+          {userId && (
+            <div style={{ maxWidth: 380 }}>
+              <GoalSearch
+                userId={userId}
+                onSelect={(goal) => {
+                  const el = document.getElementById(`goal-card-${goal.id}`)
+                  if (el) {
+                    setFilter(goal.status)
+                    setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+                  } else {
+                    setFilter(goal.status)
+                  }
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Loading skeletons */}

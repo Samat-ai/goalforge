@@ -157,6 +157,38 @@ async def list_goals(
 
 
 @router.get(
+    "/users/{user_id}/goals/search",
+    response_model=list[GoalResponse],
+    summary="Full-text search goals by title and description",
+)
+async def search_goals(
+    user_id: str,
+    q: str = Query("", description="Search query (min 2 chars)"),
+    status_filter: str = Query("all", alias="status", description="Filter by status: active | achieved | all"),
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    if user_id != current_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    if len(q.strip()) < 2:
+        return []
+    stmt = (
+        select(Goal)
+        .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
+        .where(Goal.user_id == user_id)
+        .where(
+            Goal.smart_title.ilike(f"%{q}%") | Goal.smart_description.ilike(f"%{q}%")
+        )
+        .order_by(Goal.created_at.desc())
+        .limit(50)
+    )
+    if status_filter in ("active", "achieved", "abandoned"):
+        stmt = stmt.where(Goal.status == status_filter)
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+@router.get(
     "/goals/{goal_id}",
     response_model=GoalResponse,
     summary="Get a single goal by ID",
