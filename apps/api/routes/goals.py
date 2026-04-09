@@ -1,5 +1,6 @@
 """Goal CRUD routes."""
 
+import hashlib
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -112,6 +113,8 @@ async def create_goal(
     summary="List all goals for a user",
 )
 async def list_goals(
+    request: Request,
+    response: Response,
     user_id: str,
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -152,6 +155,17 @@ async def list_goals(
                     mutated = True
     if mutated:
         await db.flush()
+
+    # ETag: stable hash of goal IDs + their updated_at timestamps + total count.
+    # Lets clients skip re-parsing an unchanged list.
+    etag_source = f"{total}:" + ",".join(
+        f"{g.id}:{g.updated_at.isoformat() if g.updated_at else ''}" for g in items
+    )
+    etag = f'"{hashlib.md5(etag_source.encode()).hexdigest()}"'  # noqa: S324 — non-crypto use
+    response.headers["ETag"] = etag
+    response.headers["Cache-Control"] = "private, no-cache"  # revalidate, don't serve stale
+    if request.headers.get("If-None-Match") == etag:
+        return Response(status_code=304)
 
     return PaginatedGoalsResponse(items=items, total=total, limit=limit, offset=offset)
 
