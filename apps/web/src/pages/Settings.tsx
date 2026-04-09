@@ -31,12 +31,37 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
   } = useAccountabilityMutations(userId)
 
   const [displayName, setDisplayName] = useState(settings.display_name ?? '')
+  const [displayNameError, setDisplayNameError] = useState<string | null>(null)
   const [reminderEnabled, setReminderEnabled] = useState(settings.reminder_enabled)
   const [reminderHour, setReminderHour] = useState(settings.reminder_hour)
   const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteEmailError, setInviteEmailError] = useState<string | null>(null)
+
+  function validateDisplayName(raw: string): string | null {
+    if (raw.trim().length > 0 && raw !== raw.trim()) {
+      return 'Name must not have leading or trailing spaces'
+    }
+    return null
+  }
+
+  function handleDisplayNameBlur() {
+    const trimmed = displayName.trim()
+    setDisplayName(trimmed)
+    setDisplayNameError(validateDisplayName(trimmed))
+  }
+
+  function validateEmail(raw: string): string | null {
+    const v = raw.trim()
+    if (!v) return 'Email is required'
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Enter a valid email address'
+    return null
+  }
 
   function save() {
     if (saving) return
+    const nameErr = validateDisplayName(displayName)
+    setDisplayNameError(nameErr)
+    if (nameErr) return
     saveSettings({
       display_name: displayName.trim() || null,
       reminder_enabled: reminderEnabled,
@@ -55,17 +80,32 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
         <input
           type="text"
           value={displayName}
-          onChange={e => setDisplayName(e.target.value)}
+          onChange={e => { setDisplayName(e.target.value); setDisplayNameError(null) }}
+          onBlur={e => {
+            handleDisplayNameBlur()
+            e.currentTarget.style.borderColor = displayNameError ? T.rose : T.border
+          }}
           placeholder="Your name (optional)"
           maxLength={60}
+          aria-describedby={displayNameError ? 'display-name-error' : undefined}
+          aria-invalid={displayNameError ? true : undefined}
           style={{
-            width: '100%', background: T.surface, border: `1px solid ${T.border}`,
+            width: '100%', background: T.surface,
+            border: `1px solid ${displayNameError ? T.rose : T.border}`,
             borderRadius: 7, padding: '10px 13px', color: T.text, fontFamily: T.mono,
             fontSize: 13, outline: 'none', boxSizing: 'border-box',
           }}
-          onFocus={e => { e.currentTarget.style.borderColor = T.orange }}
-          onBlur={e => { e.currentTarget.style.borderColor = T.border }}
+          onFocus={e => { e.currentTarget.style.borderColor = displayNameError ? T.rose : T.orange }}
         />
+        {displayNameError && (
+          <div
+            id="display-name-error"
+            role="alert"
+            style={{ fontSize: 11, color: T.rose, fontFamily: T.mono, marginTop: 5 }}
+          >
+            {displayNameError}
+          </div>
+        )}
         <div style={{ fontSize: 11, color: T.dim, fontFamily: T.mono, marginTop: 7 }}>
           Shown in place of your Clerk username if set.
         </div>
@@ -178,29 +218,47 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
         </label>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <input
-            type="email"
-            value={inviteEmail}
-            onChange={e => setInviteEmail(e.target.value)}
-            placeholder="Invite by email"
-            style={{
-              flex: 1,
-              minHeight: 44,
-              background: T.surface,
-              border: `1px solid ${T.border}`,
-              borderRadius: 8,
-              padding: '10px 12px',
-              color: T.text,
-              fontFamily: T.mono,
-              fontSize: 12,
-            }}
-          />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <input
+              type="email"
+              value={inviteEmail}
+              onChange={e => { setInviteEmail(e.target.value); setInviteEmailError(null) }}
+              onBlur={() => {
+                if (inviteEmail.trim()) setInviteEmailError(validateEmail(inviteEmail))
+              }}
+              placeholder="Invite by email"
+              aria-describedby={inviteEmailError ? 'invite-email-error' : undefined}
+              aria-invalid={inviteEmailError ? true : undefined}
+              style={{
+                minHeight: 44,
+                background: T.surface,
+                border: `1px solid ${inviteEmailError ? T.rose : T.border}`,
+                borderRadius: 8,
+                padding: '10px 12px',
+                color: T.text,
+                fontFamily: T.mono,
+                fontSize: 12,
+              }}
+            />
+            {inviteEmailError && (
+              <div
+                id="invite-email-error"
+                role="alert"
+                style={{ fontSize: 11, color: T.rose, fontFamily: T.mono }}
+              >
+                {inviteEmailError}
+              </div>
+            )}
+          </div>
           <button
             onClick={() => {
               const normalized = inviteEmail.trim()
+              const emailErr = validateEmail(inviteEmail)
+              if (emailErr) { setInviteEmailError(emailErr); return }
               if (!normalized || isSendingInvite) return
               sendInvite(normalized)
               setInviteEmail('')
+              setInviteEmailError(null)
             }}
             disabled={isSendingInvite}
             style={{
