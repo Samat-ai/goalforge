@@ -1,29 +1,126 @@
+version: '3.9'
+
 services:
-  db:
+  postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: goalforge
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: goalforge
+      POSTGRES_PASSWORD: goalforge_dev
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U goalforge -d goalforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   api:
-    build: ./apps/api
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./apps/api:/app
     ports:
       - "8000:8000"
-    env_file: ./apps/api/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://goalforge:goalforge_dev@postgres/goalforge
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "true"
+      ENVIRONMENT: development
+      CORS_ORIGINS: "http://localhost:5173"
+      RATE_LIMIT_ENABLED: "false"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      CLERK_SECRET_KEY: "${CLERK_SECRET_KEY:-}"
+      CLERK_JWKS_URL: "${CLERK_JWKS_URL:-}"
+      JOBS_API_KEY: "${JOBS_API_KEY:-dev_jobs_key}"
+      RESEND_API_KEY: "${RESEND_API_KEY:-}"
+      DEV_EMAIL_OVERRIDE: "${DEV_EMAIL_OVERRIDE:-}"
+      VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-}"
+      VAPID_SUBJECT: "${VAPID_SUBJECT:-mailto:dev@localhost}"
     depends_on:
-      - db
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  celery_worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./apps/api:/app
+    environment:
+      DATABASE_URL: postgresql+asyncpg://goalforge:goalforge_dev@postgres/goalforge
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "true"
+      ENVIRONMENT: development
+      CORS_ORIGINS: "http://localhost:5173"
+      RATE_LIMIT_ENABLED: "false"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      CLERK_SECRET_KEY: "${CLERK_SECRET_KEY:-}"
+      CLERK_JWKS_URL: "${CLERK_JWKS_URL:-}"
+      JOBS_API_KEY: "${JOBS_API_KEY:-dev_jobs_key}"
+      RESEND_API_KEY: "${RESEND_API_KEY:-}"
+      DEV_EMAIL_OVERRIDE: "${DEV_EMAIL_OVERRIDE:-}"
+      VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-}"
+      VAPID_SUBJECT: "${VAPID_SUBJECT:-mailto:dev@localhost}"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: celery -A celery_app worker --loglevel=info -Q default,ai_generation,notifications
+
+  celery_beat:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./apps/api:/app
+    environment:
+      DATABASE_URL: postgresql+asyncpg://goalforge:goalforge_dev@postgres/goalforge
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "true"
+      ENVIRONMENT: development
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      CLERK_SECRET_KEY: "${CLERK_SECRET_KEY:-}"
+      CLERK_JWKS_URL: "${CLERK_JWKS_URL:-}"
+      JOBS_API_KEY: "${JOBS_API_KEY:-dev_jobs_key}"
+      RESEND_API_KEY: "${RESEND_API_KEY:-}"
+      VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-}"
+      VAPID_SUBJECT: "${VAPID_SUBJECT:-mailto:dev@localhost}"
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A celery_app beat --loglevel=info
 
   web:
-    build: ./apps/web
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
     ports:
-      - "5173:8080"
-    depends_on:
-      - api
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:8000
+      VITE_CLERK_PUBLISHABLE_KEY: "${VITE_CLERK_PUBLISHABLE_KEY:-}"
+    command: npm run dev -- --host
 
 volumes:
-  pgdata:
+  postgres_data:
