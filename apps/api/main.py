@@ -23,6 +23,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from config import settings
+from middleware.logging_middleware import RequestLoggingMiddleware
 from database import engine, get_db, Base
 from rate_limiting import limiter, rate_limit_enabled
 from routes import accountability, coach, energy, goals, jobs, milestones, push, rewards, shop, tasks, users
@@ -30,6 +31,12 @@ from routes import accountability, coach, energy, goals, jobs, milestones, push,
 # ---------------------------------------------------------------------------
 # Structured logging
 # ---------------------------------------------------------------------------
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
 
 request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
 
@@ -89,6 +96,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(RequestLoggingMiddleware)
 
 
 # ---------------------------------------------------------------------------
