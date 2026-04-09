@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import api from '../lib/api'
 import { queryKeys } from '../lib/queryKeys'
-import type { Goal, PaginatedGoalsResponse } from '../lib/types'
+import type { CursorPageGoalsResponse, Goal, PaginatedGoalsResponse } from '../lib/types'
 
 const PARAMS = { limit: 20, offset: 0 } as const
 const GENERATING_POLL_MS = 5_000
@@ -36,5 +36,36 @@ export function useGoalsQuery(userId: string | undefined) {
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,
+  }
+}
+
+const INFINITE_LIMIT = 20
+
+export function useInfiniteGoals(userId: string | undefined) {
+  const query = useInfiniteQuery({
+    queryKey: ['goals', userId, 'infinite'],
+    queryFn: async ({ pageParam }: { pageParam: string | null }) => {
+      const params = new URLSearchParams({ limit: String(INFINITE_LIMIT) })
+      if (pageParam) params.set('cursor', pageParam)
+      const { data } = await api.get<CursorPageGoalsResponse>(
+        `/users/${userId}/goals?${params.toString()}`,
+      )
+      return data
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage: CursorPageGoalsResponse) =>
+      lastPage.has_more ? lastPage.next_cursor : undefined,
+    enabled: !!userId,
+  })
+
+  const goals = query.data?.pages.flatMap(p => p.items) ?? []
+
+  return {
+    goals,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    fetchNextPage: query.fetchNextPage,
+    hasNextPage: query.hasNextPage,
+    isFetchingNextPage: query.isFetchingNextPage,
   }
 }
