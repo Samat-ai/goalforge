@@ -24,6 +24,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from config import settings
 from database import engine, get_db, Base
+from middleware.security_headers import SecurityHeadersMiddleware
 from rate_limiting import limiter, rate_limit_enabled
 from routes import accountability, coach, energy, goals, jobs, milestones, push, rewards, shop, tasks, users
 
@@ -82,11 +83,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Security headers must be added first so they are applied to every response,
+# including CORS pre-flight responses handled by CORSMiddleware below.
+app.add_middleware(SecurityHeadersMiddleware)
+
+# CORS — origins are read from settings.cors_origins (comma-separated string).
+# In production set CORS_ORIGINS to your exact frontend URL(s), e.g.:
+#   CORS_ORIGINS=https://app.goalforge.io
+# Multiple origins: CORS_ORIGINS=https://app.goalforge.io,https://admin.goalforge.io
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in settings.cors_origins.split(",")],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_credentials=True,  # Required for Clerk cookie/header auth
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
