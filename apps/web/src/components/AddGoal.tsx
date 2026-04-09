@@ -10,24 +10,45 @@ const TEMPLATES = [
   { label: '🧘 Wellness',         prompt: 'Build a daily meditation practice, starting with 5 minutes and working up to 20' },
 ]
 
+const MIN_CHARS = 10
+const MAX_CHARS = 500
+const COUNTER_WARN_AT = 450
+
 interface AddGoalProps {
   onAdd: (rawInput: string) => Promise<void>
   value: string
   onChange: (v: string) => void
 }
 
+function getValidationError(text: string): string | null {
+  const trimmed = text.trim()
+  if (trimmed.length === 0) return null // no error shown when empty/untouched
+  if (trimmed.length < MIN_CHARS) return `Please describe your goal in more detail (min ${MIN_CHARS} characters)`
+  if (text.length > MAX_CHARS) return `Goal must be ${MAX_CHARS} characters or fewer`
+  return null
+}
+
 export default function AddGoal({ onAdd, value, onChange }: AddGoalProps) {
   const [loading, setLoading] = useState(false)
   const [status,  setStatus]  = useState<'idle' | 'thinking' | 'done' | 'error'>('idle')
+  const [touched, setTouched] = useState(false)
+
+  const trimmed = value.trim()
+  const charCount = value.length
+  const validationError = touched ? getValidationError(value) : null
+  const isValid = trimmed.length >= MIN_CHARS && charCount <= MAX_CHARS
+  const counterColor = charCount >= COUNTER_WARN_AT ? T.rose : T.muted
 
   const submit = async () => {
-    if (!value.trim() || loading) return
+    setTouched(true)
+    if (!isValid || loading) return
     setLoading(true)
     setStatus('thinking')
     try {
-      await onAdd(value.trim())
+      await onAdd(trimmed)
       setStatus('done')
       onChange('')
+      setTouched(false)
       setTimeout(() => { setStatus('idle'); setLoading(false) }, 700)
     } catch {
       setStatus('error')
@@ -42,22 +63,47 @@ export default function AddGoal({ onAdd, value, onChange }: AddGoalProps) {
       </div>
       <textarea
         value={value}
-        onChange={e => onChange(e.target.value)}
+        onChange={e => { onChange(e.target.value); setTouched(true) }}
+        onBlur={() => setTouched(true)}
         onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit() }}
         placeholder="e.g. get better at leetcode, run a 5k, write a novel..."
         rows={3}
+        aria-describedby={validationError ? 'goal-error' : undefined}
+        aria-invalid={validationError ? true : undefined}
         style={{
-          width: '100%', background: T.surface, border: `1px solid ${T.border}`,
+          width: '100%', background: T.surface,
+          border: `1px solid ${validationError ? T.rose : T.border}`,
           borderRadius: 7, padding: '11px 13px', color: T.text, fontFamily: T.mono,
           fontSize: 13, resize: 'none', outline: 'none', boxSizing: 'border-box',
         }}
       />
+
+      {/* Character counter */}
+      {value.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+          <span style={{ fontSize: 11, fontFamily: T.mono, color: counterColor }}>
+            {charCount} / {MAX_CHARS}
+          </span>
+        </div>
+      )}
+
+      {/* Inline validation error */}
+      {validationError && (
+        <div
+          id="goal-error"
+          role="alert"
+          style={{ marginTop: 6, fontSize: 12, color: T.rose, fontFamily: T.mono }}
+        >
+          {validationError}
+        </div>
+      )}
+
       {!value && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 10 }}>
           {TEMPLATES.map(t => (
             <button
               key={t.label}
-              onClick={() => onChange(t.prompt)}
+              onClick={() => { onChange(t.prompt); setTouched(false) }}
               style={{
                 cursor: 'pointer', minHeight: 44, padding: '8px 13px', borderRadius: 20,
                 fontFamily: T.mono, fontSize: 11, letterSpacing: '0.03em',
@@ -84,7 +130,7 @@ export default function AddGoal({ onAdd, value, onChange }: AddGoalProps) {
       {status === 'done'     && <div style={{ marginTop: 10, fontSize: 12, color: T.emerald, fontFamily: T.mono }}>✓ Goal added!</div>}
       {status === 'error'    && <div style={{ marginTop: 10, fontSize: 12, color: T.rose, fontFamily: T.mono }}>✕ Could not create goal — check your connection and try again.</div>}
       <div style={{ display: 'flex', gap: 8, marginTop: 11 }}>
-        <Btn onClick={submit} loading={loading}>Create Goal →</Btn>
+        <Btn onClick={submit} loading={loading} disabled={touched && !isValid}>Create Goal →</Btn>
       </div>
     </div>
   )
