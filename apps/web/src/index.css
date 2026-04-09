@@ -46,6 +46,11 @@ body {
     #06070f;
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+
 /* ── Animation utilities ── */
 
 .animate-slide-up {
@@ -54,6 +59,10 @@ body {
 
 .animate-companion-pulse {
   animation: companion-pulse 2.8s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }
 
 /* ── Skip-to-content link ── */

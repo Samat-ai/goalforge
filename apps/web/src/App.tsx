@@ -10,6 +10,9 @@ import Stars from './pages/Stars'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
 import Settings from './pages/Settings'
+import NotFoundPage from './pages/NotFoundPage'
+import OfflinePage from './pages/OfflinePage'
+import ErrorPage from './pages/ErrorPage'
 import ErrorBoundary from './components/ErrorBoundary'
 import EnergyParamCapture from './components/EnergyParamCapture'
 import OfflineBanner from './components/OfflineBanner'
@@ -46,15 +49,16 @@ export default function App() {
       <OfflineBanner />
       <ErrorBoundary>
         <Routes>
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<LandingPage />} errorElement={<ErrorPage />} />
           <Route path="/sign-in/*" element={<SignInPage />} />
           <Route path="/sign-up/*" element={<SignUpPage />} />
-          <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
-          <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
-          <Route path="/stars" element={<AuthGuard><Stars /></AuthGuard>} />
-          <Route path="/coach" element={<AuthGuard><Coach /></AuthGuard>} />
-          <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
-          <Route path="*" element={<div className="p-8 text-center">404 - Page Not Found</div>} />
+          <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} errorElement={<ErrorPage />} />
+          <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} errorElement={<ErrorPage />} />
+          <Route path="/stars" element={<AuthGuard><Stars /></AuthGuard>} errorElement={<ErrorPage />} />
+          <Route path="/coach" element={<AuthGuard><Coach /></AuthGuard>} errorElement={<ErrorPage />} />
+          <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} errorElement={<ErrorPage />} />
+          <Route path="/offline" element={<OfflinePage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </ErrorBoundary>
     </BrowserRouter>
