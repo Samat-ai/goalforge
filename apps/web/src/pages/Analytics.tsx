@@ -11,6 +11,7 @@ import {
   useLatestWeeklyReflectionQuery,
   useProfileQuery,
 } from '../hooks'
+import QueryErrorBoundary from '../components/QueryErrorBoundary'
 
 // ── Analytics page ────────────────────────────────────────────────────────────
 export default function Analytics() {
@@ -199,7 +200,7 @@ export default function Analytics() {
         )}
 
         {!loading && analytics && (
-          <>
+          <QueryErrorBoundary section="analytics">
             {/* ═══ SECTION 1: OVERVIEW ═══ */}
             <section style={{ marginBottom: 28 }}>
               <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 14 }}>
@@ -618,7 +619,7 @@ export default function Analytics() {
                 })}
               </div>
             </section>
-          </>
+          </QueryErrorBoundary>
         )}
 
         {/* Empty state for users with no goals */}

@@ -18,6 +18,7 @@ import { dayDiff, todayStr } from '../lib/gamification'
 import type { Goal, RewardDrop } from '../lib/types'
 import { useConfetti } from '../components/ConfettiContext'
 import { GoalCardSkeleton } from '../components/ui/Skeleton'
+import QueryErrorBoundary from '../components/QueryErrorBoundary'
 
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
 const e2eUserId = import.meta.env.VITE_E2E_USER_ID ?? 'user_e2e'
@@ -386,7 +387,7 @@ export default function Dashboard() {
         )}
 
         {!loading && !error && (
-          <>
+          <QueryErrorBoundary section="goals">
             <WelcomeBackCard goals={goals} onFocus={() => setFocusOpen(true)} />
             <DoThisNow goals={goals} />
             <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} onEnergyOpen={() => setShowEnergyModal(true)} />
@@ -430,7 +431,7 @@ export default function Dashboard() {
                 </div>
               </>
             )}
-          </>
+          </QueryErrorBoundary>
         )}
       </main>
 
