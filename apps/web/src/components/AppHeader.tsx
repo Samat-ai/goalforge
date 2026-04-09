@@ -15,9 +15,10 @@ const THEME_KEY_TO_CLASS: Record<string, string> = {
 interface AppHeaderProps {
   pts: number
   onOpenCollection?: () => void
+  onOpenShortcuts?: () => void
 }
 
-export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
+export default function AppHeader({ pts, onOpenCollection, onOpenShortcuts }: AppHeaderProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useUser()
@@ -111,6 +112,24 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
             {user.firstName}
           </span>
         )}
+
+        {onOpenShortcuts && (
+          <button
+            onClick={onOpenShortcuts}
+            aria-label="Show keyboard shortcuts"
+            title="Keyboard shortcuts (?)"
+            style={{
+              background: 'none', border: `1px solid ${T.border}`, borderRadius: 6,
+              cursor: 'pointer', minWidth: 28, minHeight: 28,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: T.mono, fontSize: 12, color: T.muted,
+              padding: '0 6px',
+            }}
+          >
+            ?
+          </button>
+        )}
+
         <UserButton />
       </div>
     </div>
