@@ -1,7 +1,7 @@
 """add subscriptions table
 
-Revision ID: b7c8d9e0f1a2
-Revises: 2f0f06807e03
+Revision ID: e3f4a5b6c7d8
+Revises: b7c8d9e0f1a2
 Create Date: 2026-04-07 00:00:00.000000
 
 """
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 
 
-revision: str = "b7c8d9e0f1a2"
-down_revision: Union[str, None] = "2f0f06807e03"
+revision: str = "e3f4a5b6c7d8"
+down_revision: Union[str, None] = "b7c8d9e0f1a2"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
