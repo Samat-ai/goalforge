@@ -116,9 +116,16 @@ class Goal(Base):
     achievement_reward_granted: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=false()
     )
+    archived_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+    @property
+    def is_archived(self) -> bool:
+        return self.archived_at is not None
 
     user: Mapped["User"] = relationship("User", back_populates="goals")
     milestones: Mapped[list["Milestone"]] = relationship(

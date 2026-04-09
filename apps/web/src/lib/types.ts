@@ -188,6 +188,8 @@ export interface Goal {
   milestones_total: number
   status: 'active' | 'achieved' | 'abandoned'
   progress: number
+  archived_at: string | null
+  is_archived: boolean
   created_at: string
   daily_tasks: Task[]
   completed_days: string[]

@@ -115,19 +115,25 @@ async def list_goals(
     user_id: str,
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    include_archived: bool = Query(False, description="When false (default), archived goals are excluded"),
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     if user_id != current_user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    base_filter = Goal.user_id == user_id
+    if not include_archived:
+        base_filter = base_filter & (Goal.archived_at.is_(None))
+
     total_result = await db.execute(
-        select(func.count(Goal.id)).where(Goal.user_id == user_id)
+        select(func.count(Goal.id)).where(base_filter)
     )
     total = total_result.scalar_one()
     result = await db.execute(
         select(Goal)
         .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
-        .where(Goal.user_id == user_id)
+        .where(base_filter)
         .order_by(Goal.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -249,6 +255,52 @@ async def delete_goal(
     await db.delete(goal)
     await db.flush()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/goals/{goal_id}/archive",
+    response_model=GoalResponse,
+    summary="Archive a goal (soft hide)",
+)
+async def archive_goal(
+    goal_id: uuid.UUID,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    await _load_goal_with_ownership(goal_id, current_user_id, db)  # 403/404 guard
+    result = await db.execute(
+        select(Goal)
+        .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
+        .where(Goal.id == goal_id)
+        .with_for_update()
+    )
+    goal = result.scalar_one()
+    goal.archived_at = datetime.now(timezone.utc)
+    await db.flush()
+    return goal
+
+
+@router.post(
+    "/goals/{goal_id}/unarchive",
+    response_model=GoalResponse,
+    summary="Unarchive a previously archived goal",
+)
+async def unarchive_goal(
+    goal_id: uuid.UUID,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    await _load_goal_with_ownership(goal_id, current_user_id, db)  # 403/404 guard
+    result = await db.execute(
+        select(Goal)
+        .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
+        .where(Goal.id == goal_id)
+        .with_for_update()
+    )
+    goal = result.scalar_one()
+    goal.archived_at = None
+    await db.flush()
+    return goal
 
 
 @router.post("/goals/{goal_id}/rescue", response_model=GoalResponse, status_code=202, summary="Trigger a Recovery Sprint for a stalled goal")

@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import api from '../lib/api'
 import { queryKeys } from '../lib/queryKeys'
 import type { Goal, PaginatedGoalsResponse } from '../lib/types'
@@ -15,12 +16,17 @@ function needsPolling(goals: Goal[]): boolean {
   ))
 }
 
-export function useGoalsQuery(userId: string | undefined) {
+export function useGoalsQuery(userId: string | undefined, includeArchived = false) {
   const query = useQuery({
     queryKey: queryKeys.goals(userId!, PARAMS),
     queryFn: async () => {
+      const params = new URLSearchParams({
+        limit: String(PARAMS.limit),
+        offset: String(PARAMS.offset),
+        include_archived: String(includeArchived),
+      })
       const { data } = await api.get<PaginatedGoalsResponse>(
-        `/users/${userId}/goals?limit=${PARAMS.limit}&offset=${PARAMS.offset}`,
+        `/users/${userId}/goals?${params}`,
       )
       return data
     },
@@ -37,4 +43,44 @@ export function useGoalsQuery(userId: string | undefined) {
     isError: query.isError,
     refetch: query.refetch,
   }
+}
+
+export function useArchiveGoal(userId: string) {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (goalId: string) => {
+      const { data } = await api.post<Goal>(`/goals/${goalId}/archive`)
+      return data
+    },
+    onSuccess: (data, goalId) => {
+      qc.setQueryData<PaginatedGoalsResponse>(queryKeys.goals(userId, PARAMS), old =>
+        old ? { ...old, items: old.items.map(g => g.id === goalId ? data : g) } : old,
+      )
+      toast.success('Goal archived')
+    },
+    onError: () => {
+      toast.error('Could not archive goal. Please try again.')
+    },
+  })
+}
+
+export function useUnarchiveGoal(userId: string) {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (goalId: string) => {
+      const { data } = await api.post<Goal>(`/goals/${goalId}/unarchive`)
+      return data
+    },
+    onSuccess: (data, goalId) => {
+      qc.setQueryData<PaginatedGoalsResponse>(queryKeys.goals(userId, PARAMS), old =>
+        old ? { ...old, items: old.items.map(g => g.id === goalId ? data : g) } : old,
+      )
+      toast.success('Goal unarchived')
+    },
+    onError: () => {
+      toast.error('Could not unarchive goal. Please try again.')
+    },
+  })
 }

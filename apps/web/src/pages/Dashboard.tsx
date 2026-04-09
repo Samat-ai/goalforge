@@ -274,7 +274,8 @@ export default function Dashboard() {
   const userId = user?.id ?? (isE2EMode ? e2eUserId : undefined)
   const { fireBadgeConfetti } = useConfetti()
 
-  const { goals, isLoading: loading, isError, refetch } = useGoalsQuery(userId)
+  const [showArchived, setShowArchived] = useState(false)
+  const { goals, isLoading: loading, isError, refetch } = useGoalsQuery(userId, showArchived)
   const { pts } = useProfileQuery(userId)
   const { badges, isLoading: badgesLoading } = useBadgesQuery(userId)
   const unlockedBadgeKeysRef = useRef<Set<string>>(new Set())
@@ -323,7 +324,10 @@ export default function Dashboard() {
   }, [badges, badgesLoading, fireBadgeConfetti])
 
   const error = isError ? 'Failed to load goals.' : null
-  const filtered = goals.filter(g => g.status === filter)
+  const filtered = goals.filter(g => {
+    if (showArchived) return g.is_archived
+    return g.status === filter && !g.is_archived
+  })
 
   // ── Render ──
   return (
@@ -397,7 +401,7 @@ export default function Dashboard() {
             ) : (
               <>
                 {/* Filter tabs */}
-                <div style={{ display: 'flex', borderBottom: `1px solid ${T.border}`, marginBottom: 18, overflowX: 'auto', scrollbarWidth: 'none' }} className="filter-tabs">
+                <div style={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${T.border}`, marginBottom: 18, overflowX: 'auto', scrollbarWidth: 'none' }} className="filter-tabs">
                   {(['active', 'achieved', 'abandoned'] as const).map(f => (
                     <button
                       key={f}
@@ -410,9 +414,23 @@ export default function Dashboard() {
                         borderBottom: filter === f ? `2px solid ${T.orange}` : '2px solid transparent',
                       }}
                     >
-                      {f} ({goals.filter(g => g.status === f).length})
+                      {f} ({goals.filter(g => g.status === f && !g.is_archived).length})
                     </button>
                   ))}
+                  <div style={{ flex: 1 }} />
+                  <button
+                    onClick={() => setShowArchived(v => !v)}
+                    aria-pressed={showArchived}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      padding: '7px 14px', fontFamily: T.mono, fontSize: 11,
+                      letterSpacing: '0.06em', flexShrink: 0,
+                      color: showArchived ? T.text : T.muted,
+                      borderBottom: showArchived ? `2px solid ${T.dim}` : '2px solid transparent',
+                    }}
+                  >
+                    {showArchived ? '⊟ hide archived' : '⊞ show archived'}
+                  </button>
                 </div>
 
                 {/* Goal list */}
