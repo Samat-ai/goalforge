@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from auth import get_current_user_email, get_current_user_id
 from database import get_db
 from deps import _load_goal_with_ownership
+from error_responses import conflict, forbidden
 from models import Goal, Milestone, User
 from services.goal_service import _generate_goal_async, PLACEHOLDER_MILESTONE_TITLE
 from services.rescue_service import _execute_rescue_sprint
@@ -55,7 +56,7 @@ async def create_goal(
     db: AsyncSession = Depends(get_db),
 ):
     if user_id != current_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise forbidden()
     user = await get_or_create_user(user_id, current_user_email, db)
     user_timezone = user.timezone  # capture before session closes
 
@@ -119,7 +120,7 @@ async def list_goals(
     db: AsyncSession = Depends(get_db),
 ):
     if user_id != current_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        raise forbidden()
     total_result = await db.execute(
         select(func.count(Goal.id)).where(Goal.user_id == user_id)
     )
@@ -272,14 +273,14 @@ async def trigger_rescue_sprint(
     goal = goal_result.scalar_one()
 
     if goal.status != "active":
-        raise HTTPException(status_code=409, detail="Goal is not active")
+        raise conflict("Goal is not active")
 
     active_milestone = next(
         (m for m in goal.milestones if m.sprint_status in ("active", "ready")),
         None,
     )
     if not active_milestone:
-        raise HTTPException(status_code=409, detail="No active sprint to rescue")
+        raise conflict("No active sprint to rescue")
 
     # Set to generating so the frontend shows the loading skeleton
     active_milestone.sprint_status = "generating"

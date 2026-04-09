@@ -138,6 +138,33 @@ if rate_limit_enabled:
 
 
 # ---------------------------------------------------------------------------
+# Global HTTP exception handler — canonical error shape
+# ---------------------------------------------------------------------------
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Normalise every HTTPException to ``{"error": {...}}``.
+
+    * If ``exc.detail`` is already a dict containing a ``"code"`` key
+      (i.e. raised via one of the helpers in ``error_responses.py``),
+      return it as-is under the ``"error"`` envelope.
+    * Otherwise wrap the raw string detail so plain ``raise HTTPException(...)``
+      calls still produce a consistent shape.
+    """
+    if isinstance(exc.detail, dict) and "code" in exc.detail:
+        content = {"error": exc.detail}
+    else:
+        content = {
+            "error": {
+                "code": "http_error",
+                "message": str(exc.detail),
+                "status": exc.status_code,
+            }
+        }
+    return JSONResponse(status_code=exc.status_code, content=content)
+
+
+# ---------------------------------------------------------------------------
 # Routers
 # ---------------------------------------------------------------------------
 
