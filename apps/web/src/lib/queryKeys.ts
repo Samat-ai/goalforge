@@ -11,4 +11,5 @@ export const queryKeys = {
   badges: (userId: string) => ['badges', userId] as const,
   accountability: (userId: string) => ['accountability', userId] as const,
   coachSession: (userId: string) => ['coachSession', userId] as const,
+  subscription: (userId: string) => ['subscription', userId] as const,
 }

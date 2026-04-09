@@ -494,3 +494,23 @@ class StarLogResponse(BaseModel):
     highlights: list[str]
     is_fallback: bool
     created_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# Billing / Subscription schemas
+# ---------------------------------------------------------------------------
+
+class SubscriptionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    plan: Literal["free", "pro"]
+    status: Literal["active", "canceled", "past_due"]
+    current_period_end: datetime | None
+
+
+class CheckoutSessionResponse(BaseModel):
+    url: str
+
+
+class PortalSessionResponse(BaseModel):
+    url: str
