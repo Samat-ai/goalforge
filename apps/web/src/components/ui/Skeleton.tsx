@@ -12,7 +12,7 @@ interface SkeletonProps {
  * Compose these to build loading shapes that match real content dimensions,
  * so the layout does not shift when data arrives.
  */
-export default function Skeleton({ className = '', style }: SkeletonProps) {
+export function Skeleton({ className = '', style }: SkeletonProps) {
   return (
     <div
       className={`animate-pulse ${className}`}
@@ -24,6 +24,8 @@ export default function Skeleton({ className = '', style }: SkeletonProps) {
     />
   )
 }
+
+export default Skeleton
 
 // ── Compound skeletons ────────────────────────────────────────────────────────
 
@@ -57,6 +59,45 @@ export function GoalCardSkeleton() {
           <Skeleton style={{ height: 11, width: 52, flexShrink: 0 }} />
         </div>
       ))}
+    </div>
+  )
+}
+
+/** Mimics a single task row (checkbox + label + date chip) */
+export function TaskItemSkeleton() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+      <Skeleton style={{ width: 18, height: 18, borderRadius: 4, flexShrink: 0 }} />
+      <Skeleton style={{ height: 11, flex: 1 }} />
+      <Skeleton style={{ height: 11, width: 52, flexShrink: 0 }} />
+    </div>
+  )
+}
+
+/** Mimics an analytics stat card (large number + label) */
+export function StatCardSkeleton() {
+  return (
+    <div style={{
+      background: T.card,
+      border: `1px solid ${T.border}`,
+      borderRadius: 9,
+      padding: '13px 15px',
+    }}>
+      <Skeleton style={{ height: 26, width: '45%', marginBottom: 8 }} />
+      <Skeleton style={{ height: 10, width: '65%' }} />
+    </div>
+  )
+}
+
+/** Mimics a single note list item (avatar + title + timestamp) */
+export function NoteItemSkeleton() {
+  return (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 12 }}>
+      <Skeleton style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
+        <Skeleton style={{ height: 12, width: '70%' }} />
+        <Skeleton style={{ height: 10, width: '40%' }} />
+      </div>
     </div>
   )
 }

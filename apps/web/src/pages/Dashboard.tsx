@@ -359,6 +359,7 @@ export default function Dashboard() {
           <div role="status" aria-label="Loading goals" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <GoalCardSkeleton />
             <GoalCardSkeleton />
+            <GoalCardSkeleton />
           </div>
         )}
 
