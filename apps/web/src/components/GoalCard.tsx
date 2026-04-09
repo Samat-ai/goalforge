@@ -8,6 +8,7 @@ import SprintRail from './SprintRail'
 import DailyTaskList from './DailyTaskList'
 import GoalHeatmap from './GoalHeatmap'
 import { useGoalMutations } from '../hooks'
+import { useArchiveGoal, useUnarchiveGoal } from '../hooks/useGoals'
 import { useTaskRestoreMutation } from '../hooks/useEnergyMutations'
 import type { Goal, RewardDrop } from '../lib/types'
 
@@ -19,6 +20,8 @@ export interface GoalCardProps {
 export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
   const mutations = useGoalMutations(goal.user_id, onJackpot)
   const restoreTaskMutation = useTaskRestoreMutation(goal.user_id)
+  const archiveMutation = useArchiveGoal(goal.user_id)
+  const unarchiveMutation = useUnarchiveGoal(goal.user_id)
 
   const [open, setOpen] = useState(false)
   const [completingMilestone, setCompletingMilestone] = useState(false)
@@ -110,6 +113,7 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
   const b           = goal.status === 'achieved' ? 1 : starBrightness(goal.completed_days)
   const isAbandoned = goal.status === 'abandoned'
   const isAchieved  = goal.status === 'achieved'
+  const isArchived  = goal.is_archived
   const today       = todayStr()
   const overdueTasks = activeMilestone
     ? goal.daily_tasks
@@ -147,16 +151,17 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-            {!isGenerating && <Badge color={T.indigo}>{goal.goal_type}</Badge>}
+            {!isGenerating && <Badge color={isArchived ? T.dim : T.indigo}>{goal.goal_type}</Badge>}
             {isGenerating && <Badge color={T.muted}>generating…</Badge>}
             {isAbandoned  && <Badge color={T.muted}>abandoned</Badge>}
             {isAchieved   && <Badge color={T.amber}>✦ achieved</Badge>}
+            {isArchived   && <Badge color={T.dim}>archived</Badge>}
             {doneToday && !isAbandoned && !isAchieved && <Badge color={T.emerald}>✓ done today</Badge>}
             {s > 0 && !isAbandoned && <Badge color={T.amber}>{s}d streak</Badge>}
             {s === 0 && lastStreak >= 2 && !isAbandoned && !isAchieved && <Badge color={T.dim}>last streak: {lastStreak}d</Badge>}
             {goal.target_date && <Badge color={days < 0 ? T.rose : T.muted}>{dl}</Badge>}
           </div>
-          <div style={{ fontSize: 15, color: isAbandoned ? T.muted : T.text, fontFamily: T.serif, lineHeight: 1.45, marginBottom: 3 }}>
+          <div style={{ fontSize: 15, color: isAbandoned || isArchived ? T.muted : T.text, fontFamily: T.serif, lineHeight: 1.45, marginBottom: 3 }}>
             {goal.smart_title}
           </div>
           <div style={{ fontSize: 12, color: T.textDim, lineHeight: 1.6, marginBottom: 3 }}>
@@ -290,7 +295,7 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
       )}
 
       {/* ── Status actions ── */}
-      {!isGenerating && !isAbandoned && !isAchieved && (
+      {!isGenerating && !isAbandoned && !isAchieved && !isArchived && (
         <div style={{ padding: '0 18px 14px', display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
           {allMilestonesComplete ? (
             <button
@@ -363,11 +368,85 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
           >
             {confirmDelete ? 'Sure? Delete' : 'Delete'}
           </button>
+          <button
+            onClick={() => archiveMutation.mutate(goal.id)}
+            aria-label="Archive goal"
+            title="Archive goal"
+            disabled={archiveMutation.isPending}
+            style={{
+              cursor: archiveMutation.isPending ? 'default' : 'pointer',
+              minHeight: 44, minWidth: 44,
+              padding: '9px 14px', borderRadius: 8, fontFamily: T.mono,
+              fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
+              background: 'transparent', color: T.dim,
+              border: `1px solid ${T.border}`,
+              opacity: archiveMutation.isPending ? 0.5 : 1,
+              transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+            }}
+          >
+            Archive
+          </button>
         </div>
       )}
-      {(isAbandoned || isAchieved) && (
+      {/* ── Archived goal actions ── */}
+      {isArchived && (
         <div style={{ padding: '0 18px 14px', display: 'flex', gap: 7 }}>
+          <button
+            onClick={() => unarchiveMutation.mutate(goal.id)}
+            aria-label="Unarchive goal"
+            title="Unarchive goal"
+            disabled={unarchiveMutation.isPending}
+            style={{
+              cursor: unarchiveMutation.isPending ? 'default' : 'pointer',
+              minHeight: 44, minWidth: 44,
+              padding: '9px 14px', borderRadius: 8, fontFamily: T.mono,
+              fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
+              background: `${T.dim}15`, color: T.muted,
+              border: `1px solid ${T.dim}50`,
+              opacity: unarchiveMutation.isPending ? 0.5 : 1,
+              transition: 'background 0.15s, border-color 0.15s',
+            }}
+          >
+            {unarchiveMutation.isPending ? '···' : 'Unarchive'}
+          </button>
+          <button
+            onClick={handleDeleteClick}
+            aria-label={confirmDelete ? 'Confirm delete goal' : 'Delete goal'}
+            style={{
+              cursor: 'pointer', minHeight: 44, minWidth: 44,
+              padding: '9px 14px', borderRadius: 8, fontFamily: T.mono,
+              fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
+              background: confirmDelete ? `${T.rose}25` : 'transparent',
+              color: T.rose,
+              border: confirmDelete ? `1px solid ${T.rose}80` : `1px solid ${T.rose}40`,
+              transition: 'background 0.15s, border-color 0.15s',
+            }}
+          >
+            {confirmDelete ? 'Sure? Delete' : 'Delete'}
+          </button>
+        </div>
+      )}
+      {(isAbandoned || isAchieved) && !isArchived && (
+        <div style={{ padding: '0 18px 14px', display: 'flex', gap: 7, flexWrap: 'wrap' }}>
           {isAbandoned && <Btn onClick={() => mutations.changeStatus(goal.id, 'active')} variant="ghost" small>▶ Revive</Btn>}
+          <button
+            onClick={() => archiveMutation.mutate(goal.id)}
+            aria-label="Archive goal"
+            title="Archive goal"
+            disabled={archiveMutation.isPending}
+            style={{
+              cursor: archiveMutation.isPending ? 'default' : 'pointer',
+              minHeight: 44, minWidth: 44,
+              padding: '9px 14px', borderRadius: 8, fontFamily: T.mono,
+              fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
+              background: 'transparent', color: T.dim,
+              border: `1px solid ${T.border}`,
+              opacity: archiveMutation.isPending ? 0.5 : 1,
+              transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+            }}
+          >
+            Archive
+          </button>
           <button
             onClick={handleDeleteClick}
             aria-label={confirmDelete ? 'Confirm delete goal' : 'Delete goal'}

@@ -122,6 +122,8 @@ class GoalResponse(BaseModel):
     milestones: list[MilestoneResponse] = []
     status: Literal["active", "achieved", "abandoned"]
     progress: int
+    archived_at: datetime | None = None
+    is_archived: bool = False
     created_at: datetime
     daily_tasks: list[TaskResponse] = []
 
