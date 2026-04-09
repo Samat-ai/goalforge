@@ -1,18 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Show } from '@clerk/react'
 import { Toaster } from 'sonner'
-import LandingPage from './pages/LandingPage'
-import Dashboard from './pages/Dashboard'
-import Analytics from './pages/Analytics'
-import Coach from './pages/Coach'
-import Stars from './pages/Stars'
-import SignInPage from './pages/SignInPage'
-import SignUpPage from './pages/SignUpPage'
-import Settings from './pages/Settings'
 import ErrorBoundary from './components/ErrorBoundary'
 import EnergyParamCapture from './components/EnergyParamCapture'
 import OfflineBanner from './components/OfflineBanner'
+import { PageLoadingFallback } from './components/PageLoadingFallback'
+
+const LandingPage = lazy(() => import('./pages/LandingPage'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Analytics = lazy(() => import('./pages/Analytics'))
+const Coach = lazy(() => import('./pages/Coach'))
+const Stars = lazy(() => import('./pages/Stars'))
+const SignInPage = lazy(() => import('./pages/SignInPage'))
+const SignUpPage = lazy(() => import('./pages/SignUpPage'))
+const Settings = lazy(() => import('./pages/Settings'))
 
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
 
@@ -45,17 +47,19 @@ export default function App() {
       <Toaster theme="dark" position={useToasterPosition()} richColors />
       <OfflineBanner />
       <ErrorBoundary>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/sign-in/*" element={<SignInPage />} />
-          <Route path="/sign-up/*" element={<SignUpPage />} />
-          <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
-          <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
-          <Route path="/stars" element={<AuthGuard><Stars /></AuthGuard>} />
-          <Route path="/coach" element={<AuthGuard><Coach /></AuthGuard>} />
-          <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
-          <Route path="*" element={<div className="p-8 text-center">404 - Page Not Found</div>} />
-        </Routes>
+        <Suspense fallback={<PageLoadingFallback />}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/sign-in/*" element={<SignInPage />} />
+            <Route path="/sign-up/*" element={<SignUpPage />} />
+            <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
+            <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
+            <Route path="/stars" element={<AuthGuard><Stars /></AuthGuard>} />
+            <Route path="/coach" element={<AuthGuard><Coach /></AuthGuard>} />
+            <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
+            <Route path="*" element={<div className="p-8 text-center">404 - Page Not Found</div>} />
+          </Routes>
+        </Suspense>
       </ErrorBoundary>
     </BrowserRouter>
   )
