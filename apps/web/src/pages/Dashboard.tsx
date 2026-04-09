@@ -397,10 +397,12 @@ export default function Dashboard() {
             ) : (
               <>
                 {/* Filter tabs */}
-                <div style={{ display: 'flex', borderBottom: `1px solid ${T.border}`, marginBottom: 18, overflowX: 'auto', scrollbarWidth: 'none' }} className="filter-tabs">
+                <div role="tablist" aria-label="Goal filters" style={{ display: 'flex', borderBottom: `1px solid ${T.border}`, marginBottom: 18, overflowX: 'auto', scrollbarWidth: 'none' }} className="filter-tabs">
                   {(['active', 'achieved', 'abandoned'] as const).map(f => (
                     <button
                       key={f}
+                      role="tab"
+                      aria-selected={filter === f}
                       onClick={() => setFilter(f)}
                       style={{
                         background: 'none', border: 'none', cursor: 'pointer',
