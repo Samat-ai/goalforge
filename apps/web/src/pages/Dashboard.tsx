@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useUser } from '@clerk/react'
 import { T } from '../lib/theme'
 import AppHeader from '../components/AppHeader'
@@ -11,9 +11,12 @@ import RewardModal from '../components/RewardModal'
 import CollectionModal from '../components/CollectionModal'
 import EnergyModal from '../components/EnergyModal'
 import CompanionWidget from '../components/CompanionWidget'
+import KeyboardShortcutsModal from '../components/KeyboardShortcutsModal'
 import { useBadgesQuery, useGoalsQuery, useProfileQuery, useGoalMutations } from '../hooks'
 import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
 import { useEnergyResizeMutation } from '../hooks/useEnergyMutations'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import type { Shortcut } from '../hooks/useKeyboardShortcuts'
 import { dayDiff, todayStr } from '../lib/gamification'
 import type { Goal, RewardDrop } from '../lib/types'
 import { useConfetti } from '../components/ConfettiContext'
@@ -279,12 +282,14 @@ export default function Dashboard() {
   const { badges, isLoading: badgesLoading } = useBadgesQuery(userId)
   const unlockedBadgeKeysRef = useRef<Set<string>>(new Set())
   const didInitBadgesRef = useRef(false)
+  const addGoalTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const [filter, setFilter] = useState<string>('active')
   const [addGoalText, setAddGoalText] = useState('')
   const [focusOpen, setFocusOpen] = useState(false)
   const [activeRewardDrop, setActiveRewardDrop] = useState<RewardDrop | null>(null)
   const [showCollection, setShowCollection] = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
   const [showEnergyModal, setShowEnergyModal] = useState(() => {
     const triggered = sessionStorage.getItem('energy') === 'low'
     if (triggered) sessionStorage.removeItem('energy')
@@ -322,6 +327,31 @@ export default function Dashboard() {
     unlockedBadgeKeysRef.current = unlockedNow
   }, [badges, badgesLoading, fireBadgeConfetti])
 
+  const focusAddGoal = useCallback(() => {
+    const textarea = addGoalTextareaRef.current
+    if (textarea) {
+      textarea.focus()
+      textarea.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [])
+
+  const closeAllModals = useCallback(() => {
+    setFocusOpen(false)
+    setActiveRewardDrop(null)
+    setShowCollection(false)
+    setShowShortcuts(false)
+    setShowEnergyModal(false)
+  }, [])
+
+  const shortcuts: Shortcut[] = [
+    { key: 'n', ctrl: true, description: '[goals] Add new goal', handler: focusAddGoal },
+    { key: '/', description: '[goals] Focus goal input', handler: focusAddGoal },
+    { key: '?', shift: true, description: '[general] Show keyboard shortcuts', handler: () => setShowShortcuts(true) },
+    { key: 'Escape', description: '[general] Close any open modal', handler: closeAllModals },
+  ]
+
+  useKeyboardShortcuts(shortcuts)
+
   const error = isError ? 'Failed to load goals.' : null
   const filtered = goals.filter(g => g.status === filter)
 
@@ -340,7 +370,7 @@ export default function Dashboard() {
         button:focus-visible, a:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; border-radius: 4px; }
       `}</style>
 
-      <AppHeader pts={pts} onOpenCollection={() => setShowCollection(true)} />
+      <AppHeader pts={pts} onOpenCollection={() => setShowCollection(true)} onOpenShortcuts={() => setShowShortcuts(true)} />
 
       <main id="main-content" style={{ maxWidth: 1100, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
 
@@ -390,7 +420,7 @@ export default function Dashboard() {
             <WelcomeBackCard goals={goals} onFocus={() => setFocusOpen(true)} />
             <DoThisNow goals={goals} />
             <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} onEnergyOpen={() => setShowEnergyModal(true)} />
-            <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} />
+            <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} textareaRef={addGoalTextareaRef} />
 
             {goals.length === 0 ? (
               <EmptyState onSelect={setAddGoalText} />
@@ -474,6 +504,13 @@ export default function Dashboard() {
             })
           }}
           onDismiss={() => setShowEnergyModal(false)}
+        />
+      )}
+
+      {showShortcuts && (
+        <KeyboardShortcutsModal
+          shortcuts={shortcuts}
+          onClose={() => setShowShortcuts(false)}
         />
       )}
 

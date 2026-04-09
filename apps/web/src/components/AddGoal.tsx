@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { T } from '../lib/theme'
 import Btn from './ui/Btn'
 
@@ -14,9 +14,10 @@ interface AddGoalProps {
   onAdd: (rawInput: string) => Promise<void>
   value: string
   onChange: (v: string) => void
+  textareaRef?: React.RefObject<HTMLTextAreaElement | null>
 }
 
-export default function AddGoal({ onAdd, value, onChange }: AddGoalProps) {
+export default function AddGoal({ onAdd, value, onChange, textareaRef }: AddGoalProps) {
   const [loading, setLoading] = useState(false)
   const [status,  setStatus]  = useState<'idle' | 'thinking' | 'done' | 'error'>('idle')
 
@@ -41,6 +42,7 @@ export default function AddGoal({ onAdd, value, onChange }: AddGoalProps) {
         DESCRIBE YOUR GOAL — AI WILL REFINE IT
       </div>
       <textarea
+        ref={textareaRef}
         value={value}
         onChange={e => onChange(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit() }}
