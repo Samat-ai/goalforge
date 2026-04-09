@@ -324,3 +324,122 @@ async def db_session(engine):
 async def created_goal(client):
     """A fully-generated goal dict (same as calling create_test_goal(client))."""
     return await create_test_goal(client)
+
+
+# ---------------------------------------------------------------------------
+# Factory fixtures — create DB records directly and return model instances
+# ---------------------------------------------------------------------------
+
+from datetime import timedelta
+from models import User
+
+
+async def _ensure_user(db_session: AsyncSession, user_id: str, email: str) -> None:
+    """Insert the user row if it doesn't exist yet (Goal FK requires it)."""
+    existing = await db_session.get(User, user_id)
+    if existing is None:
+        db_session.add(User(id=user_id, email=email, star_points=0, timezone="UTC"))
+        await db_session.flush()
+
+
+@pytest_asyncio.fixture
+async def make_goal(db_session):
+    """Factory fixture: create a Goal record and return the model instance.
+
+    Usage::
+
+        goal = await make_goal()
+        goal = await make_goal(title="Custom title", status="achieved")
+    """
+    async def _make(
+        title: str = "Test goal",
+        status: str = "active",
+        progress: int = 0,
+        user_id: str = TEST_USER_ID,
+        **kwargs,
+    ) -> Goal:
+        await _ensure_user(db_session, user_id, f"{user_id}@example.com")
+        goal = Goal(
+            user_id=user_id,
+            raw_input=title,
+            smart_title=title,
+            smart_description="A test goal created by the make_goal factory.",
+            goal_type="personal",
+            target_date=date.today() + timedelta(days=30),
+            status=status,
+            progress=progress,
+            **kwargs,
+        )
+        db_session.add(goal)
+        await db_session.flush()
+        return goal
+
+    return _make
+
+
+@pytest_asyncio.fixture
+async def make_milestone(db_session):
+    """Factory fixture: create a Milestone record and return the model instance.
+
+    Usage::
+
+        milestone = await make_milestone(goal_id=goal.id)
+        milestone = await make_milestone(goal_id=goal.id, title="Phase 1", position=1)
+    """
+    async def _make(
+        goal_id,
+        title: str = "Test milestone",
+        position: int = 1,
+        sprint_theme: str = "test sprint",
+        sprint_status: str = "active",
+        is_final: bool = False,
+        **kwargs,
+    ) -> Milestone:
+        milestone = Milestone(
+            goal_id=goal_id,
+            title=title,
+            position=position,
+            sprint_theme=sprint_theme,
+            sprint_status=sprint_status,
+            is_final=is_final,
+            **kwargs,
+        )
+        db_session.add(milestone)
+        await db_session.flush()
+        return milestone
+
+    return _make
+
+
+@pytest_asyncio.fixture
+async def make_task(db_session):
+    """Factory fixture: create a DailyTask record and return the model instance.
+
+    Usage::
+
+        task = await make_task(goal_id=goal.id)
+        task = await make_task(goal_id=goal.id, milestone_id=milestone.id, is_completed=True)
+    """
+    async def _make(
+        goal_id,
+        milestone_id=None,
+        description: str = "Test task",
+        tip: str = "Keep going.",
+        assigned_date=None,
+        is_completed: bool = False,
+        **kwargs,
+    ) -> DailyTask:
+        task = DailyTask(
+            goal_id=goal_id,
+            milestone_id=milestone_id,
+            description=description,
+            tip=tip,
+            assigned_date=assigned_date if assigned_date is not None else date.today(),
+            is_completed=is_completed,
+            **kwargs,
+        )
+        db_session.add(task)
+        await db_session.flush()
+        return task
+
+    return _make
