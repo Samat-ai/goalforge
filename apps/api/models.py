@@ -41,6 +41,19 @@ class User(Base):
     reminder_hour: Mapped[int] = mapped_column(
         Integer, default=9, nullable=False, server_default="9"
     )
+    reminder_time: Mapped[str | None] = mapped_column(String, nullable=True)
+    reminder_days: Mapped[str] = mapped_column(
+        String,
+        default='["mon","tue","wed","thu","fri","sat","sun"]',
+        nullable=False,
+        server_default='["mon","tue","wed","thu","fri","sat","sun"]',
+    )
+    email_digest_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False, server_default=sa.true()
+    )
+    push_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False, server_default=sa.true()
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

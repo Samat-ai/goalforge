@@ -242,12 +242,30 @@ class UserProfileResponse(BaseModel):
     display_name: str | None
     reminder_enabled: bool
     reminder_hour: int
+    reminder_time: str | None = None
+    reminder_days: str = '["mon","tue","wed","thu","fri","sat","sun"]'
+    email_digest_enabled: bool = True
+    push_enabled: bool = True
 
 
 class UserSettingsUpdate(BaseModel):
     display_name: str | None = Field(default=None, max_length=60)
     reminder_enabled: bool | None = None
     reminder_hour: int | None = Field(default=None, ge=0, le=23)
+
+
+class NotificationPrefsUpdate(BaseModel):
+    reminder_time: str | None = Field(
+        default=None,
+        description='HH:MM string, e.g. "09:00"',
+        pattern=r"^\d{2}:\d{2}$",
+    )
+    reminder_days: str | None = Field(
+        default=None,
+        description='JSON-encoded list of day codes, e.g. \'["mon","tue"]\'',
+    )
+    email_digest_enabled: bool | None = None
+    push_enabled: bool | None = None
 
 
 class WeeklyReflectionCreate(BaseModel):

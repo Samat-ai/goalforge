@@ -15,12 +15,23 @@ export interface UserSettings {
   display_name: string | null
   reminder_enabled: boolean
   reminder_hour: number
+  reminder_time: string | null
+  reminder_days: string
+  email_digest_enabled: boolean
+  push_enabled: boolean
 }
 
 export interface UserSettingsUpdatePayload {
   display_name?: string | null
   reminder_enabled?: boolean | null
   reminder_hour?: number | null
+}
+
+export interface NotificationPrefsUpdatePayload {
+  reminder_time?: string | null
+  reminder_days?: string | null
+  email_digest_enabled?: boolean | null
+  push_enabled?: boolean | null
 }
 
 export interface AccountabilityInvite {

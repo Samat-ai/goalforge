@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/react'
 import { toast } from 'sonner'
 import AppHeader from '../components/AppHeader'
+import NotificationPreferences from '../components/NotificationPreferences'
 import { T } from '../lib/theme'
 import api from '../lib/api'
 import {
@@ -147,6 +148,9 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
           {saving ? '···' : 'Save settings'}
         </button>
       </div>
+
+      {/* Notification preferences */}
+      <NotificationPreferences settings={settings} userId={userId} />
 
       {/* Push notifications */}
       <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '18px 20px' }}>
