@@ -1,15 +1,15 @@
 """add archived_at to goals
 
-Revision ID: a1b2c3d4e5f6
-Revises: f7a8b9c1d2e3
+Revision ID: f6a7b8c9d0e1
+Revises: b7c8d9e0f1a2
 Create Date: 2026-04-09
 
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = "a1b2c3d4e5f6"
-down_revision = "f7a8b9c1d2e3"
+revision = "f6a7b8c9d0e1"
+down_revision = "b7c8d9e0f1a2"
 branch_labels = None
 depends_on = None
 
