@@ -1,0 +1,420 @@
+# GoalForge Feature PR Merge Guide
+
+35 feature branches were cut from the same `main` commit. This guide explains the safest
+order to merge them and how to resolve the conflicts that will arise in Alembic migrations
+and in shared source files.
+
+---
+
+## 1. Merge Order (Priority Groups)
+
+Work through each tier completely before starting the next. Within a tier the PRs are
+independent of each other, so the exact order inside a tier is flexible unless noted.
+
+### Tier 1 — Foundation (no dependencies, merge first)
+
+These PRs touch only CI config, error handling plumbing, or stand-alone modules. They are
+safe to merge in any order and establish a stable base.
+
+| PR | Branch | Description |
+|----|--------|-------------|
+| #126 | `feature/ci-improvements` | GitHub Actions CI/CD pipeline improvements |
+| #117 | `feature/fix-exception-handlers` | Replace bare `except Exception` with specific types |
+| #120 | `feature/centralize-timezone` | Centralize timezone utilities in `utils.py` |
+| #121 | `feature/collectible-registry-config` | Extract collectible registry to dedicated module |
+| #122 | `feature/sentry-integration` | Sentry error tracking (API + web) |
+| #125 | `feature/openapi-typescript` | OpenAPI TypeScript type generation |
+
+### Tier 2 — Infrastructure
+
+Infrastructure layers that may touch `main.py`, `config.py`, or `requirements.txt`. Merge
+after Tier 1 to avoid fighting CI failures.
+
+| PR | Branch | Description |
+|----|--------|-------------|
+| #118 | `feature/celery-redis-queue` | Celery + Redis async job queue |
+| #123 | `feature/redis-rate-limiting` | Redis-backed rate limiting middleware |
+| #124 | `feature/service-worker-caching` | Service worker offline caching strategy |
+| #127 | `feature/html-email-templates` | Jinja2 HTML email templates |
+| #108 | `feature/feature-gating` | Free/Pro feature gating (`subscription_service`) |
+
+### Tier 3 — Data Model Changes (migrations)
+
+These PRs create new tables or add columns. They **must** be merged in the order listed
+because each migration's `down_revision` must be updated to point to the previous one
+after it lands on `main`. See Section 2 for the exact edits required.
+
+| PR | Branch | Migration file | New revision ID |
+|----|--------|---------------|-----------------|
+| #107 | `feature/stripe-subscription` | `add_subscriptions_table.py` | needs new ID (collision — see §2) |
+| #128 | `feature/analytics-enhanced` | *(no migration — analytics-only route/schema changes)* | — |
+| #135 | `feature/health-check` | *(no migration — adds `/health` route only)* | — |
+
+Merge order: #107 → #128 → #135.
+
+### Tier 4 — UI Features (no model changes)
+
+No Alembic migrations. Some PRs touch shared frontend files (`App.tsx`,
+`Dashboard.tsx`) — see Section 3 for conflict strategy.
+
+| PR | Branch | Description |
+|----|--------|-------------|
+| #110 | `feature/landing-page-overhaul` | Full marketing landing page rewrite |
+| #109 | `feature/onboarding-flow` | Multi-step onboarding wizard |
+| #114 | `feature/dark-light-mode` | Dark/light theme toggle |
+| #115 | `feature/mobile-pwa` | Mobile PWA manifest + install prompt |
+| #111 | `feature/upgrade-prompts` | Paywall/upgrade prompt components |
+| #112 | `feature/goal-templates` | Goal templates library |
+| #113 | `feature/progress-sharing` | Shareable progress cards |
+| #130 | `feature/error-pages` | Custom 404 / offline / error pages |
+| #137 | `feature/keyboard-shortcuts` | Keyboard shortcuts modal |
+
+### Tier 5 — New Model Fields (migrations)
+
+These PRs each add columns. Must be merged in the order listed; update `down_revision`
+after each one lands. See Section 2.
+
+| PR | Branch | Migration file | Notes |
+|----|--------|---------------|-------|
+| #139 | `feature/goal-archiving` | `add_goal_archived_at.py` | needs new revision ID (collision — see §2) |
+| #141 | `feature/notification-preferences` | `add_notification_prefs.py` | `down_revision` must be updated after #139 lands |
+| #138 | `feature/pagination` | *(no migration — query-param + schema changes only)* | — |
+| #140 | `feature/goal-search` | *(no migration — adds search query to existing route)* | — |
+| #131 | `feature/goal-notes` | *(no migration file found — verify the PR adds one)* | — |
+
+### Tier 6 — Tests
+
+Test files only. They import production code, so merge after all feature PRs they cover
+are already on `main`.
+
+| PR | Branch | Covers |
+|----|--------|--------|
+| #129 | `feature/ci-improvements` | CI test-suite additions |
+| #132 | `feature/tests-analytics` | Analytics endpoint tests |
+| #134 | `feature/tests-goal-notes` | Goal notes CRUD tests |
+| #129 | `feature/tests-billing-and-gating` | Billing + feature gating tests |
+
+### Tier 7 — Dev Tooling
+
+Safe to merge any time after `main` is stable, but easiest last so the seed script picks
+up all the new columns.
+
+| PR | Branch | Description |
+|----|--------|-------------|
+| #133 | `feature/seed-data` | Development seed data script |
+| — | `feature/pr-merge-guide` | This document |
+
+---
+
+## 2. Migration Conflict Resolution
+
+### The Problem
+
+All migration PRs branched from the same `main` commit, so each new migration file has its
+`down_revision` pointing to the **same tip revision** that existed at branch time. When you
+merge them sequentially the chain forks and `alembic heads` will report multiple heads.
+You must re-point each incoming migration to the revision that is now the real tip before
+you commit the merge.
+
+The current tip of the migration chain on `main` is:
+
+```
+b7c8d9e0f1a2  — b7c8d9e0f1a2_add_weekly_star_log_to_notification_log_type_constraint.py
+```
+
+### Full revision chain on `main` (before any feature merges)
+
+```
+ 1  daf533cac4d3  initial_schema
+ 2  a2f4e6c8b1d3  add_progress_to_goals
+ 3  b3e1f9a2d8c5  add_milestones_table
+ 4  c4d2e8b3f1a6  backfill_milestones_from_json
+ 5  d5e3f9c4b2a7  drop_legacy_milestones_json
+ 6  2f0f06807e03  add_user_settings
+ 7  e6cdc1208a9f  add_check_constraints_and_indexes
+ 8  b791b5f8c525  stub
+ 9  54c2246897ae  drop_zombie_columns
+10  c3a7d2e1f9b4  add_task_position_column
+11  f7a8b9c1d2e3  add_generation_started_at
+12  a1b2c3d4e5f6  stub_rescue_task_first_attempt      ← collision with goal-archiving PR
+13  749ac4eda4cf  add_is_rescue_task_to_daily_tasks
+14  ab3ab8b88a85  add_rewards_table
+15  b2c3d4e5f6a1  add_energy_resize_columns
+16  c9d4e7f1a2b6  add_user_reminder_preferences
+17  b1c2d3e4f5a6  add_web_push_subscriptions
+18  f1e2d3c4b5a6  add_weekly_reflections_table
+19  a7b8c9d0e1f2  add_star_logs_table
+20  e1f2a3b4c5d6  add_shop_rewards_table
+21  f2a3b4c5d6e7  add_accountability_invites_and_partners
+22  c7d9e1f2a3b4  add_coach_sessions_and_messages
+23  d1e2f3a4b5c6  add_achievement_reward_granted_to_goals
+24  e2f3a4b5c6d7  add_is_user_added_to_daily_tasks
+25  f3a4b5c6d7e8  add_notification_logs
+26  b7c8d9e0f1a2  add_weekly_star_log_to_notification_log_type_constraint  ← current HEAD
+```
+
+### PR #107 — Stripe subscription (`add_subscriptions_table.py`)
+
+**Problem**: The migration file uses revision ID `b7c8d9e0f1a2`, which already exists on
+`main` (step 26 above — a completely different migration). The file also sets
+`down_revision = "2f0f06807e03"` (step 6), creating a fork in the middle of the chain.
+
+**Required edits before merging**:
+
+1. Generate a fresh unique revision ID (e.g. `e3f4a5b6c7d8`) — use any hex string that
+   does not appear in the existing chain.
+2. In `apps/api/alembic/versions/add_subscriptions_table.py`:
+
+```python
+# Change:
+revision: str = "b7c8d9e0f1a2"
+down_revision: Union[str, None] = "2f0f06807e03"
+
+# To:
+revision: str = "e3f4a5b6c7d8"          # new unique ID
+down_revision: Union[str, None] = "b7c8d9e0f1a2"   # current tip on main
+```
+
+3. Rename the file to match the new revision ID:
+
+```bash
+git mv apps/api/alembic/versions/add_subscriptions_table.py \
+       apps/api/alembic/versions/e3f4a5b6c7d8_add_subscriptions_table.py
+```
+
+After merging #107, the new tip is `e3f4a5b6c7d8`.
+
+---
+
+### PR #139 — Goal archiving (`add_goal_archived_at.py`)
+
+**Problem**: The migration uses revision ID `a1b2c3d4e5f6`, which already exists on
+`main` (step 12 — `stub_rescue_task_first_attempt.py`). The `down_revision` points to
+`f7a8b9c1d2e3` (step 11), creating another mid-chain fork.
+
+**Required edits before merging** (merge after #107, so tip is now `e3f4a5b6c7d8`):
+
+1. Generate a fresh revision ID (e.g. `f6a7b8c9d0e1`).
+2. In `apps/api/alembic/versions/add_goal_archived_at.py`:
+
+```python
+# Change:
+revision = "a1b2c3d4e5f6"
+down_revision = "f7a8b9c1d2e3"
+
+# To:
+revision = "f6a7b8c9d0e1"              # new unique ID
+down_revision = "e3f4a5b6c7d8"         # tip after #107 merged
+```
+
+3. Rename the file:
+
+```bash
+git mv apps/api/alembic/versions/add_goal_archived_at.py \
+       apps/api/alembic/versions/f6a7b8c9d0e1_add_goal_archived_at.py
+```
+
+After merging #139, the new tip is `f6a7b8c9d0e1`.
+
+---
+
+### PR #141 — Notification preferences (`add_notification_prefs.py`)
+
+**No collision** — revision ID `a1b2c3d4e5f7` is unused on `main`.
+The `down_revision` is `b7c8d9e0f1a2` (the old tip), which must be updated to point to
+the tip **after #139** lands.
+
+**Required edit before merging**:
+
+In `apps/api/alembic/versions/add_notification_prefs.py`:
+
+```python
+# Change:
+down_revision: Union[str, None] = "b7c8d9e0f1a2"
+
+# To:
+down_revision: Union[str, None] = "f6a7b8c9d0e1"   # tip after #139 merged
+```
+
+Rename the file to use the standard naming convention:
+
+```bash
+git mv apps/api/alembic/versions/add_notification_prefs.py \
+       apps/api/alembic/versions/a1b2c3d4e5f7_add_notification_prefs.py
+```
+
+After merging #141, the new tip is `a1b2c3d4e5f7`.
+
+---
+
+### Checklist — Migrations in merge order
+
+```
+[ ] Verify: alembic heads  → only one head (b7c8d9e0f1a2) before starting
+
+[ ] PR #107  Edit add_subscriptions_table.py:
+            revision  → e3f4a5b6c7d8
+            down_revision → b7c8d9e0f1a2
+            Rename file → e3f4a5b6c7d8_add_subscriptions_table.py
+            Merge PR #107
+[ ] Verify: alembic heads  → only one head (e3f4a5b6c7d8)
+
+[ ] PR #139  Edit add_goal_archived_at.py:
+            revision  → f6a7b8c9d0e1
+            down_revision → e3f4a5b6c7d8
+            Rename file → f6a7b8c9d0e1_add_goal_archived_at.py
+            Merge PR #139
+[ ] Verify: alembic heads  → only one head (f6a7b8c9d0e1)
+
+[ ] PR #141  Edit add_notification_prefs.py:
+            down_revision → f6a7b8c9d0e1
+            Rename file → a1b2c3d4e5f7_add_notification_prefs.py
+            Merge PR #141
+[ ] Verify: alembic heads  → only one head (a1b2c3d4e5f7)
+```
+
+---
+
+## 3. Files With Multiple PR Conflicts
+
+The following files will need manual conflict resolution on the second (and later) merges.
+
+### `apps/api/models.py`
+
+Modified by: #107 (adds `Subscription` model), #108 (reads `subscription.plan`),
+#118 (no direct model change), #128 (no model change — analytics route),
+#139 (adds `archived_at` column to `Goal`), #141 (adds notification pref columns to `User`)
+
+**Strategy**: Keep all new model classes and new `mapped_column` additions. The merge
+order matters:
+- After #107: accept the new `Subscription` class at the bottom of the file.
+- After #139: accept the new `archived_at` column inside the `Goal` class.
+- After #141: accept the new `reminder_time`, `reminder_days`, `email_digest_enabled`,
+  and `push_enabled` columns inside the `User` class. These are additions only — there
+  should be no lines to delete.
+
+When you see a conflict, keep **both** sets of additions. Do not drop any column
+definition from either side.
+
+### `apps/api/schemas.py`
+
+Modified by: #107, #108 (feature gate schemas), #121 (collectible schemas),
+#128 (analytics schemas), #138 (pagination schemas), #139, #141
+
+**Strategy**: Pydantic schemas are additive. Keep every new `class` definition and every
+new field. When a base class such as `GoalBase` gains fields from multiple PRs, include
+all new fields — they do not conflict logically, only textually.
+
+### `apps/api/main.py`
+
+Modified by: #107 (registers `/billing` router), #118 (Celery startup event),
+#122 (Sentry init), #123 (rate-limit middleware), #128 (registers analytics router),
+#135 (registers `/health` router)
+
+**Strategy**: This file is almost entirely a list of `app.include_router(...)` calls and
+startup hooks. Keep every line from every PR — none of them remove existing routers.
+Order does not matter for correctness; keep alphabetical or group by domain.
+
+### `apps/api/routes/goals.py`
+
+Modified by: #108 (adds plan-gate checks), #128 (no change — analytics is separate
+route file), #138 (adds cursor pagination), #139 (adds archive/unarchive endpoints),
+#140 (adds `?search=` query parameter to list endpoint)
+
+**Strategy**: Each PR adds distinct endpoint functions or modifies the list query in a
+localized way. Resolve conflicts by keeping all endpoint functions and combining query
+modifications to the list function (pagination + search + archive filter can coexist in
+one query).
+
+### `apps/web/src/App.tsx`
+
+Modified by: #109 (adds `<OnboardingGuard>` wrapper), #114 (wraps app in
+`<ThemeProvider>`), #130 (adds error boundary + 404 route)
+
+**Strategy**: All three changes are provider/wrapper additions that wrap the existing
+router. The correct final state nests them: `ThemeProvider → ErrorBoundary → Router →
+OnboardingGuard → Routes`. Combine manually — no lines are deleted by any of the PRs.
+
+### `apps/web/src/lib/types.ts`
+
+Modified by: #107, #108, #113, #114, #115, #138, #139, #141
+
+**Strategy**: This file is a collection of TypeScript interface declarations. Every PR
+adds new interfaces or new optional fields to `Goal` / `User`. Keep all additions. When
+a field appears on both sides of a conflict, keep the more permissive type (usually
+`string | null` over `string`).
+
+---
+
+## 4. Quick-Start Commands
+
+### Before merging any migration PR
+
+```bash
+# From the repo root — confirm only one Alembic head
+cd apps/api
+alembic heads
+# Expected single head before any feature merges:
+# b7c8d9e0f1a2 (head)
+```
+
+### After merging each migration PR
+
+```bash
+# Confirm the new single head
+alembic heads
+
+# If you accidentally end up with two heads (forgot to update down_revision):
+alembic merge heads -m "merge_feature_branches"
+# Then commit the generated merge migration before proceeding
+```
+
+### Typical merge workflow for a migration PR
+
+```bash
+# 1. Check out the feature branch locally
+git fetch origin
+git checkout feature/stripe-subscription   # example
+
+# 2. Edit the migration file (update revision + down_revision + rename)
+#    See Section 2 for exact values
+
+# 3. Stage the renamed file
+git add apps/api/alembic/versions/
+
+# 4. Merge into main
+git checkout main
+git merge --no-ff feature/stripe-subscription
+# Resolve any conflicts in models.py / schemas.py / main.py (see Section 3)
+git add apps/api/
+git commit
+
+# 5. Verify no multiple heads
+cd apps/api && alembic heads
+```
+
+### Generating a fresh Alembic revision ID
+
+```bash
+python3 -c "import uuid; print(uuid.uuid4().hex[:12])"
+```
+
+Use the output as the new `revision` value and as the prefix of the renamed file.
+
+### Checking which files a feature branch touches
+
+```bash
+git diff main..feature/<branch-name> --name-only
+```
+
+### Running the test suite after each tier
+
+```bash
+# API tests
+cd apps/api
+pytest tests/ -x -q
+
+# Web type-check
+cd apps/web
+npm run tsc --noEmit
+```
