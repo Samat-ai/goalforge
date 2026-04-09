@@ -480,6 +480,38 @@ class AIStarLogOutput(BaseModel):
     highlights: list[str] = Field(..., min_length=2, max_length=3)
 
 
+# ---------------------------------------------------------------------------
+# Goal Note schemas
+# ---------------------------------------------------------------------------
+
+class GoalNoteCreate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=2000)
+    mood: str | None = Field(None, pattern="^(great|good|okay|rough|stuck)$")
+
+
+class GoalNoteUpdate(BaseModel):
+    content: str | None = Field(None, min_length=1, max_length=2000)
+    mood: str | None = Field(None, pattern="^(great|good|okay|rough|stuck)$")
+
+
+class GoalNoteResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    goal_id: uuid.UUID
+    content: str
+    mood: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class PaginatedGoalNotesResponse(BaseModel):
+    items: list[GoalNoteResponse]
+    total: int
+    limit: int
+    offset: int
+
+
 class StarLogResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

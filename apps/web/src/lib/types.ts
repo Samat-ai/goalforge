@@ -194,6 +194,24 @@ export interface Goal {
   rescue_mode: boolean
 }
 
+export type Mood = 'great' | 'good' | 'okay' | 'rough' | 'stuck'
+
+export interface GoalNote {
+  id: string
+  goal_id: string
+  content: string
+  mood: Mood | null
+  created_at: string
+  updated_at: string
+}
+
+export interface PaginatedGoalNotesResponse {
+  items: GoalNote[]
+  total: number
+  limit: number
+  offset: number
+}
+
 export interface CoachMessage {
   id: string
   session_id: string
