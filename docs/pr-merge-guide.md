@@ -430,14 +430,28 @@ is a top-level `if (isE2EMode)` warning — keep it verbatim.
 
 ### `apps/web/src/pages/Dashboard.tsx`
 
-Modified by: `feature/skeleton-loading` (adds skeleton loading states), `feature/query-error-boundaries`
-(wraps sections in `<QueryErrorBoundary>`), `feature/accessibility` (adds ARIA labels, focus management)
+**Most contested frontend file** — modified by 10 branches: `feature/accessibility`,
+`feature/dark-light-mode`, `feature/goal-archiving`, `feature/goal-search`,
+`feature/keyboard-shortcuts`, `feature/onboarding-flow`, `feature/progress-sharing`,
+`feature/query-error-boundaries`, `feature/skeleton-loading`, `feature/upgrade-prompts`
 
-**Strategy**: Apply in this order — skeleton-loading → query-error-boundaries → accessibility.
-The changes are complementary: skeleton-loading changes what renders while loading, error-boundaries
-change what renders on error, and accessibility adds props/attributes alongside existing JSX. There
-are no outright conflicts — merge conflicts will be in JSX structure and will need manual combination.
-Keep all three sets of changes.
+**Strategy**: Merge in tier order, combining all changes. Since every PR touches a
+different part of the component (filter tabs, goal list, header, modals), there are
+rarely outright logic conflicts — just JSX structure collisions that need manual
+combination. Suggested merge order within Tier 4:
+
+1. `feature/dark-light-mode` — adds `ThemeProvider` context access
+2. `feature/onboarding-flow` — adds `OnboardingGuard` and wizard rendering
+3. `feature/upgrade-prompts` — adds paywall modal trigger logic
+4. `feature/goal-search` — adds search input to filter bar
+5. `feature/goal-archiving` — adds archived-goals tab/toggle
+6. `feature/progress-sharing` — adds share button and `<ShareModal>`
+7. `feature/keyboard-shortcuts` — adds `<KeyboardShortcutsModal>` and `onOpenShortcuts` prop
+8. `feature/skeleton-loading` — replaces loading spinner with skeleton cards
+9. `feature/query-error-boundaries` — wraps goal list in `<QueryErrorBoundary>`
+10. `feature/accessibility` — adds ARIA attributes to the fully-merged file
+
+Keep all changes from all PRs — none of them intentionally remove existing functionality.
 
 ### `apps/web/src/pages/Analytics.tsx`
 
