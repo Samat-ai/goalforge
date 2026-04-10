@@ -379,6 +379,23 @@ The `http_exception_handler` from `feature/error-response-format` must also be k
 it is what rewrites raw `HTTPException` details into the canonical
 `{"error": {"code", "message", "status"}}` shape.
 
+### `apps/api/config.py`
+
+Modified by: `feature/startup-validation` (adds `stripe_secret_key: str = ""` and
+`sentry_dsn: str = ""`), `feature/stripe-subscription` (adds `stripe_secret_key`,
+`stripe_webhook_secret`, `stripe_pro_price_id`), `feature/celery-redis-queue` (adds
+`redis_url`), `feature/redis-rate-limiting` (adds rate-limit settings),
+`feature/sentry-integration` (adds `sentry_dsn` with environment logic)
+
+**Strategy**: All changes are new `Settings` fields — keep every field from every PR.
+Watch for these specific duplicates when resolving:
+- `stripe_secret_key: str = ""` appears in **both** `feature/startup-validation` (as a
+  workaround) and `feature/stripe-subscription` (proper). Keep the `stripe-subscription`
+  version (it also adds `stripe_webhook_secret` and `stripe_pro_price_id`).
+- `sentry_dsn: str = ""` appears in **both** `feature/startup-validation` and
+  `feature/sentry-integration`. Keep the `sentry-integration` version (it may have
+  richer logic). The field only needs to appear once.
+
 ### `apps/api/routes/goals.py`
 
 Modified by: #108 (adds plan-gate checks), #128 (no change — analytics is separate
