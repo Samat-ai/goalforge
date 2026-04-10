@@ -394,6 +394,16 @@ Dockerfiles, celery workers). Also partially created by: `feature/celery-redis-q
 the complete version from `feature/docker-compose` already includes all celery services.
 Only keep the `celery_app.py`, `tasks/`, and other Python changes from that PR.
 
+### `apps/web/public/sw.js`
+
+Modified by: `feature/service-worker-caching` (Tier 2) and `feature/mobile-pwa` (Tier 4).
+
+**Strategy**: `feature/service-worker-caching` lands first (Tier 2). When merging
+`feature/mobile-pwa`, keep the service-worker-caching version as the base and
+cherry-pick only the PWA-specific additions from mobile-pwa (install prompt, manifest
+icon paths). The service-worker-caching version is more complete in its caching
+strategy — do not revert it.
+
 ---
 
 ## 4. Quick-Start Commands
