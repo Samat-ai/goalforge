@@ -1,6 +1,6 @@
 # GoalForge Feature PR Merge Guide
 
-35 feature branches were cut from the same `main` commit. This guide explains the safest
+55 feature branches were cut from the same `main` commit. This guide explains the safest
 order to merge them and how to resolve the conflicts that will arise in Alembic migrations
 and in shared source files.
 
@@ -24,6 +24,14 @@ safe to merge in any order and establish a stable base.
 | #121 | `feature/collectible-registry-config` | Extract collectible registry to dedicated module |
 | #122 | `feature/sentry-integration` | Sentry error tracking (API + web) |
 | #125 | `feature/openapi-typescript` | OpenAPI TypeScript type generation |
+| — | `feature/startup-validation` | Startup config validation checks (adds `stripe_secret_key`, `sentry_dsn` to Settings) |
+| — | `feature/request-logging` | HTTP request/response logging middleware |
+| — | `feature/security-headers` | HTTP security headers middleware (HSTS, CSP, etc.) |
+| — | `feature/response-compression` | GZip response compression middleware |
+| — | `feature/error-response-format` | Standardized API error shape `{"error": {"code", "message", "status"}}` |
+| — | `feature/slow-query-log` | SQLAlchemy slow-query logging (>200ms) via `before/after_cursor_execute` |
+| — | `feature/typescript-strict` | TypeScript strict mode + `noUnusedLocals`, `noImplicitReturns` |
+| — | `feature/query-optimization` | N+1 query fixes in `tasks.py` (adds missing `selectinload`) |
 
 ### Tier 2 — Infrastructure
 
@@ -37,6 +45,8 @@ after Tier 1 to avoid fighting CI failures.
 | #124 | `feature/service-worker-caching` | Service worker offline caching strategy |
 | #127 | `feature/html-email-templates` | Jinja2 HTML email templates |
 | #108 | `feature/feature-gating` | Free/Pro feature gating (`subscription_service`) |
+| — | `feature/docker-compose` | Comprehensive Docker Compose rewrite with dev Dockerfiles, healthchecks, celery workers |
+| — | `feature/react-query-errors` | React Query global error handling + `ApiError` class |
 
 ### Tier 3 — Data Model Changes (migrations)
 
@@ -68,6 +78,15 @@ No Alembic migrations. Some PRs touch shared frontend files (`App.tsx`,
 | #113 | `feature/progress-sharing` | Shareable progress cards |
 | #130 | `feature/error-pages` | Custom 404 / offline / error pages |
 | #137 | `feature/keyboard-shortcuts` | Keyboard shortcuts modal |
+| — | `feature/accessibility` | ARIA labels, focus trap, keyboard navigation |
+| — | `feature/code-splitting` | Route-level `React.lazy` + `Suspense` + Vite chunk splitting |
+| — | `feature/e2e-auth-guard-and-goal-type` | E2E auth bypass guard + `goal_type` field docs |
+| — | `feature/form-validation` | Frontend form validation in `AddGoal.tsx` and `Settings.tsx` |
+| — | `feature/optimistic-updates` | Optimistic UI mutations with rollback in `useGoalMutations.ts` |
+| — | `feature/query-error-boundaries` | `QueryErrorBoundary` wrapping Dashboard and Analytics |
+| — | `feature/skeleton-loading` | Skeleton loading states for Dashboard and Analytics |
+| — | `feature/split-components` | Extract `GoalCard` and `DailyTaskList` into sub-components |
+| — | `feature/data-export` | Pro-gated JSON/CSV export (`/users/{id}/export`) — **requires #108** feature-gating merged first |
 
 ### Tier 4b — Performance (index migration, no schema changes)
 
@@ -100,10 +119,10 @@ are already on `main`.
 
 | PR | Branch | Covers |
 |----|--------|--------|
-| #129 | `feature/ci-improvements` | CI test-suite additions |
+| — | `feature/test-factories` | Shared test fixtures + factory helpers (`conftest.py`) — merge first in this tier |
 | #132 | `feature/tests-analytics` | Analytics endpoint tests |
 | #134 | `feature/tests-goal-notes` | Goal notes CRUD tests |
-| #129 | `feature/tests-billing-and-gating` | Billing + feature gating tests |
+| — | `feature/tests-billing-and-gating` | Billing + feature gating tests |
 
 ### Tier 7 — Dev Tooling
 
@@ -113,6 +132,9 @@ up all the new columns.
 | PR | Branch | Description |
 |----|--------|-------------|
 | #133 | `feature/seed-data` | Development seed data script |
+| — | `feature/makefile` | Makefile with dev shortcuts (`make dev`, `make test`, etc.) |
+| — | `feature/github-templates` | GitHub issue and pull request templates |
+| — | `feature/ci-migration-check` | Adds `alembic check` + single-head validation to CI (see ci.yml conflict in §3) |
 | — | `feature/pr-merge-guide` | This document |
 
 ---
@@ -347,11 +369,15 @@ all new fields — they do not conflict logically, only textually.
 
 Modified by: #107 (registers `/billing` router), #118 (Celery startup event),
 #122 (Sentry init), #123 (rate-limit middleware), #128 (registers analytics router),
-#135 (registers `/health` router)
+#135 (registers `/health` router), `feature/error-response-format` (adds global
+`http_exception_handler`), `feature/data-export` (registers `/export` router)
 
 **Strategy**: This file is almost entirely a list of `app.include_router(...)` calls and
 startup hooks. Keep every line from every PR — none of them remove existing routers.
 Order does not matter for correctness; keep alphabetical or group by domain.
+The `http_exception_handler` from `feature/error-response-format` must also be kept —
+it is what rewrites raw `HTTPException` details into the canonical
+`{"error": {"code", "message", "status"}}` shape.
 
 ### `apps/api/routes/goals.py`
 
@@ -367,11 +393,42 @@ one query).
 ### `apps/web/src/App.tsx`
 
 Modified by: #109 (adds `<OnboardingGuard>` wrapper), #114 (wraps app in
-`<ThemeProvider>`), #130 (adds error boundary + 404 route)
+`<ThemeProvider>`), #130 (adds error boundary + 404 route), `feature/code-splitting`
+(converts all page imports to `React.lazy`), `feature/e2e-auth-guard-and-goal-type`
+(adds E2E console warning)
 
-**Strategy**: All three changes are provider/wrapper additions that wrap the existing
-router. The correct final state nests them: `ThemeProvider → ErrorBoundary → Router →
-OnboardingGuard → Routes`. Combine manually — no lines are deleted by any of the PRs.
+**Strategy**: Merge `feature/code-splitting` **last** among these since it rewrites
+all `import` statements to `lazy(() => import(...))`. When merging the others first
+(onboarding-flow, dark-light-mode, error-pages), keep static imports. After all are
+merged, apply code-splitting on top:
+
+1. Convert **every** page import (including `NotFoundPage`, `OfflinePage` from
+   error-pages and any pages added by onboarding/dark-mode) to `React.lazy`.
+2. Wrap the entire `<Routes>` block in `<Suspense fallback={<PageLoadingFallback />}>`.
+3. The `PageLoadingFallback` component is in `feature/code-splitting`; add it too.
+
+Provider nesting in the final `App`: `ThemeProvider → ErrorBoundary → Suspense → Router
+→ OnboardingGuard → Routes`. The E2E guard log from `feature/e2e-auth-guard-and-goal-type`
+is a top-level `if (isE2EMode)` warning — keep it verbatim.
+
+### `apps/web/src/pages/Dashboard.tsx`
+
+Modified by: `feature/skeleton-loading` (adds skeleton loading states), `feature/query-error-boundaries`
+(wraps sections in `<QueryErrorBoundary>`), `feature/accessibility` (adds ARIA labels, focus management)
+
+**Strategy**: Apply in this order — skeleton-loading → query-error-boundaries → accessibility.
+The changes are complementary: skeleton-loading changes what renders while loading, error-boundaries
+change what renders on error, and accessibility adds props/attributes alongside existing JSX. There
+are no outright conflicts — merge conflicts will be in JSX structure and will need manual combination.
+Keep all three sets of changes.
+
+### `apps/web/src/pages/Analytics.tsx`
+
+Modified by: `feature/skeleton-loading` (adds skeleton placeholders), `feature/query-error-boundaries`
+(wraps data sections in `<QueryErrorBoundary>`)
+
+**Strategy**: Both changes are additive to the same JSX sections. Merge skeleton-loading first, then
+manually add the `<QueryErrorBoundary>` wrappers around the data-fetching sections.
 
 ### `apps/web/src/lib/types.ts`
 
