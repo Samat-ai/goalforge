@@ -1,3 +1,10 @@
+const goalKeys = {
+  all: (userId: string) => ['goals', userId] as const,
+  list: (userId: string, params?: { limit: number; offset: number }) =>
+    params ? ['goals', userId, params] as const : ['goals', userId] as const,
+  detail: (goalId: string) => ['goal', goalId] as const,
+}
+
 export const queryKeys = {
   goals: (userId: string, params?: { limit: number; offset: number }) =>
     params ? ['goals', userId, params] as const : ['goals', userId] as const,
@@ -11,4 +18,5 @@ export const queryKeys = {
   badges: (userId: string) => ['badges', userId] as const,
   accountability: (userId: string) => ['accountability', userId] as const,
   coachSession: (userId: string) => ['coachSession', userId] as const,
+  notes: (goalId: string) => [...goalKeys.detail(goalId), 'notes'] as const,
 }

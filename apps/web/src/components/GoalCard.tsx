@@ -9,6 +9,7 @@ import DailyTaskList from './DailyTaskList'
 import GoalHeatmap from './GoalHeatmap'
 import { useGoalMutations } from '../hooks'
 import { useTaskRestoreMutation } from '../hooks/useEnergyMutations'
+import GoalNotes from './GoalNotes'
 import type { Goal, RewardDrop } from '../lib/types'
 
 export interface GoalCardProps {
@@ -288,6 +289,9 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
           })}
         />
       )}
+
+      {/* ── Goal Notes / Journal ── */}
+      <GoalNotes goalId={goal.id} />
 
       {/* ── Status actions ── */}
       {!isGenerating && !isAbandoned && !isAchieved && (

@@ -133,6 +133,10 @@ class Goal(Base):
     coach_sessions: Mapped[list["CoachSession"]] = relationship(
         "CoachSession", back_populates="forged_goal"
     )
+    notes: Mapped[list["GoalNote"]] = relationship(
+        "GoalNote", back_populates="goal", cascade="all, delete-orphan",
+        order_by="GoalNote.created_at.desc()",
+    )
 
 
 class CoachSession(Base):
@@ -500,3 +504,30 @@ class NotificationLog(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="notification_logs")
+
+
+class GoalNote(Base):
+    __tablename__ = "goal_notes"
+    __table_args__ = (
+        Index("ix_goal_notes_goal_id_created", "goal_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    goal_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("goals.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id"), nullable=False
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    mood: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    goal: Mapped["Goal"] = relationship("Goal", back_populates="notes")
