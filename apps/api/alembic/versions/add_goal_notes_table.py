@@ -1,6 +1,6 @@
 """add goal_notes table
 
-Revision ID: a1b2c3d4e5f7
+Revision ID: c2d3e4f5a6b7
 Revises: b7c8d9e0f1a2
 Create Date: 2026-04-09
 
@@ -11,7 +11,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 
-revision: str = "a1b2c3d4e5f7"
+revision: str = "c2d3e4f5a6b7"
 down_revision: Union[str, None] = "b7c8d9e0f1a2"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
