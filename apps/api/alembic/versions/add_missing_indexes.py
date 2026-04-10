@@ -23,6 +23,13 @@ milestones.sprint_status
     goals.py checks sprint_status in ('active', 'ready') in Python after a
     full selectinload, but a partial index on the milestones subset that are
     active/ready cuts I/O during sprint resolution and rescue-sprint lookups.
+
+Note on CONCURRENTLY:
+    CREATE INDEX CONCURRENTLY cannot run inside a transaction block.
+    We use op.get_context().autocommit_block() (Alembic ≥ 1.10) to switch the
+    connection to autocommit mode for the duration of the index creation.
+    On SQLite (CI / dev sqlite backend), the postgresql_concurrently flag is
+    silently ignored, so the migration runs without error in both environments.
 """
 from typing import Sequence, Union
 
@@ -36,38 +43,40 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # goals.status — simple B-tree; small cardinality but used as a filter
-    # alongside user_id scans.  CONCURRENTLY avoids locking production traffic.
-    op.create_index(
-        "ix_goals_status",
-        "goals",
-        ["status"],
-        unique=False,
-        postgresql_concurrently=True,
-        if_not_exists=True,
-    )
+    # CREATE INDEX CONCURRENTLY requires autocommit (no active transaction).
+    with op.get_context().autocommit_block():
+        # goals.status — simple B-tree; small cardinality but used as a filter
+        # alongside user_id scans.  CONCURRENTLY avoids locking production traffic.
+        op.create_index(
+            "ix_goals_status",
+            "goals",
+            ["status"],
+            unique=False,
+            postgresql_concurrently=True,
+            if_not_exists=True,
+        )
 
-    # coach_sessions.forged_goal_id — FK without an index; needed for the
-    # forged_goal relationship load (SELECT … WHERE forged_goal_id = ?).
-    op.create_index(
-        "ix_coach_sessions_forged_goal_id",
-        "coach_sessions",
-        ["forged_goal_id"],
-        unique=False,
-        postgresql_concurrently=True,
-        if_not_exists=True,
-    )
+        # coach_sessions.forged_goal_id — FK without an index; needed for the
+        # forged_goal relationship load (SELECT … WHERE forged_goal_id = ?).
+        op.create_index(
+            "ix_coach_sessions_forged_goal_id",
+            "coach_sessions",
+            ["forged_goal_id"],
+            unique=False,
+            postgresql_concurrently=True,
+            if_not_exists=True,
+        )
 
-    # milestones.sprint_status — filtered directly in task-creation and
-    # rescue-sprint routes (sprint_status = 'active').
-    op.create_index(
-        "ix_milestones_sprint_status",
-        "milestones",
-        ["sprint_status"],
-        unique=False,
-        postgresql_concurrently=True,
-        if_not_exists=True,
-    )
+        # milestones.sprint_status — filtered directly in task-creation and
+        # rescue-sprint routes (sprint_status = 'active').
+        op.create_index(
+            "ix_milestones_sprint_status",
+            "milestones",
+            ["sprint_status"],
+            unique=False,
+            postgresql_concurrently=True,
+            if_not_exists=True,
+        )
 
 
 def downgrade() -> None:
