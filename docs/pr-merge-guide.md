@@ -439,6 +439,29 @@ adds new interfaces or new optional fields to `Goal` / `User`. Keep all addition
 a field appears on both sides of a conflict, keep the more permissive type (usually
 `string | null` over `string`).
 
+### `apps/api/utils.py`
+
+Modified by: `feature/centralize-timezone` (Tier 1 — rewrites the file with a full set of
+timezone helpers) and `feature/pagination` (Tier 5 — appends `encode_cursor`/`decode_cursor`).
+
+**Strategy**: `feature/centralize-timezone` lands first (Tier 1). After it merges, the file
+has the expanded timezone API but **no cursor helpers**. When merging `feature/pagination`
+(Tier 5), manually append the two cursor functions from its version of `utils.py`:
+
+```python
+import base64
+
+def encode_cursor(value: str) -> str:
+    """Base64-encode a cursor value (any string, e.g. an ISO timestamp or UUID)."""
+    return base64.urlsafe_b64encode(value.encode()).decode()
+
+def decode_cursor(cursor: str) -> str:
+    """Base64-decode a cursor back to its original string value."""
+    return base64.urlsafe_b64decode(cursor.encode()).decode()
+```
+
+Add the `import base64` at the top of the file with the other imports.
+
 ### `apps/api/services/subscription_service.py`
 
 Created by: #108 (`feature/feature-gating`) with a real `get_user_plan` + `require_pro`
