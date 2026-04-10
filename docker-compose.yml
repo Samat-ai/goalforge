@@ -36,7 +36,7 @@ services:
   celery_worker:
     build:
       context: ./apps/api
-    command: celery -A apps.api.celery_app.celery_app worker --loglevel=info -Q default,ai_generation,notifications -c 4
+    command: celery -A celery_app worker --loglevel=info -Q default,ai_generation,notifications -c 4
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
@@ -49,7 +49,7 @@ services:
   celery_beat:
     build:
       context: ./apps/api
-    command: celery -A apps.api.celery_app.celery_app beat --loglevel=info --scheduler celery.beat:PersistentScheduler
+    command: celery -A celery_app beat --loglevel=info --scheduler celery.beat:PersistentScheduler
     environment:
       - REDIS_URL=redis://redis:6379/0
     depends_on:

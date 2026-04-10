@@ -9,8 +9,8 @@ def make_celery(redis_url: str) -> Celery:
         broker=redis_url,
         backend=redis_url,
         include=[
-            "apps.api.tasks.goal_tasks",
-            "apps.api.tasks.notification_tasks",
+            "tasks.goal_tasks",
+            "tasks.notification_tasks",
         ],
     )
     app.conf.update(
@@ -26,8 +26,8 @@ def make_celery(redis_url: str) -> Celery:
         ],
         task_default_queue="default",
         task_routes={
-            "apps.api.tasks.goal_tasks.*": {"queue": "ai_generation"},
-            "apps.api.tasks.notification_tasks.*": {"queue": "notifications"},
+            "tasks.goal_tasks.*": {"queue": "ai_generation"},
+            "tasks.notification_tasks.*": {"queue": "notifications"},
         },
         task_acks_late=True,
         worker_prefetch_multiplier=1,
@@ -36,11 +36,11 @@ def make_celery(redis_url: str) -> Celery:
         task_retry_backoff_max=600,
         beat_schedule={
             "daily-reminders": {
-                "task": "apps.api.tasks.notification_tasks.send_daily_reminders",
+                "task": "tasks.notification_tasks.send_daily_reminders",
                 "schedule": 3600.0,  # every hour
             },
             "weekly-star-log": {
-                "task": "apps.api.tasks.notification_tasks.generate_weekly_star_logs",
+                "task": "tasks.notification_tasks.generate_weekly_star_logs",
                 "schedule": 604800.0,  # weekly
             },
         },
@@ -49,5 +49,5 @@ def make_celery(redis_url: str) -> Celery:
 
 
 # Import settings here to avoid circular imports
-from apps.api.config import settings
+from config import settings
 celery_app = make_celery(settings.redis_url)
