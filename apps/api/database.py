@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import DeclarativeBase
 
 from config import settings
+from db_listeners import register_slow_query_listener
 
 _is_sqlite = settings.database_url.startswith("sqlite")
 _pool_kwargs = {} if _is_sqlite else {
@@ -17,6 +18,8 @@ engine = create_async_engine(
     pool_recycle=settings.db_pool_recycle,
     **_pool_kwargs,
 )
+
+register_slow_query_listener(engine)
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
