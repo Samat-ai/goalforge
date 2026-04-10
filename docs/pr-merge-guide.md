@@ -404,6 +404,34 @@ cherry-pick only the PWA-specific additions from mobile-pwa (install prompt, man
 icon paths). The service-worker-caching version is more complete in its caching
 strategy — do not revert it.
 
+### `.github/workflows/ci.yml`
+
+Modified by: `feature/ci-improvements` (Tier 1) — comprehensive rewrite with separate
+lint/test jobs, concurrency groups, coverage reports, Python 3.13, Node 22.
+Also modified by: `feature/ci-migration-check` (refinement) — adds `alembic check` and
+single-head validation steps.
+
+**Strategy**: Merge `feature/ci-improvements` first (it has the more complete job
+definitions). When merging `feature/ci-migration-check`, discard the new
+`backend-test` job it adds (the one from `feature/ci-improvements` is better) and
+instead manually insert the two migration-check steps into the existing `backend-test`
+job after the `alembic upgrade head` step:
+
+```yaml
+- name: Check migration completeness
+  run: alembic check
+
+- name: Check for migration head conflicts
+  run: |
+    HEADS=$(alembic heads | wc -l)
+    if [ "$HEADS" -gt 1 ]; then
+      echo "ERROR: Multiple migration heads detected:"
+      alembic heads
+      exit 1
+    fi
+    echo "Migration chain is clean (single head)"
+```
+
 ---
 
 ## 4. Quick-Start Commands
