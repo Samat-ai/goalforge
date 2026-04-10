@@ -69,6 +69,17 @@ No Alembic migrations. Some PRs touch shared frontend files (`App.tsx`,
 | #130 | `feature/error-pages` | Custom 404 / offline / error pages |
 | #137 | `feature/keyboard-shortcuts` | Keyboard shortcuts modal |
 
+### Tier 4b — Performance (index migration, no schema changes)
+
+These PRs add indexes only — no new tables or columns. They can be merged any time
+after Tier 3 since they don't change the data model. The migration uses
+`CREATE INDEX CONCURRENTLY` wrapped in `autocommit_block()`, so it is safe to run
+against a live database.
+
+| PR | Branch | Migration file | Notes |
+|----|--------|---------------|-------|
+| #157 | `feature/db-indexes` | `add_missing_indexes.py` | revision `a4b5c6d7e8f9`; no `down_revision` update needed (indexes are additive) |
+
 ### Tier 5 — New Model Fields (migrations)
 
 These PRs each add columns. Must be merged in the order listed; update `down_revision`
