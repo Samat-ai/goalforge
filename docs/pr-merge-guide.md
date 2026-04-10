@@ -371,6 +371,29 @@ adds new interfaces or new optional fields to `Goal` / `User`. Keep all addition
 a field appears on both sides of a conflict, keep the more permissive type (usually
 `string | null` over `string`).
 
+### `apps/api/services/subscription_service.py`
+
+Created by: #108 (`feature/feature-gating`) with a real `get_user_plan` + `require_pro`
+implementation. Also created from scratch by: `feature/data-export` as a stub (always
+returns Pro = True until billing is wired).
+
+**Strategy**: Merge `feature/feature-gating` (#108) **before** `feature/data-export`.
+When merging the data-export PR, discard the stub `subscription_service.py` it brings
+(keep the #108 version which is more complete). The data-export route only calls
+`require_pro(user_id, db, "export")` — that function exists in the #108 version so
+no further changes are needed.
+
+### `docker-compose.yml`
+
+Created by: `feature/docker-compose` (comprehensive, includes healthchecks, dev
+Dockerfiles, celery workers). Also partially created by: `feature/celery-redis-queue`
+(adds celery services to a simpler compose).
+
+**Strategy**: Merge `feature/docker-compose` **first**. When merging
+`feature/celery-redis-queue`, discard the `docker-compose.yml` changes it brings —
+the complete version from `feature/docker-compose` already includes all celery services.
+Only keep the `celery_app.py`, `tasks/`, and other Python changes from that PR.
+
 ---
 
 ## 4. Quick-Start Commands
