@@ -499,6 +499,26 @@ Dockerfiles, celery workers). Also partially created by: `feature/celery-redis-q
 the complete version from `feature/docker-compose` already includes all celery services.
 Only keep the `celery_app.py`, `tasks/`, and other Python changes from that PR.
 
+### `apps/web/vite.config.ts`
+
+Modified by: `feature/e2e-auth-guard-and-goal-type` (adds `e2e-mode-guard` Vite plugin that
+throws on production VITE_E2E_MODE builds) and `feature/code-splitting` (adds
+`build.rollupOptions.output.manualChunks` for vendor splitting)
+
+**Strategy**: The changes touch different parts of the config object — plugins vs build.
+The combined final config should contain both:
+```ts
+export default defineConfig({
+  plugins: [{ name: 'e2e-mode-guard', ... }, react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: { manualChunks: { 'vendor-react': [...], ... } },
+    },
+  },
+})
+```
+No lines conflict; this is a merge combination, not a choice.
+
 ### `apps/web/public/sw.js`
 
 Modified by: `feature/service-worker-caching` (Tier 2) and `feature/mobile-pwa` (Tier 4).
