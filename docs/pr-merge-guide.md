@@ -80,7 +80,7 @@ after each one lands. See Section 2.
 | #141 | `feature/notification-preferences` | `add_notification_prefs.py` | `down_revision` must be updated after #139 lands |
 | #138 | `feature/pagination` | *(no migration — query-param + schema changes only)* | — |
 | #140 | `feature/goal-search` | *(no migration — adds search query to existing route)* | — |
-| #131 | `feature/goal-notes` | *(no migration file found — verify the PR adds one)* | — |
+| #131 | `feature/goal-notes` | `add_goal_notes_table.py` | collision fixed — new ID `c2d3e4f5a6b7` (see §2) |
 
 ### Tier 6 — Tests
 
@@ -247,6 +247,27 @@ After merging #141, the new tip is `a1b2c3d4e5f7`.
 
 ---
 
+### PR #131 — Goal notes (`add_goal_notes_table.py`)
+
+**Collision fixed** — the original revision ID `a1b2c3d4e5f7` collided with #141
+(notification preferences). The branch has already been patched: revision is now `c2d3e4f5a6b7`.
+
+**Required edit before merging** (merge after #141, so tip is `a1b2c3d4e5f7`):
+
+In `apps/api/alembic/versions/add_goal_notes_table.py`:
+
+```python
+# Change:
+down_revision: Union[str, None] = "b7c8d9e0f1a2"
+
+# To:
+down_revision: Union[str, None] = "a1b2c3d4e5f7"   # tip after #141 merged
+```
+
+After merging #131, the new tip is `c2d3e4f5a6b7`.
+
+---
+
 ### Checklist — Migrations in merge order
 
 ```
@@ -271,6 +292,12 @@ After merging #141, the new tip is `a1b2c3d4e5f7`.
             Rename file → a1b2c3d4e5f7_add_notification_prefs.py
             Merge PR #141
 [ ] Verify: alembic heads  → only one head (a1b2c3d4e5f7)
+
+[ ] PR #131  Edit add_goal_notes_table.py:
+            down_revision → a1b2c3d4e5f7   (revision ID already fixed to c2d3e4f5a6b7)
+            Rename file → c2d3e4f5a6b7_add_goal_notes_table.py
+            Merge PR #131
+[ ] Verify: alembic heads  → only one head (c2d3e4f5a6b7)
 ```
 
 ---
