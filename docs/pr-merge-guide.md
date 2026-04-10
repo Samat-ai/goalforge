@@ -430,6 +430,20 @@ Modified by: `feature/skeleton-loading` (adds skeleton placeholders), `feature/q
 **Strategy**: Both changes are additive to the same JSX sections. Merge skeleton-loading first, then
 manually add the `<QueryErrorBoundary>` wrappers around the data-fetching sections.
 
+### `apps/web/src/components/GoalCard.tsx`
+
+Modified by: `feature/split-components` (major structural refactor — extracts
+`GoalCardHeader`, `GoalCardMilestones`, `GoalCardActions` sub-components) and
+`feature/accessibility` (adds `role`, `aria-label`, `aria-live` attributes)
+
+**Strategy**: Merge `feature/accessibility` **first** since it makes smaller, targeted
+attribute additions. After it lands, merge `feature/split-components`. At that point the
+accessibility attributes added to the monolithic `GoalCard.tsx` will need to be moved
+into the appropriate sub-components:
+- `role="article"` and top-level `aria-label={goal.smart_title}` → outer wrapper in `GoalCard.tsx`
+- `role="status"` / `aria-live="polite"` on the badge row → `GoalCardHeader.tsx`
+- `aria-label="Complete goal"` on the complete-goal button → `GoalCardActions.tsx`
+
 ### `apps/web/src/lib/types.ts`
 
 Modified by: #107, #108, #113, #114, #115, #138, #139, #141
