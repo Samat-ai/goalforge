@@ -14,7 +14,7 @@ def _run_async(coro):
         loop.close()
 
 
-@shared_task(name="apps.api.tasks.notification_tasks.send_daily_reminders", queue="notifications")
+@shared_task(name="tasks.notification_tasks.send_daily_reminders", queue="notifications")
 def send_daily_reminders() -> dict:
     """
     Send daily reminders to all users.
@@ -22,16 +22,16 @@ def send_daily_reminders() -> dict:
     Logic: rescue check → streak-saver push → inactivity nudge → digest email.
     """
     # Import here to avoid circular imports at module load time
-    from apps.api.routes.jobs import _run_reminder_logic
+    from routes.jobs import _run_reminder_logic
     _run_async(_run_reminder_logic())
     logger.info("Daily reminders sent")
     return {"status": "success"}
 
 
-@shared_task(name="apps.api.tasks.notification_tasks.generate_weekly_star_logs", queue="notifications")
+@shared_task(name="tasks.notification_tasks.generate_weekly_star_logs", queue="notifications")
 def generate_weekly_star_logs() -> dict:
     """Generate weekly narrative star logs for all active users."""
-    from apps.api.routes.jobs import _run_weekly_star_log_logic
+    from routes.jobs import _run_weekly_star_log_logic
     _run_async(_run_weekly_star_log_logic())
     logger.info("Weekly star logs generated")
     return {"status": "success"}

@@ -18,7 +18,7 @@ def _run_async(coro):
 
 @shared_task(
     bind=True,
-    name="apps.api.tasks.goal_tasks.generate_smart_goal",
+    name="tasks.goal_tasks.generate_smart_goal",
     max_retries=3,
     queue="ai_generation",
 )
@@ -29,7 +29,7 @@ def generate_smart_goal_task(self, goal_id: str, raw_input: str) -> dict:
     Retries up to 3 times with exponential backoff on failure.
     """
     try:
-        from apps.api.services.goal_service import _phase2_generate
+        from services.goal_service import _phase2_generate
         _run_async(_phase2_generate(goal_id, raw_input))
         logger.info("Smart goal generated: goal_id=%s", goal_id)
         return {"status": "success", "goal_id": goal_id}
@@ -41,7 +41,7 @@ def generate_smart_goal_task(self, goal_id: str, raw_input: str) -> dict:
 
 @shared_task(
     bind=True,
-    name="apps.api.tasks.goal_tasks.generate_sprint_tasks",
+    name="tasks.goal_tasks.generate_sprint_tasks",
     max_retries=3,
     queue="ai_generation",
 )
@@ -51,7 +51,7 @@ def generate_sprint_tasks_task(self, milestone_id: str, goal_id: str) -> dict:
     Replaces _pre_generate_sprint BackgroundTask in task_service.py.
     """
     try:
-        from apps.api.services.task_service import _pre_generate_sprint
+        from services.task_service import _pre_generate_sprint
         _run_async(_pre_generate_sprint(milestone_id, goal_id))
         logger.info("Sprint tasks generated: milestone_id=%s", milestone_id)
         return {"status": "success", "milestone_id": milestone_id}
@@ -63,14 +63,14 @@ def generate_sprint_tasks_task(self, milestone_id: str, goal_id: str) -> dict:
 
 @shared_task(
     bind=True,
-    name="apps.api.tasks.goal_tasks.execute_rescue_sprint",
+    name="tasks.goal_tasks.execute_rescue_sprint",
     max_retries=2,
     queue="ai_generation",
 )
 def execute_rescue_sprint_task(self, goal_id: str, user_id: str) -> dict:
     """Execute rescue sprint for users inactive 48h+."""
     try:
-        from apps.api.services.rescue_service import execute_rescue_sprint
+        from services.rescue_service import execute_rescue_sprint
         _run_async(execute_rescue_sprint(goal_id, user_id))
         return {"status": "success", "goal_id": goal_id}
     except Exception as exc:
