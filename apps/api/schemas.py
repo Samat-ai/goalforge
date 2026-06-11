@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -124,6 +124,20 @@ class GoalResponse(BaseModel):
     target_date: date
     milestones: list[MilestoneResponse] = []
     status: Literal["active", "achieved", "abandoned"]
+
+    @field_validator('goal_type', mode='before')
+    @classmethod
+    def normalise_goal_type(cls, v: str) -> str:
+        _map = {
+            'fitness': 'health', 'wellness': 'health', 'wellbeing': 'health',
+            'creative': 'personal', 'creativity': 'personal', 'mindset': 'personal',
+            'financial': 'finance', 'money': 'finance',
+            'education': 'learning', 'skills': 'learning',
+            'work': 'career', 'professional': 'career',
+            'social': 'relationships', 'family': 'relationships',
+        }
+        normalised = v.lower().strip()
+        return _map.get(normalised, normalised)
     progress: int
     created_at: datetime
     daily_tasks: list[TaskResponse] = []
