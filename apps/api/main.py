@@ -23,6 +23,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from config import settings
+from startup import validate_startup
 from database import engine, get_db, Base
 from rate_limiting import limiter, rate_limit_enabled
 from routes import accountability, coach, energy, goals, jobs, milestones, push, rewards, shop, tasks, users
@@ -68,6 +69,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    validate_startup()
     if settings.environment != "production":
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
