@@ -5,6 +5,37 @@
   --font-mono: 'JetBrains Mono', monospace;
 }
 
+/* ── Color scheme custom properties ── */
+
+:root {
+  --bg-primary: #ffffff;
+  --bg-surface: #f8fafc;
+  --bg-card: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --border-color: #e2e8f0;
+  --border-hi: #cbd5e1;
+  --accent-primary: #6366f1;
+  --accent-orange: #f97316;
+}
+
+.dark {
+  --bg-primary: #020617;
+  --bg-surface: #0e0e1a;
+  --bg-card: #12121f;
+  --text-primary: #f8fafc;
+  --text-secondary: #a0a0b8;
+  --text-muted: #71717a;
+  --border-color: #1c1c30;
+  --border-hi: #2e2e50;
+  --accent-primary: #818cf8;
+  --accent-orange: #f97316;
+}
+
+/* ── Dark mode strategy: class-based (Tailwind CSS 4) ── */
+@variant dark (&:where(.dark, .dark *));
+
 /* ── Keyframes ── */
 
 @keyframes slide-up {
@@ -29,11 +60,33 @@
   to { transform: rotate(360deg); }
 }
 
+/* ── Mobile / PWA improvements ── */
+
+/* Prevent iOS bounce scroll while allowing inner scrolling */
+html { overflow: hidden; height: 100%; }
+body { overflow: auto; height: 100%; -webkit-overflow-scrolling: touch; }
+
+/* Safe area insets for notched / Dynamic Island phones */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+
+/* Minimum touch target size (WCAG 2.5.5) */
+button { min-height: 44px; }
+
+/* Disable tap highlight on interactive elements */
+button, a { -webkit-tap-highlight-color: transparent; }
+
 /* ── Global ── */
 
 body {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  background-color: #06070f;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* ── Background mesh ── */
@@ -43,7 +96,7 @@ body {
     radial-gradient(ellipse 55% 38% at 8%  8%,  rgba(249, 115, 22, 0.08) 0%, transparent 58%),
     radial-gradient(ellipse 45% 42% at 92% 82%, rgba(139, 92, 246, 0.10) 0%, transparent 58%),
     radial-gradient(ellipse 80% 55% at 50% 110%, rgba(12, 8, 44, 0.55) 0%, transparent 68%),
-    #06070f;
+    var(--bg-primary);
 }
 
 /* ── Animation utilities ── */
