@@ -1,9 +1,10 @@
 /* GoalForge service worker — Cache-first / Network-first / SWR strategy.
  *
  * Fetch routing:
- *   /api/*          → network-first, fall back to cache
- *   /assets/*       → stale-while-revalidate (Vite content-hashes these; cached
- *                     entry is always correct when the URL hasn't changed)
+ *   /api/*          → network-only (never cache game state — prevents stale
+ *                                   star points / task data in React Query)
+ *   /assets/*       → stale-while-revalidate (Vite content-hashes these;
+ *                     a cached entry is always correct when the URL hasn't changed)
  *   navigation      → cache-first for app shell, network update in background
  *   everything else → network-first, fallback to cache
  *
@@ -16,11 +17,10 @@
 const CACHE_VERSION = 'v1'
 const CACHE_NAME = `goalforge-shell-${CACHE_VERSION}`
 const STATIC_CACHE = `goalforge-static-${CACHE_VERSION}`
-const API_CACHE = `goalforge-api-${CACHE_VERSION}`
 
 const SHELL_URLS = ['/', '/manifest.json', '/icon.svg']
 
-// ── Install: pre-cache the app shell ─────────────────────────────────────────
+// ── Install: pre-cache the app shell ─────────────────────────────────────────────
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -29,10 +29,10 @@ self.addEventListener('install', (event) => {
   self.skipWaiting()
 })
 
-// ── Activate: purge stale caches ─────────────────────────────────────────────
+// ── Activate: purge stale caches ────────────────────────────────────────────────
 
 self.addEventListener('activate', (event) => {
-  const validCaches = new Set([CACHE_NAME, STATIC_CACHE, API_CACHE])
+  const validCaches = new Set([CACHE_NAME, STATIC_CACHE])
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
@@ -43,7 +43,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim()
 })
 
-// ── Push notifications ────────────────────────────────────────────────────────
+// ── Push notifications ──────────────────────────────────────────────────────
 
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {}
@@ -63,7 +63,7 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(clients.openWindow(target))
 })
 
-// ── Caching strategies ────────────────────────────────────────────────────────
+// ── Caching strategies ───────────────────────────────────────────────────────
 
 /** Cache-first: serve from cache, fetch + cache on miss. */
 async function cacheFirst(request, cacheName = CACHE_NAME) {
@@ -90,7 +90,6 @@ async function networkFirst(request, cacheName = CACHE_NAME) {
   } catch {
     const cached = await caches.match(request)
     if (cached) return cached
-    // Navigation fallback: serve cached shell so React mounts
     if (request.mode === 'navigate') {
       const shell = await caches.match('/')
       if (shell) return shell
@@ -113,7 +112,7 @@ async function staleWhileRevalidate(request, cacheName = STATIC_CACHE) {
   return cached ?? (await networkFetch) ?? new Response('Offline', { status: 503 })
 }
 
-// ── Fetch routing ─────────────────────────────────────────────────────────────
+// ── Fetch routing ────────────────────────────────────────────────────────────
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url)
@@ -121,11 +120,8 @@ self.addEventListener('fetch', (event) => {
   // Only handle same-origin requests; let cross-origin (fonts, CDN) pass through
   if (url.origin !== self.location.origin) return
 
-  // 1. API calls: network-first, fall back to cache
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirst(event.request, API_CACHE))
-    return
-  }
+  // 1. API calls: skip SW entirely — browser handles, React Query sees live data
+  if (url.pathname.startsWith('/api/')) return
 
   // 2. Vite hashed assets: stale-while-revalidate
   if (url.pathname.startsWith('/assets/')) {
