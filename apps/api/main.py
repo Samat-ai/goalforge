@@ -13,20 +13,18 @@ from contextvars import ContextVar
 
 from pythonjsonlogger import jsonlogger
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from config import settings
 from startup import validate_startup
-from database import engine, get_db, Base
+from database import engine, Base
 from rate_limiting import limiter, rate_limit_enabled
-from routes import accountability, coach, energy, goals, jobs, milestones, push, rewards, shop, tasks, users
+from routes import accountability, coach, energy, goals, health, jobs, milestones, push, rewards, shop, tasks, users
 
 # ---------------------------------------------------------------------------
 # Structured logging
@@ -143,6 +141,7 @@ if rate_limit_enabled:
 # Routers
 # ---------------------------------------------------------------------------
 
+app.include_router(health.router, prefix="")
 app.include_router(users.router, tags=["users"])
 app.include_router(goals.router, tags=["goals"])
 app.include_router(tasks.router, tags=["tasks"])
@@ -154,17 +153,3 @@ app.include_router(push.router, tags=["push"])
 app.include_router(shop.router, tags=["shop"])
 app.include_router(accountability.router, tags=["accountability"])
 app.include_router(coach.router, tags=["coach"])
-
-
-# ---------------------------------------------------------------------------
-# Health
-# ---------------------------------------------------------------------------
-
-@app.get("/health", include_in_schema=False)
-async def health(db: AsyncSession = Depends(get_db)):
-    try:
-        await db.execute(select(1))
-        return {"status": "ok", "database": "connected"}
-    except Exception as exc:
-        logger.error("Health check DB error: %s", exc)
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database connection failed")
