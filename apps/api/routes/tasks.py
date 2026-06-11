@@ -35,7 +35,11 @@ router = APIRouter()
 async def _load_task_with_ownership(
     task_id: uuid.UUID, current_user_id: str, db: AsyncSession,
 ) -> tuple[DailyTask, Goal]:
-    result = await db.execute(select(DailyTask).where(DailyTask.id == task_id))
+    result = await db.execute(
+        select(DailyTask)
+        .options(selectinload(DailyTask.milestone))
+        .where(DailyTask.id == task_id)
+    )
     task = result.scalar_one_or_none()
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -254,14 +258,7 @@ async def regenerate_task(
 
     # Build context for AI
     goal_context = f"{goal.smart_title}: {goal.smart_description}"
-    sprint_theme = ""
-    if task.milestone_id:
-        ms_result = await db.execute(
-            select(Milestone).where(Milestone.id == task.milestone_id)
-        )
-        ms = ms_result.scalar_one_or_none()
-        if ms:
-            sprint_theme = ms.sprint_theme
+    sprint_theme = task.milestone.sprint_theme if task.milestone else ""
 
     try:
         new_task = await regenerate_single_task(

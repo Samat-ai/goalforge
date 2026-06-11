@@ -14,7 +14,11 @@ import ErrorBoundary from './components/ErrorBoundary'
 import EnergyParamCapture from './components/EnergyParamCapture'
 import OfflineBanner from './components/OfflineBanner'
 
+// ⚠️ E2E_MODE bypasses auth — never set VITE_E2E_MODE=true in production
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
+if (isE2EMode) {
+  console.error('[GoalForge] E2E_MODE is active — Clerk auth is bypassed. This must never run in production!')
+}
 
 function useToasterPosition(): 'bottom-right' | 'top-center' {
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 639px)').matches)

@@ -109,6 +109,8 @@ class Goal(Base):
     raw_input: Mapped[str] = mapped_column(String, nullable=False)
     smart_title: Mapped[str] = mapped_column(String, nullable=False)
     smart_description: Mapped[str] = mapped_column(Text, nullable=False)
+    # Valid values: "health", "career", "learning", "finance", "relationships", "personal"
+    # Classified by Gemini during goal generation — not enforced at DB level to avoid migrations.
     goal_type: Mapped[str] = mapped_column(String, nullable=False)
     target_date: Mapped[datetime] = mapped_column(Date, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, default="active")
