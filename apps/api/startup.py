@@ -8,7 +8,6 @@ def validate_startup() -> None:
     errors = []
     warnings = []
 
-    # Check each required field by attribute name from settings
     # Required for basic operation
     if not getattr(settings, 'database_url', None):
         errors.append("DATABASE_URL — app cannot connect to database")
@@ -21,8 +20,6 @@ def validate_startup() -> None:
     optional_checks = [
         ('resend_api_key', 'RESEND_API_KEY', 'email notifications disabled'),
         ('vapid_private_key', 'VAPID_PRIVATE_KEY', 'push notifications disabled'),
-        ('stripe_secret_key', 'STRIPE_SECRET_KEY', 'billing features disabled'),
-        ('sentry_dsn', 'SENTRY_DSN', 'error tracking disabled'),
     ]
     for attr, env_var, consequence in optional_checks:
         if not getattr(settings, attr, None):
