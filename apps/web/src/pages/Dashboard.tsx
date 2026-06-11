@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { T } from '../lib/theme'
 import AppHeader from '../components/AppHeader'
@@ -270,6 +271,8 @@ function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
 
 // ── Dashboard (main page) ─────────────────────────────────────────────────────
 export default function Dashboard() {
+  const [searchParams] = useSearchParams()
+  const onboardingGoal = searchParams.get('goal') ?? undefined
   const { user } = useUser()
   const userId = user?.id ?? (isE2EMode ? e2eUserId : undefined)
   const { fireBadgeConfetti } = useConfetti()
@@ -390,7 +393,7 @@ export default function Dashboard() {
             <WelcomeBackCard goals={goals} onFocus={() => setFocusOpen(true)} />
             <DoThisNow goals={goals} />
             <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} onEnergyOpen={() => setShowEnergyModal(true)} />
-            <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} />
+            <AddGoal onAdd={mutations.addGoal} value={addGoalText} onChange={setAddGoalText} defaultValue={onboardingGoal} />
 
             {goals.length === 0 ? (
               <EmptyState onSelect={setAddGoalText} />
