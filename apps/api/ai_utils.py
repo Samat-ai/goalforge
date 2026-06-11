@@ -50,6 +50,8 @@ Rules:
 - initial_tasks covers exactly 7 days for the FIRST milestone only.
   assigned_date must start from today and increment by one day per task.
 - Be specific, realistic, and encouraging.
+- goal_type must be exactly one of: health, career, learning, finance, relationships, personal.
+  Classify based on the primary focus of the goal.
 """
 
 _SPRINT_SYSTEM_PROMPT = """\

@@ -7,6 +7,8 @@ import AuthInterceptor from './components/AuthInterceptor'
 import './index.css'
 import App from './App.tsx'
 import { ConfettiProvider } from './components/ConfettiContext'
+import { ThemeProvider } from './lib/ThemeContext'
+import InstallPrompt from './components/InstallPrompt'
 
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
@@ -26,13 +28,16 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ClerkProvider publishableKey={resolvedPublishableKey}>
-      <QueryClientProvider client={queryClient}>
-        <ConfettiProvider>
-          {!isE2EMode && <AuthInterceptor />}
-          <App />
-        </ConfettiProvider>
-      </QueryClientProvider>
-    </ClerkProvider>
+    <ThemeProvider>
+      <ClerkProvider publishableKey={resolvedPublishableKey}>
+        <QueryClientProvider client={queryClient}>
+          <ConfettiProvider>
+            {!isE2EMode && <AuthInterceptor />}
+            <App />
+            <InstallPrompt />
+          </ConfettiProvider>
+        </QueryClientProvider>
+      </ClerkProvider>
+    </ThemeProvider>
   </StrictMode>,
 )
