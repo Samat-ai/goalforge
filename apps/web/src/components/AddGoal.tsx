@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { T } from '../lib/theme'
 import Btn from './ui/Btn'
 
@@ -14,11 +14,22 @@ interface AddGoalProps {
   onAdd: (rawInput: string) => Promise<void>
   value: string
   onChange: (v: string) => void
+  /** Pre-fill the textarea once on mount (e.g. passed in from the onboarding flow). */
+  defaultValue?: string
 }
 
-export default function AddGoal({ onAdd, value, onChange }: AddGoalProps) {
+export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoalProps) {
   const [loading, setLoading] = useState(false)
   const [status,  setStatus]  = useState<'idle' | 'thinking' | 'done' | 'error'>('idle')
+
+  // Apply defaultValue once on mount — only if the parent hasn't already seeded a value.
+  useEffect(() => {
+    if (defaultValue && !value) {
+      onChange(defaultValue)
+    }
+    // Intentionally runs only on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const submit = async () => {
     if (!value.trim() || loading) return

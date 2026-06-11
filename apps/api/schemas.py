@@ -96,6 +96,9 @@ class TaskReorderRequest(BaseModel):
 # Goal schemas
 # ---------------------------------------------------------------------------
 
+GoalType = Literal["health", "career", "learning", "finance", "relationships", "personal"]
+
+
 class GoalCreate(BaseModel):
     """Payload sent by the client to create a new goal."""
     raw_input: str = Field(..., min_length=10, max_length=2000)
@@ -117,7 +120,7 @@ class GoalResponse(BaseModel):
     raw_input: str
     smart_title: str
     smart_description: str
-    goal_type: str
+    goal_type: GoalType
     target_date: date
     milestones: list[MilestoneResponse] = []
     status: Literal["active", "achieved", "abandoned"]
@@ -432,7 +435,7 @@ class AIGoalOutput(BaseModel):
     """Strict schema that Gemini must populate — mirrors the Goal + first sprint tasks."""
     smart_title: str = Field(..., max_length=200, description="Concise, motivating SMART goal title (≤12 words)")
     smart_description: str = Field(..., max_length=500, description="2-3 sentence SMART goal description")
-    goal_type: str = Field(..., description="Category, e.g. fitness, career, learning, finance, health")
+    goal_type: GoalType = Field(..., description="Classify into exactly one of: health, career, learning, finance, relationships, personal")
     target_date: date = Field(..., description="Realistic ISO-8601 target completion date")
     milestones: list[AIMilestoneConfig] = Field(
         ..., min_length=3, max_length=5,

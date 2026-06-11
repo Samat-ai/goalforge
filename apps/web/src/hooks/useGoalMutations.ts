@@ -53,12 +53,15 @@ export function useGoalMutations(userId: string, onJackpot?: (drop: RewardDrop) 
       const prevProfile = qc.getQueryData<ProfileData>(profileKey)
       const today = todayStr()
 
-      // Optimistic: mark complete + +10 pts + confetti pop
+      // Optimistic: mark complete + completed_at timestamp + +10 pts + confetti pop
+      const completedAt = new Date().toISOString()
       updateGoals(goals => goals.map(goal => {
         if (!goal.daily_tasks.some(t => t.id === taskId)) return goal
         return {
           ...goal,
-          daily_tasks: goal.daily_tasks.map(t => t.id === taskId ? { ...t, is_completed: true } : t),
+          daily_tasks: goal.daily_tasks.map(t =>
+            t.id === taskId ? { ...t, is_completed: true, completed_at: completedAt } : t,
+          ),
           completed_days: goal.completed_days.includes(today) ? goal.completed_days : [...goal.completed_days, today],
         }
       }))
@@ -106,6 +109,10 @@ export function useGoalMutations(userId: string, onJackpot?: (drop: RewardDrop) 
       if (context?.prevGoals) qc.setQueryData(goalsKey, context.prevGoals)
       if (context?.prevProfile) qc.setQueryData(profileKey, context.prevProfile)
       toast.error('Could not save task. Please try again.')
+    },
+    onSettled: () => {
+      // Always re-sync with server so local state stays consistent
+      qc.invalidateQueries({ queryKey: queryKeys.goals(userId) })
     },
   })
 
