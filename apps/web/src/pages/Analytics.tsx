@@ -11,6 +11,7 @@ import {
   useLatestWeeklyReflectionQuery,
   useProfileQuery,
 } from '../hooks'
+import { StatCardSkeleton } from '../components/ui/Skeleton'
 
 // ── Analytics page ────────────────────────────────────────────────────────────
 export default function Analytics() {
@@ -188,13 +189,15 @@ export default function Analytics() {
         )}
 
         {loading && (
-          <div role="status" aria-label="Loading analytics" style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: '50%',
-              border: `2px solid ${T.dim}`, borderTop: `2px solid ${T.orange}`,
-              animation: 'spin 0.75s linear infinite',
-            }} />
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <div role="status" aria-label="Loading analytics">
+            <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 14 }}>
+              OVERVIEW
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 11, marginBottom: 14 }}>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <StatCardSkeleton key={i} />
+              ))}
+            </div>
           </div>
         )}
 
