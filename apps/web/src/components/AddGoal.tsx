@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { T } from '../lib/theme'
 import Btn from './ui/Btn'
+import GoalTemplates from './GoalTemplates'
 
-const TEMPLATES = [
+const QUICK_PROMPTS = [
   { label: '🏋️ Get fit',         prompt: 'I want to build a consistent workout habit and lose 15 pounds over the next 3 months' },
   { label: '📚 Learn something',  prompt: 'I want to learn the basics of Python programming in 6 weeks' },
   { label: '💰 Financial goal',   prompt: 'Save $5,000 for an emergency fund by the end of the year' },
@@ -65,7 +66,7 @@ export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoa
       />
       {!value && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 10 }}>
-          {TEMPLATES.map(t => (
+          {QUICK_PROMPTS.map(t => (
             <button
               key={t.label}
               onClick={() => onChange(t.prompt)}
@@ -97,6 +98,7 @@ export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoa
       <div style={{ display: 'flex', gap: 8, marginTop: 11 }}>
         <Btn onClick={submit} loading={loading}>Create Goal →</Btn>
       </div>
+      <GoalTemplates onSelect={onChange} />
     </div>
   )
 }
