@@ -122,6 +122,8 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
 
   return (
     <div
+      role="article"
+      aria-label={goal.smart_title}
       className={`goal-card-shell ${isAchieved ? 'goal-achieved' : ''}`}
       style={{
         background: T.card, borderRadius: 14, overflow: 'hidden', marginBottom: 1,
@@ -146,7 +148,7 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
         <StarIcon b={b} size={52} />
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+          <div role="status" aria-live="polite" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
             {!isGenerating && <Badge color={T.indigo}>{goal.goal_type}</Badge>}
             {isGenerating && <Badge color={T.muted}>generating…</Badge>}
             {isAbandoned  && <Badge color={T.muted}>abandoned</Badge>}
@@ -295,6 +297,7 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
           {allMilestonesComplete ? (
             <button
               onClick={() => mutations.changeStatus(goal.id, 'achieved')}
+              aria-label="Complete goal"
               style={{
                 cursor: 'pointer', padding: '5px 14px', borderRadius: 8,
                 fontFamily: T.mono, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
@@ -312,6 +315,7 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
                 setCompletingMilestone(false)
               }}
               disabled={completingMilestone}
+              aria-label={completingMilestone ? 'Completing sprint…' : `Complete sprint${nextMilestone ? `, start ${nextMilestone.title}` : ', final lap'}`}
               style={{
                 cursor: completingMilestone ? 'default' : 'pointer',
                 padding: '5px 14px', borderRadius: 8,
@@ -450,7 +454,7 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
           {/* Progress — milestone-gated */}
           <div style={{ marginBottom: 18 }}>
             <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 7 }}>
-              PROGRESS — {milestonesProgress}%
+              PROGRESS — <span aria-label={`${milestonesProgress}% complete`}>{milestonesProgress}%</span>
             </div>
             <div style={{ height: 4, background: T.dim, borderRadius: 2, overflow: 'hidden' }}>
               <div style={{

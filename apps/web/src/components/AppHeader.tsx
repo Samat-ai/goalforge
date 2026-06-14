@@ -51,18 +51,25 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
         Goal<span style={{ color: T.orange }}>Forge</span>
       </span>
 
-      {(['dashboard', 'analytics', 'stars', 'coach', 'settings'] as const).map(v => (
-        <Link key={v} to={`/${v}`} style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          height: 54, padding: '0 14px', fontFamily: T.mono, fontSize: 12,
-          letterSpacing: '0.04em', display: 'flex', alignItems: 'center',
-          color: location.pathname === `/${v}` ? T.text : T.muted,
-          borderBottom: location.pathname === `/${v}` ? `2px solid ${T.orange}` : '2px solid transparent',
-          textDecoration: 'none',
-        }}>
-          {v}
-        </Link>
-      ))}
+      <nav aria-label="Main navigation" style={{ display: 'contents' }}>
+        {(['dashboard', 'analytics', 'stars', 'coach', 'settings'] as const).map(v => (
+          <Link
+            key={v}
+            to={`/${v}`}
+            aria-current={location.pathname === `/${v}` ? 'page' : undefined}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              height: 54, padding: '0 14px', fontFamily: T.mono, fontSize: 12,
+              letterSpacing: '0.04em', display: 'flex', alignItems: 'center',
+              color: location.pathname === `/${v}` ? T.text : T.muted,
+              borderBottom: location.pathname === `/${v}` ? `2px solid ${T.orange}` : '2px solid transparent',
+              textDecoration: 'none',
+            }}
+          >
+            {v}
+          </Link>
+        ))}
+      </nav>
 
       <button
         onClick={() => navigate('/analytics')}

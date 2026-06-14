@@ -109,6 +109,19 @@ body {
   animation: companion-pulse 2.8s ease-in-out infinite;
 }
 
+/* ── Focus ring for keyboard navigation ── */
+
+:focus-visible {
+  outline: 2px solid #6366f1; /* indigo-500 */
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove default outline only when not keyboard navigating */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* ── Skip-to-content link ── */
 
 .skip-link {
