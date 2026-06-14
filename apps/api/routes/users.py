@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from ai_utils import generate_weekly_coach_recommendation
 from services.star_log_service import get_or_create_star_log
+from services.subscription_service import get_user_plan, require_pro
 from auth import get_current_user_email, get_current_user_id
 from database import get_db
 from deps import _ensure_owner, _load_user_with_ownership, get_or_create_user as _get_or_create_user, sync_timezone_from_header
@@ -49,7 +50,8 @@ async def get_user_profile(
     _ensure_owner(user_id, current_user_id)
     user = await _get_or_create_user(user_id, current_user_email, db)
     await sync_timezone_from_header(request, user, db)
-    return {"star_points": user.star_points}
+    plan = await get_user_plan(user_id, db)
+    return {"star_points": user.star_points, "plan": plan}
 
 
 @router.get(
@@ -397,6 +399,7 @@ async def export_user_data(
     db: AsyncSession = Depends(get_db),
 ):
     user = await _load_user_with_ownership(user_id, current_user_id, db)
+    await require_pro(user_id, db, "data_export")
 
     goals_result = await db.execute(
         select(Goal)

@@ -7,6 +7,11 @@ export interface PaginatedGoalsResponse {
   offset: number
 }
 
+export interface UserProfile {
+  star_points: number
+  plan?: "free" | "pro"
+}
+
 export interface UserSettings {
   id: string
   email: string
@@ -15,6 +20,7 @@ export interface UserSettings {
   display_name: string | null
   reminder_enabled: boolean
   reminder_hour: number
+  plan?: "free" | "pro"
 }
 
 export interface UserSettingsUpdatePayload {

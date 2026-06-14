@@ -4,6 +4,7 @@ import { UserButton, useUser } from '@clerk/react'
 import { getStage } from '../lib/gamification'
 import { T } from '../lib/theme'
 import { useRewardsQuery } from '../hooks/useRewards'
+import PlanBadge from './PlanBadge'
 
 const THEME_KEY_TO_CLASS: Record<string, string> = {
   neon_cyberpunk: 'theme-neon-cyberpunk',
@@ -111,6 +112,7 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
             {user.firstName}
           </span>
         )}
+        <PlanBadge />
         <UserButton />
       </div>
     </div>

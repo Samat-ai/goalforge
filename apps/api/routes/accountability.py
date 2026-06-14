@@ -12,6 +12,7 @@ from sqlalchemy.orm import aliased
 from auth import get_current_user_email, get_current_user_id
 from database import get_db
 from deps import _ensure_owner, _load_user_with_ownership, get_or_create_user
+from services.subscription_service import require_pro
 from models import AccountabilityInvite, AccountabilityPartnership, User
 from rate_limiting import _user_key, rate_limit
 from schemas import (
@@ -47,6 +48,7 @@ async def send_accountability_invite(
     db: AsyncSession = Depends(get_db),
 ):
     _ensure_owner(user_id, current_user_id)
+    await require_pro(user_id, db, "accountability")
     inviter = await get_or_create_user(user_id, current_user_email, db)
     target_email = _normalize_email(payload.email)
 
