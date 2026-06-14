@@ -22,6 +22,7 @@ from models import (
 from rate_limiting import rate_limit, _user_key
 from schemas import (
     BadgeResponse,
+    NotificationPrefsUpdate,
     StarLogResponse,
     UserProfileResponse,
     UserSettingsUpdate,
@@ -88,6 +89,31 @@ async def update_user_settings(
         user.reminder_enabled = payload.reminder_enabled
     if payload.reminder_hour is not None:
         user.reminder_hour = payload.reminder_hour
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@router.patch(
+    "/users/{user_id}/notification-preferences",
+    response_model=UserProfileResponse,
+    summary="Update notification preferences (reminder time, days, email digest, push)",
+)
+async def update_notification_preferences(
+    user_id: str,
+    payload: NotificationPrefsUpdate,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await _load_user_with_ownership(user_id, current_user_id, db)
+    if payload.reminder_time is not None:
+        user.reminder_time = payload.reminder_time
+    if payload.reminder_days is not None:
+        user.reminder_days = payload.reminder_days
+    if payload.email_digest_enabled is not None:
+        user.email_digest_enabled = payload.email_digest_enabled
+    if payload.push_enabled is not None:
+        user.push_enabled = payload.push_enabled
     await db.commit()
     await db.refresh(user)
     return user
