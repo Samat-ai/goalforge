@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import type { Task } from '../lib/types'
 
 interface DailyTaskListProps {
@@ -55,6 +55,7 @@ function TaskRow({
   draggable?: boolean
   dateLabel?: string
 }) {
+  const T = useT()
   const {
     attributes, listeners, setNodeRef, setActivatorNodeRef,
     transform, transition, isDragging,
@@ -214,6 +215,7 @@ export default function DailyTaskList({
   goalId, tasks, overdueTasks = [], activeMilestoneId,
   onCompleteTask, onSaveEdit, onAddTask, onRegenerateTask, onReorderTasks, onRestoreTask,
 }: DailyTaskListProps) {
+  const T = useT()
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [editingText, setEditingText] = useState('')
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null)

@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Creature } from './GamificationSvgs'
 import { STAGES, getStage, getNext, stagePct } from '../lib/gamification'
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 
 interface CompanionWidgetProps {
   pts: number
 }
 
 export default function CompanionWidget({ pts }: CompanionWidgetProps) {
+  const T = useT()
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const stage = getStage(pts)

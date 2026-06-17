@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import { pickOneThing } from '../lib/pickOneThing'
 import type { Goal } from '../lib/types'
 
@@ -33,6 +33,7 @@ const OVERLAY_STYLE = {
 }
 
 export default function FocusOverlay({ goals, completeTask, isOpen, onClose }: FocusOverlayProps) {
+  const T = useT()
   const [phase, setPhase] = useState<Phase>('focus')
   const [doneMessage, setDoneMessage] = useState('')
   const [completing, setCompleting] = useState(false)

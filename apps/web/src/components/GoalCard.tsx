@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import { todayStr, streak, starBrightness, lastStreakLength } from '../lib/gamification'
 import { StarIcon } from './GamificationSvgs'
 import Badge from './ui/Badge'
@@ -17,6 +17,7 @@ export interface GoalCardProps {
 }
 
 export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
+  const T = useT()
   const mutations = useGoalMutations(goal.user_id, onJackpot)
   const restoreTaskMutation = useTaskRestoreMutation(goal.user_id)
 

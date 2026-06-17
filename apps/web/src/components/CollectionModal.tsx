@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import type { Reward } from '../lib/types'
 
 // Static registry sizes (mirrors backend COLLECTIBLE_REGISTRY)
@@ -14,6 +14,7 @@ interface CollectionModalProps {
 type Section = 'themes' | 'titles' | 'lore'
 
 export default function CollectionModal({ rewards, onEquip, onClose }: CollectionModalProps) {
+  const T = useT()
   const [activeSection, setActiveSection] = useState<Section>('themes')
   const [expandedLore, setExpandedLore] = useState<string | null>(null)
 

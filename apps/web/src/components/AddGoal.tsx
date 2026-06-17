@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import Btn from './ui/Btn'
 
 const TEMPLATES = [
@@ -19,6 +19,7 @@ interface AddGoalProps {
 }
 
 export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoalProps) {
+  const T = useT()
   const [loading, setLoading] = useState(false)
   const [status,  setStatus]  = useState<'idle' | 'thinking' | 'done' | 'error'>('idle')
 

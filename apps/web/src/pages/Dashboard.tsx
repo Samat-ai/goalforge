@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import AppHeader from '../components/AppHeader'
 import { Creature } from '../components/GamificationSvgs'
 import TodayBar from '../components/TodayBar'
@@ -40,6 +40,7 @@ function computeWelcomeBack(goals: Goal[], today: string): { daysAway: number; l
 }
 
 function WelcomeBackCard({ goals, onFocus }: { goals: Goal[]; onFocus: () => void }) {
+  const T = useT()
   const [dismissed, setDismissed] = useState(() => {
     const ts = localStorage.getItem(WELCOME_DISMISS_KEY)
     return !!ts && Date.now() - Number(ts) < WELCOME_DISMISS_TTL
@@ -147,6 +148,7 @@ interface DoThisNowProps {
 }
 
 function DoThisNow({ goals }: DoThisNowProps) {
+  const T = useT()
   const [completing, setCompleting] = useState(false)
   const userId = goals[0]?.user_id ?? ''
   const { completeMilestone } = useGoalMutations(userId)
@@ -217,6 +219,7 @@ const EXAMPLE_GOALS = [
 ]
 
 function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
+  const T = useT()
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -271,6 +274,7 @@ function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
 
 // ── Dashboard (main page) ─────────────────────────────────────────────────────
 export default function Dashboard() {
+  const T = useT()
   const [searchParams] = useSearchParams()
   const onboardingGoal = searchParams.get('goal') ?? undefined
   const { user } = useUser()

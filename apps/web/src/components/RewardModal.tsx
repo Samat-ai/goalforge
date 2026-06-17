@@ -1,4 +1,4 @@
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import type { RewardDrop } from '../lib/types'
 
 interface RewardModalProps {
@@ -22,6 +22,7 @@ const TYPE_LABEL: Record<string, string> = {
 }
 
 export default function RewardModal({ drop, onEquip, onClose, rewardId }: RewardModalProps) {
+  const T = useT()
   return (
     <div
       role="dialog"

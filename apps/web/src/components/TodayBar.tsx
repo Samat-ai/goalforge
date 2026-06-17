@@ -1,4 +1,4 @@
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import { todayStr } from '../lib/gamification'
 import { pickOneThing } from '../lib/pickOneThing'
 import type { Goal } from '../lib/types'
@@ -10,6 +10,7 @@ interface TodayBarProps {
 }
 
 export default function TodayBar({ goals, onFocusOpen, onEnergyOpen }: TodayBarProps) {
+  const T = useT()
   const today  = todayStr()
   const active = goals.filter(g => g.status === 'active')
 

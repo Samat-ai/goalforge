@@ -1,4 +1,4 @@
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 
 interface EnergyModalProps {
   onConfirm: () => void
@@ -12,6 +12,7 @@ interface EnergyModalProps {
  * — accepts onConfirm from Dashboard per the mutation-prop-lifting pattern.
  */
 export default function EnergyModal({ onConfirm, onDismiss, isLoading }: EnergyModalProps) {
+  const T = useT()
   return (
     <div
       role="dialog"

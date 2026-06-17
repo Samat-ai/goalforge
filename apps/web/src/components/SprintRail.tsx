@@ -1,4 +1,4 @@
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import type { Milestone } from '../lib/types'
 
 interface SprintRailProps {
@@ -14,6 +14,7 @@ export default function SprintRail({
   milestones, activeMilestone, milestonesTotal,
   failedMilestone, onRetryGeneration, isRetrying,
 }: SprintRailProps) {
+  const T = useT()
   const displayMilestone = activeMilestone ?? failedMilestone
 
   return (
