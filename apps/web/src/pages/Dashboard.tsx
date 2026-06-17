@@ -6,6 +6,7 @@ import AppHeader from '../components/AppHeader'
 import { Creature } from '../components/GamificationSvgs'
 import TodayBar from '../components/TodayBar'
 import GreetingStrip from '../components/GreetingStrip'
+import Segmented from '../components/ui/Segmented'
 import AddGoal from '../components/AddGoal'
 import GoalCard from '../components/GoalCard'
 import FocusOverlay from '../components/FocusOverlay'
@@ -395,23 +396,14 @@ export default function Dashboard() {
               <EmptyState onSelect={setAddGoalText} />
             ) : (
               <>
-                {/* Filter tabs */}
-                <div style={{ display: 'flex', borderBottom: `1px solid ${T.border}`, marginBottom: 18, overflowX: 'auto', scrollbarWidth: 'none' }} className="filter-tabs">
-                  {(['active', 'achieved', 'abandoned'] as const).map(f => (
-                    <button
-                      key={f}
-                      onClick={() => setFilter(f)}
-                      style={{
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        padding: '7px 14px', fontFamily: T.mono, fontSize: 11,
-                        letterSpacing: '0.06em', flexShrink: 0,
-                        color: filter === f ? T.text : T.muted,
-                        borderBottom: filter === f ? `2px solid ${T.orange}` : '2px solid transparent',
-                      }}
-                    >
-                      {f} ({goals.filter(g => g.status === f).length})
-                    </button>
-                  ))}
+                {/* Filter */}
+                <div style={{ marginBottom: 18 }}>
+                  <Segmented
+                    options={['active', 'achieved', 'abandoned']}
+                    value={filter}
+                    onChange={setFilter}
+                    getLabel={o => `${o} ${goals.filter(g => g.status === o).length}`}
+                  />
                 </div>
 
                 {/* Goal list */}
