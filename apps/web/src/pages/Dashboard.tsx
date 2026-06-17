@@ -5,6 +5,7 @@ import { useT } from '../lib/theme'
 import AppHeader from '../components/AppHeader'
 import { Creature } from '../components/GamificationSvgs'
 import TodayBar from '../components/TodayBar'
+import GreetingStrip from '../components/GreetingStrip'
 import AddGoal from '../components/AddGoal'
 import GoalCard from '../components/GoalCard'
 import FocusOverlay from '../components/FocusOverlay'
@@ -351,16 +352,6 @@ export default function Dashboard() {
 
       <main id="main-content" style={{ maxWidth: 1100, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
 
-        {/* Page heading */}
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontFamily: T.serif, fontWeight: 400, color: T.text, marginBottom: 3 }} className="text-[26px] sm:text-[32px] lg:text-[38px]">
-            Your Goals
-          </h1>
-          <p style={{ fontSize: 12, color: T.muted }}>
-            {goals.filter(g => g.status === 'active').length} active · {goals.length} total
-          </p>
-        </div>
-
         {/* Loading skeletons */}
         {loading && (
           <div role="status" aria-label="Loading goals" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -394,6 +385,7 @@ export default function Dashboard() {
 
         {!loading && !error && (
           <>
+            <GreetingStrip goals={goals} />
             <WelcomeBackCard goals={goals} onFocus={() => setFocusOpen(true)} />
             <DoThisNow goals={goals} />
             <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} onEnergyOpen={() => setShowEnergyModal(true)} />
