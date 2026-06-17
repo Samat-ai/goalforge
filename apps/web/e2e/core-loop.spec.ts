@@ -58,6 +58,14 @@ function parseBalance(text: string): number {
   return Number(match[1])
 }
 
+// Seed onboarding-complete so OnboardingGuard doesn't redirect /dashboard → /onboarding.
+// These tests exercise the core loop, not the first-run wizard.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('goalforge_onboarding_complete', 'true') } catch { /* ignore */ }
+  })
+})
+
 test('core loop: login, create goal, complete 3 tasks, and redeem shop reward', async ({ page }) => {
   const userId = 'user_e2e'
   const today = new Intl.DateTimeFormat('en-CA').format(new Date())
@@ -304,7 +312,7 @@ test('core loop: login, create goal, complete 3 tasks, and redeem shop reward', 
       }
       state.points += 10
 
-      await route.fulfill({ status: 200, headers: jsonHeaders(), body: JSON.stringify({ ...task, reward_drop: null }) })
+      await route.fulfill({ status: 200, headers: jsonHeaders(), body: JSON.stringify({ ...task, points_awarded: 10, reward_drop: null }) })
       return
     }
 
@@ -315,8 +323,11 @@ test('core loop: login, create goal, complete 3 tasks, and redeem shop reward', 
   await page.getByRole('link', { name: 'Continue to Dashboard' }).click()
   await expect(page).toHaveURL(/\/dashboard$/)
 
-  await page.getByPlaceholder(/get better at leetcode/i).fill('Ship phase 3 pipeline')
-  await page.getByRole('button', { name: /Create Goal/i }).click()
+  const goalInput = page.getByLabel(/describe your goal/i)
+  await goalInput.click()
+  await goalInput.pressSequentially('Ship phase 3 pipeline')
+  await expect(goalInput).toHaveValue('Ship phase 3 pipeline')
+  await page.getByRole('button', { name: /create goal/i }).click()
 
   // Goal title appears immediately from the optimistic cache update on the 202 response.
   await expect(page.getByText('AI-driven Sprint Goal')).toBeVisible()
@@ -335,6 +346,10 @@ test('core loop: login, create goal, complete 3 tasks, and redeem shop reward', 
     // the click registered and React re-rendered before we attempt the next click.
     await expect(page.getByLabel('Mark task complete')).toHaveCount(2 - i)
   }
+
+  // StarShop moved off the Dashboard to the Logs (/stars) page in #101 (dashboard declutter).
+  await page.getByRole('link', { name: 'Logs' }).first().click()
+  await expect(page).toHaveURL(/\/stars$/)
 
   await expect(page.getByText('Balance: 150 pts')).toBeVisible()
   const beforeRedeem = parseBalance(await page.getByText(/Balance:\s*\d+\s*pts/).first().innerText())
