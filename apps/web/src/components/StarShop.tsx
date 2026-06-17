@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import type { ShopReward } from '../lib/types'
 
 interface StarShopProps {
@@ -12,6 +12,7 @@ interface StarShopProps {
 }
 
 export default function StarShop({ pts, rewards, onAdd, onRedeem, isCreating, isRedeeming }: StarShopProps) {
+  const T = useT()
   const [title, setTitle] = useState('')
   const [cost, setCost] = useState('50')
 

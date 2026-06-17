@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/react'
 import { getStage } from '../lib/gamification'
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import { useRewardsQuery } from '../hooks/useRewards'
 
 const THEME_KEY_TO_CLASS: Record<string, string> = {
@@ -18,6 +18,7 @@ interface AppHeaderProps {
 }
 
 export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
+  const T = useT()
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useUser()

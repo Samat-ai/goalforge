@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom'
 import { Show } from '@clerk/react'
 import { Target, Sparkles, Zap, ChevronRight } from 'lucide-react'
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 
-const Btn = ({ children, onClick, primary = false }: { children: React.ReactNode, onClick: () => void, primary?: boolean }) => (
+const Btn = ({ children, onClick, primary = false }: { children: React.ReactNode, onClick: () => void, primary?: boolean }) => {
+  const T = useT()
+  return (
   <button
     onClick={onClick}
     style={{
@@ -18,7 +20,8 @@ const Btn = ({ children, onClick, primary = false }: { children: React.ReactNode
   >
     {children}
   </button>
-)
+  )
+}
 
 const steps = [
   { n: "01", title: "Describe Your Goal", desc: "Tell us what you want to achieve in plain language — no frameworks needed." },
@@ -33,6 +36,7 @@ const features = [
 ]
 
 export default function LandingPage() {
+  const T = useT()
   const navigate = useNavigate()
 
   return (

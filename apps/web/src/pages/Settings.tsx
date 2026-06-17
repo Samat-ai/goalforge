@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/react'
 import { toast } from 'sonner'
 import AppHeader from '../components/AppHeader'
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import api from '../lib/api'
 import {
   useAccountabilityMutations,
@@ -17,6 +17,7 @@ import type { UserSettings } from '../lib/types'
 
 
 function SettingsForm({ settings, userId }: { settings: UserSettings; userId: string }) {
+  const T = useT()
   const { save: saveSettings, isSaving: saving } = useSaveSettingsMutation(userId)
   const { subscriptions } = usePushSubscriptionsQuery(userId)
   const { enablePush, isEnabling } = useEnablePushMutation(userId)
@@ -330,6 +331,7 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
 }
 
 function DataControls({ userId }: { userId: string }) {
+  const T = useT()
   const [isExporting, setIsExporting] = useState<null | 'json' | 'csv'>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const busy = !!isExporting || isDeleting
@@ -423,6 +425,7 @@ function DataControls({ userId }: { userId: string }) {
 }
 
 export default function Settings() {
+  const T = useT()
   const { user } = useUser()
   const userId = user?.id
 

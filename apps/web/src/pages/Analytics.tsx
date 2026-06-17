@@ -3,7 +3,7 @@ import { useUser } from '@clerk/react'
 import AppHeader from '../components/AppHeader'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { getStage, streak, bestStreak, todayStr, daysAgo } from '../lib/gamification'
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import {
   useAllGoalsQuery,
   useBadgesQuery,
@@ -14,6 +14,7 @@ import {
 
 // ── Analytics page ────────────────────────────────────────────────────────────
 export default function Analytics() {
+  const T = useT()
   const { user } = useUser()
 
   const { goals, isLoading: loading, isError, refetch } = useAllGoalsQuery(user?.id)

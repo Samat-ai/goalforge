@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import { Creature } from '../components/GamificationSvgs'
 
 const ONBOARDING_COMPLETE_KEY = 'goalforge_onboarding_complete'
@@ -37,6 +37,7 @@ const HOW_IT_WORKS = [
 
 interface CardProps { children: React.ReactNode }
 function Card({ children }: CardProps) {
+  const T = useT()
   return (
     <div style={{
       background: T.card,
@@ -56,6 +57,7 @@ function Card({ children }: CardProps) {
 // ── Step 1: Welcome ────────────────────────────────────────────────────────────
 
 function StepWelcome() {
+  const T = useT()
   return (
     <div style={{ textAlign: 'center' }}>
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'center' }}>
@@ -91,6 +93,7 @@ interface StepCategoryProps {
 }
 
 function StepCategory({ selected, onSelect }: StepCategoryProps) {
+  const T = useT()
   return (
     <div>
       <h2 style={{
@@ -162,6 +165,7 @@ function StepCategory({ selected, onSelect }: StepCategoryProps) {
 // ── Step 3: How it works ──────────────────────────────────────────────────────
 
 function StepHowItWorks() {
+  const T = useT()
   return (
     <div>
       <h2 style={{
@@ -217,6 +221,7 @@ interface StepFirstGoalProps {
 }
 
 function StepFirstGoal({ goalText, onGoalChange, onSubmit }: StepFirstGoalProps) {
+  const T = useT()
   return (
     <div>
       <h2 style={{
@@ -278,6 +283,7 @@ function StepFirstGoal({ goalText, onGoalChange, onSubmit }: StepFirstGoalProps)
 
 interface ProgressProps { step: number; total: number }
 function ProgressDots({ step, total }: ProgressProps) {
+  const T = useT()
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 28,
@@ -314,6 +320,7 @@ interface NavProps {
   onSkip: () => void
 }
 function NavButtons({ step, totalSteps, canNext, onBack, onNext, onSkip }: NavProps) {
+  const T = useT()
   const isLast = step === totalSteps
   return (
     <div style={{
@@ -369,6 +376,7 @@ function NavButtons({ step, totalSteps, canNext, onBack, onNext, onSkip }: NavPr
 // ── Main Onboarding page ───────────────────────────────────────────────────────
 
 export default function Onboarding() {
+  const T = useT()
   const navigate = useNavigate()
   const savedStep = parseInt(localStorage.getItem(ONBOARDING_STEP_KEY) ?? '1', 10)
   const [step, setStep] = useState<number>(isNaN(savedStep) ? 1 : Math.min(savedStep, 4))

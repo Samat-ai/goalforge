@@ -1,4 +1,4 @@
-import { T } from '../../lib/theme'
+import { useT } from '../../lib/theme'
 
 export interface BtnProps {
   children: React.ReactNode
@@ -13,6 +13,7 @@ export interface BtnProps {
 export default function Btn({
   children, onClick, variant = 'primary', loading = false, small = false, disabled = false, style,
 }: BtnProps) {
+  const T = useT()
   const V = {
     primary: { background: T.orange,           color: '#fff',      border: 'none' },
     ghost:   { background: 'transparent',      color: T.muted,     border: `1px solid ${T.border}` },

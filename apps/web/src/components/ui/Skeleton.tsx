@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { T } from '../../lib/theme'
+import { useT } from '../../lib/theme'
 
 interface SkeletonProps {
   /** Extra Tailwind classes (e.g. 'rounded-full', 'w-full') */
@@ -13,6 +13,7 @@ interface SkeletonProps {
  * so the layout does not shift when data arrives.
  */
 export default function Skeleton({ className = '', style }: SkeletonProps) {
+  const T = useT()
   return (
     <div
       className={`animate-pulse ${className}`}
@@ -29,6 +30,7 @@ export default function Skeleton({ className = '', style }: SkeletonProps) {
 
 /** Mimics a single GoalCard while goals are loading */
 export function GoalCardSkeleton() {
+  const T = useT()
   return (
     <div style={{
       background: T.card,
@@ -63,6 +65,7 @@ export function GoalCardSkeleton() {
 
 /** Mimics the Coach chat panel while the session is loading */
 export function CoachPanelSkeleton() {
+  const T = useT()
   return (
     <section style={{
       borderRadius: 14,

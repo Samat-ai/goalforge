@@ -2,13 +2,14 @@ import { useEffect } from 'react'
 import { useUser } from '@clerk/react'
 import AppHeader from '../components/AppHeader'
 import StarShop from '../components/StarShop'
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import { useProfileQuery, useShopRewardsQuery, useShopRewardMutations, useStarLogQuery } from '../hooks'
 
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
 const e2eUserId = import.meta.env.VITE_E2E_USER_ID ?? 'user_e2e'
 
 export default function Stars() {
+  const T = useT()
   const { user } = useUser()
   const userId = user?.id ?? (isE2EMode ? e2eUserId : undefined)
 

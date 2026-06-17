@@ -1,4 +1,4 @@
-import { T } from '../lib/theme'
+import { useT } from '../lib/theme'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 
 /**
@@ -8,6 +8,7 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus'
  * promise that offline actions will sync later.
  */
 export default function OfflineBanner() {
+  const T = useT()
   const isOnline = useOnlineStatus()
 
   if (isOnline) return null
