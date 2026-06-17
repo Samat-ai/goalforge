@@ -1,40 +1,59 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Hanken Grotesk', sans-serif;
+  --font-sans: 'Hanken Grotesk', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
-/* ── Color scheme custom properties ── */
+/* ── Design tokens (dark default) ── */
 
-:root {
-  --bg-primary: #ffffff;
-  --bg-surface: #f8fafc;
-  --bg-card: #f1f5f9;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
-  --border-color: #e2e8f0;
-  --border-hi: #cbd5e1;
-  --accent-primary: #6366f1;
-  --accent-orange: #f97316;
+:root, [data-theme="dark"] {
+  --bg: #08080f;
+  --card: #121220;
+  --card-2: #16162a;
+  --card-hi: #1a1a30;
+  --border: rgba(255,255,255,.07);
+  --border-hi: rgba(255,255,255,.13);
+  --text: #f1f1f7;
+  --text-dim: #abacc4;
+  --text-mute: #6b6c84;
+  --accent: #ff6a3d;
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 36%, transparent);
+  --ring-2: #34d399;
+  --gold: #fbbf24;
+  --rose: #fb7185;
+  --indigo: #818cf8;
+  /* shape / depth / rhythm */
+  --radius: 20px;
+  --r-sm: 10px;
+  --pad: 22px;
+  --gap: 14px;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 40px -22px rgba(0,0,0,.7);
+  --shadow-hi: 0 2px 4px rgba(0,0,0,.4), 0 26px 60px -28px rgba(0,0,0,.85);
 }
 
-.dark {
-  --bg-primary: #020617;
-  --bg-surface: #0e0e1a;
-  --bg-card: #12121f;
-  --text-primary: #f8fafc;
-  --text-secondary: #a0a0b8;
-  --text-muted: #71717a;
-  --border-color: #1c1c30;
-  --border-hi: #2e2e50;
-  --accent-primary: #818cf8;
-  --accent-orange: #f97316;
+[data-theme="light"] {
+  --bg: #edeff3;
+  --card: #f8f9fc;
+  --card-2: #f2f4f8;
+  --card-hi: #fbfcff;
+  --border: rgba(18,20,32,.07);
+  --border-hi: rgba(18,20,32,.13);
+  --text: #14141d;
+  --text-dim: #565869;
+  --text-mute: #8a8c9b;
+  --accent: #ff6a3d;
+  --ring-2: #0a9d68;
+  --gold: #b8860b;
+  --rose: #e11d6b;
+  --indigo: #5b5bd6;
 }
 
 /* ── Dark mode strategy: class-based (Tailwind CSS 4) ── */
-@variant dark (&:where(.dark, .dark *));
+@variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
 
 /* ── Keyframes ── */
 
@@ -83,9 +102,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 /* ── Global ── */
 
 body {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  font-family: 'Hanken Grotesk', sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -93,10 +112,10 @@ body {
 
 .mesh-bg {
   background:
-    radial-gradient(ellipse 55% 38% at 8%  8%,  rgba(249, 115, 22, 0.08) 0%, transparent 58%),
-    radial-gradient(ellipse 45% 42% at 92% 82%, rgba(139, 92, 246, 0.10) 0%, transparent 58%),
-    radial-gradient(ellipse 80% 55% at 50% 110%, rgba(12, 8, 44, 0.55) 0%, transparent 68%),
-    var(--bg-primary);
+    radial-gradient(ellipse 55% 38% at 8%  8%,  color-mix(in srgb, var(--accent) 8%, transparent) 0%, transparent 58%),
+    radial-gradient(ellipse 45% 42% at 92% 82%, color-mix(in srgb, var(--ring-2) 10%, transparent) 0%, transparent 58%),
+    var(--bg);
+  background-attachment: fixed;
 }
 
 /* ── Animation utilities ── */
@@ -127,9 +146,9 @@ body {
   height: auto;
   z-index: 200;
   padding: 8px 14px;
-  background: #1a1a2e;
-  color: #f1f5f9;
-  border: 2px solid #818cf8;
+  background: var(--card-2);
+  color: var(--text);
+  border: 2px solid var(--accent);
   border-radius: 6px;
   font-size: 13px;
   font-family: 'JetBrains Mono', monospace;
@@ -167,13 +186,13 @@ body {
 }
 
 .task-row:hover {
-  background: rgba(255, 255, 255, 0.025);
+  background: color-mix(in srgb, var(--text) 3%, transparent);
 }
 
 .task-row-complete {
-  background: rgba(16, 185, 129, 0.08);
-  border-color: rgba(16, 185, 129, 0.25);
-  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.12);
+  background: color-mix(in srgb, var(--ring-2) 8%, transparent);
+  border-color: color-mix(in srgb, var(--ring-2) 25%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ring-2) 12%, transparent);
 }
 
 .goal-card-shell {
@@ -184,8 +203,8 @@ body {
 
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1a1e3a; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #252a4a; }
+::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-mute); }
 
 /* ── Reward modal animations ── */
 
