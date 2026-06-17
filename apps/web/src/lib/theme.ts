@@ -32,7 +32,7 @@ export const LIGHT = {
   serifAccent: FONTS.serifAccent, mono: FONTS.mono,
 } as const
 
-export type Palette = typeof DARK
+export type Palette = { readonly [K in keyof typeof DARK]: string }
 
 // Back-compat static export (dark). Migrated components use `useT()` instead.
 export const T: Palette = DARK
