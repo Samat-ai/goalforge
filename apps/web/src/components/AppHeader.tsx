@@ -1,9 +1,20 @@
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/react'
 import { getStage } from '../lib/gamification'
 import { useT } from '../lib/theme'
 import { useRewardsQuery } from '../hooks/useRewards'
+import Icon from './ui/Icon'
+
+const cx = (...a: (string | false | undefined)[]) => a.filter(Boolean).join(' ')
+
+const NAV = [
+  { to: '/dashboard', label: 'Dashboard', icon: 'grid' },
+  { to: '/analytics', label: 'Analytics', icon: 'chart' },
+  { to: '/stars', label: 'Logs', icon: 'spark' },
+  { to: '/coach', label: 'Chat', icon: 'chat' },
+  { to: '/settings', label: 'Settings', icon: 'gear' },
+] as const
 
 const THEME_KEY_TO_CLASS: Record<string, string> = {
   neon_cyberpunk: 'theme-neon-cyberpunk',
@@ -24,12 +35,34 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
   const { user } = useUser()
   const stage = getStage(pts)
 
-  const { data: rewards = [] } = useRewardsQuery(user?.id ?? '')
+  const navRef = useRef<HTMLElement>(null)
+  const [pill, setPill] = useState({ left: 0, width: 0, ready: false })
+  const [menuOpen, setMenuOpen] = useState(false)
 
+  const isActive = (to: string) =>
+    location.pathname === to || (to === '/dashboard' && location.pathname === '/')
+
+  // Slide the nav pill under the active tab.
+  useLayoutEffect(() => {
+    const el = navRef.current?.querySelector<HTMLElement>('[data-nav-active="true"]')
+    if (el) setPill({ left: el.offsetLeft, width: el.offsetWidth, ready: true })
+  }, [location.pathname])
+
+  // Close mobile menu on resize-up / Escape.
+  useEffect(() => {
+    const onResize = () => { if (window.innerWidth > 700) setMenuOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false) }
+    window.addEventListener('resize', onResize)
+    window.addEventListener('keydown', onKey)
+    return () => { window.removeEventListener('resize', onResize); window.removeEventListener('keydown', onKey) }
+  }, [])
+
+  const { data: rewards = [] } = useRewardsQuery(user?.id ?? '')
   const equippedTitle = rewards.find(r => r.reward_type === 'title' && r.is_equipped)
   const equippedTheme = rewards.find(r => r.reward_type === 'theme' && r.is_equipped)
   const relicCount = rewards.length
 
+  // Apply equipped reward-theme body class (unchanged from before).
   useEffect(() => {
     Object.values(THEME_KEY_TO_CLASS).forEach(cls => document.body.classList.remove(cls))
     if (equippedTheme) {
@@ -40,81 +73,94 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
 
   return (
     <>
-    <a href="#main-content" className="skip-link">Skip to content</a>
-    <div style={{
-      position: 'sticky', top: 0, zIndex: 100,
-      background: `${T.bg}f0`, backdropFilter: 'blur(10px)',
-      borderBottom: `1px solid ${T.border}`,
-      height: 54, padding: '0 12px',
-      display: 'flex', alignItems: 'center', gap: 0,
-    }}>
-      <span style={{ fontFamily: T.serif, fontSize: 21, color: T.text, marginRight: 28, letterSpacing: '-0.3px' }}>
-        Goal<span style={{ color: T.orange }}>Forge</span>
-      </span>
+      <a href="#main-content" className="skip-link">Skip to content</a>
+      <header className="gf-header">
+        <div className="gf-header-in">
+          <div className="gf-logo">Goal<span>Forge</span></div>
 
-      {(['dashboard', 'analytics', 'stars', 'coach', 'settings'] as const).map(v => (
-        <Link key={v} to={`/${v}`} style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          height: 54, padding: '0 14px', fontFamily: T.mono, fontSize: 12,
-          letterSpacing: '0.04em', display: 'flex', alignItems: 'center',
-          color: location.pathname === `/${v}` ? T.text : T.muted,
-          borderBottom: location.pathname === `/${v}` ? `2px solid ${T.orange}` : '2px solid transparent',
-          textDecoration: 'none',
-        }}>
-          {v}
-        </Link>
-      ))}
+          <nav className="gf-nav" ref={navRef} aria-label="Primary">
+            <div
+              className="gf-nav-pill"
+              style={{ transform: `translateX(${pill.left}px)`, width: pill.width, opacity: pill.ready ? 1 : 0 }}
+            />
+            {NAV.map(({ to, label, icon }) => {
+              const active = isActive(to)
+              return (
+                <Link key={to} to={to} data-nav-active={active} className={cx('gf-nav-btn', active && 'is-active')}>
+                  <Icon name={icon} size={15} />
+                  <span>{label}</span>
+                </Link>
+              )
+            })}
+          </nav>
 
-      <button
-        onClick={() => navigate('/analytics')}
-        aria-label={`${pts} star points, stage ${stage.name}. Go to analytics.`}
-        style={{
-          marginLeft: 14,
-          background: `${stage.color}18`, border: `1px solid ${stage.color}40`,
-          borderRadius: 18, padding: '4px 11px', cursor: 'pointer',
-          fontFamily: T.mono, fontSize: 11, color: stage.color,
-        }}
-        className="hidden sm:flex items-center gap-[5px]"
-      >
-        ✦ {pts} pts · {stage.name}
-      </button>
+          <div className="gf-header-right">
+            <button
+              onClick={() => navigate('/analytics')}
+              aria-label={`${pts} star points, stage ${stage.name}. Go to analytics.`}
+              className="gf-pts"
+            >
+              <Icon name="spark" size={12} />
+              {pts} pts · <span className="gf-pts-stage">{stage.name}</span>
+            </button>
 
-      {equippedTitle && (
-        <span style={{
-          marginLeft: 8,
-          fontFamily: T.mono, fontSize: 10,
-          color: '#fbbf24', background: '#fbbf2415',
-          border: '1px solid #fbbf2440',
-          padding: '2px 8px', borderRadius: 99,
-        }} className="hidden sm:inline">
-          {equippedTitle.display_name}
-        </span>
-      )}
+            {equippedTitle && (
+              <span style={{
+                fontFamily: T.mono, fontSize: 10, color: T.amber,
+                background: `${T.amber}15`, border: `1px solid ${T.amber}40`,
+                padding: '2px 8px', borderRadius: 99,
+              }} className="hidden sm:inline">
+                {equippedTitle.display_name}
+              </span>
+            )}
 
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-        {relicCount > 0 && onOpenCollection && (
-          <button
-            onClick={onOpenCollection}
-            aria-label={`${relicCount} collected relics. Open Trophy Room.`}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              fontFamily: T.mono, fontSize: 11, color: '#a78bfa',
-              padding: '4px 8px', minHeight: 44,
-            }}
-            className="hidden sm:flex items-center"
-          >
-            🏆 {relicCount} Rare {relicCount === 1 ? 'Relic' : 'Relics'}
-          </button>
-        )}
+            {relicCount > 0 && onOpenCollection && (
+              <button
+                onClick={onOpenCollection}
+                aria-label={`${relicCount} collected relics. Open Trophy Room.`}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontFamily: T.mono, fontSize: 11, color: T.indigo,
+                  padding: '4px 8px', minHeight: 44,
+                }}
+                className="hidden sm:flex items-center"
+              >
+                🏆 {relicCount} Rare {relicCount === 1 ? 'Relic' : 'Relics'}
+              </button>
+            )}
 
-        {user?.firstName && (
-          <span style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }} className="hidden sm:inline">
-            {user.firstName}
-          </span>
-        )}
-        <UserButton />
-      </div>
-    </div>
+            {user?.firstName && (
+              <span style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }} className="hidden sm:inline">
+                {user.firstName}
+              </span>
+            )}
+            <UserButton />
+
+            <button
+              className={cx('gf-burger', menuOpen && 'is-open')}
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(o => !o)}
+            >
+              <span /><span /><span />
+            </button>
+          </div>
+        </div>
+
+        {menuOpen && <div className="gf-navmenu-scrim" onClick={() => setMenuOpen(false)} />}
+        <div className={cx('gf-navmenu', menuOpen && 'is-open')}>
+          {NAV.map(({ to, label, icon }) => (
+            <Link
+              key={to}
+              to={to}
+              className={cx('gf-navmenu-btn', isActive(to) && 'is-active')}
+              onClick={() => setMenuOpen(false)}
+            >
+              <Icon name={icon} size={18} /><span>{label}</span>
+            </Link>
+          ))}
+        </div>
+      </header>
     </>
   )
 }
