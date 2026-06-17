@@ -3,6 +3,7 @@ import { useUser } from '@clerk/react'
 import { toast } from 'sonner'
 import AppHeader from '../components/AppHeader'
 import { useT } from '../lib/theme'
+import { useThemeMode, type ThemeMode } from '../lib/ThemeContext'
 import api from '../lib/api'
 import {
   useAccountabilityMutations,
@@ -15,9 +16,15 @@ import {
 } from '../hooks'
 import type { UserSettings } from '../lib/types'
 
+const THEME_OPTS: { value: ThemeMode; label: string }[] = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
+]
 
 function SettingsForm({ settings, userId }: { settings: UserSettings; userId: string }) {
   const T = useT()
+  const { mode, setMode } = useThemeMode()
   const { save: saveSettings, isSaving: saving } = useSaveSettingsMutation(userId)
   const { subscriptions } = usePushSubscriptionsQuery(userId)
   const { enablePush, isEnabling } = useEnablePushMutation(userId)
@@ -47,6 +54,38 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+
+      {/* Appearance */}
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '18px 20px' }}>
+        <label style={{ display: 'block', fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 12 }}>
+          APPEARANCE
+        </label>
+        <div role="group" aria-label="Theme" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {THEME_OPTS.map(opt => {
+            const active = mode === opt.value
+            return (
+              <button
+                key={opt.value}
+                onClick={() => setMode(opt.value)}
+                aria-pressed={active}
+                style={{
+                  flex: 1, minWidth: 90, minHeight: 44, padding: '10px 14px', borderRadius: 8, cursor: 'pointer',
+                  fontFamily: T.mono, fontSize: 12, fontWeight: 600, letterSpacing: '0.04em',
+                  background: active ? `${T.orange}18` : T.surface,
+                  color: active ? T.orange : T.textDim,
+                  border: `1px solid ${active ? T.orange : T.border}`,
+                  transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+                }}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+        <div style={{ fontSize: 11, color: T.dim, fontFamily: T.mono, marginTop: 8 }}>
+          System follows your device's light/dark setting.
+        </div>
+      </div>
 
       {/* Display name */}
       <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '18px 20px' }}>
