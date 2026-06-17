@@ -30,7 +30,7 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
       style={{
         position: 'fixed', inset: 0, zIndex: 999,
         display: 'flex', flexDirection: 'column',
-        background: '#0a0a14',
+        background: T.bg,
         animation: 'fadeInBg 0.2s ease',
       }}
     >
@@ -82,14 +82,14 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {themes.map(r => (
               <div key={r.id} style={{
-                background: '#13131f',
+                background: T.card,
                 border: `1px solid ${r.is_equipped ? T.orange : T.border}`,
                 borderRadius: 10, padding: '12px 14px',
               }}>
-                <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '0.08em', color: '#4b5563', marginBottom: 4 }}>THEME</div>
+                <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '0.08em', color: T.muted, marginBottom: 4 }}>THEME</div>
                 <div style={{ fontFamily: T.mono, fontSize: 12, fontWeight: 700, color: T.text, marginBottom: 8 }}>{r.display_name}</div>
                 {r.is_equipped ? (
-                  <span style={{ fontFamily: T.mono, fontSize: 9, background: '#f9731620', color: T.orange, padding: '2px 6px', borderRadius: 3 }}>equipped</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 9, background: `${T.orange}20`, color: T.orange, padding: '2px 6px', borderRadius: 3 }}>equipped</span>
                 ) : (
                   <button
                     onClick={() => onEquip(r.id)}
@@ -108,11 +108,11 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
             {/* Locked slots */}
             {Array.from({ length: Math.max(0, REGISTRY_COUNTS.theme - themes.length) }).map((_, i) => (
               <div key={`locked-theme-${i}`} style={{
-                background: '#0d0d17', border: '1px dashed #1e1e2e',
+                background: T.surface, border: `1px dashed ${T.border}`,
                 borderRadius: 10, padding: '12px 14px', opacity: 0.4,
               }}>
-                <div style={{ fontFamily: T.mono, fontSize: 9, color: '#4b5563', marginBottom: 4 }}>THEME</div>
-                <div style={{ fontFamily: T.mono, fontSize: 12, color: '#2a2a3a' }}>???</div>
+                <div style={{ fontFamily: T.mono, fontSize: 9, color: T.muted, marginBottom: 4 }}>THEME</div>
+                <div style={{ fontFamily: T.mono, fontSize: 12, color: T.dim }}>???</div>
               </div>
             ))}
           </div>
@@ -123,14 +123,14 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {titles.map(r => (
               <div key={r.id} style={{
-                background: '#13131f',
+                background: T.card,
                 border: `1px solid ${r.is_equipped ? T.orange : T.border}`,
                 borderRadius: 10, padding: '12px 14px',
               }}>
-                <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '0.08em', color: '#4b5563', marginBottom: 4 }}>TITLE</div>
+                <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '0.08em', color: T.muted, marginBottom: 4 }}>TITLE</div>
                 <div style={{ fontFamily: T.mono, fontSize: 12, fontWeight: 700, color: T.text, marginBottom: 8 }}>{r.display_name}</div>
                 {r.is_equipped ? (
-                  <span style={{ fontFamily: T.mono, fontSize: 9, background: '#f9731620', color: T.orange, padding: '2px 6px', borderRadius: 3 }}>equipped</span>
+                  <span style={{ fontFamily: T.mono, fontSize: 9, background: `${T.orange}20`, color: T.orange, padding: '2px 6px', borderRadius: 3 }}>equipped</span>
                 ) : (
                   <button
                     onClick={() => onEquip(r.id)}
@@ -148,11 +148,11 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
             ))}
             {Array.from({ length: Math.max(0, REGISTRY_COUNTS.title - titles.length) }).map((_, i) => (
               <div key={`locked-title-${i}`} style={{
-                background: '#0d0d17', border: '1px dashed #1e1e2e',
+                background: T.surface, border: `1px dashed ${T.border}`,
                 borderRadius: 10, padding: '12px 14px', opacity: 0.4,
               }}>
-                <div style={{ fontFamily: T.mono, fontSize: 9, color: '#4b5563', marginBottom: 4 }}>TITLE</div>
-                <div style={{ fontFamily: T.mono, fontSize: 12, color: '#2a2a3a' }}>???</div>
+                <div style={{ fontFamily: T.mono, fontSize: 9, color: T.muted, marginBottom: 4 }}>TITLE</div>
+                <div style={{ fontFamily: T.mono, fontSize: 12, color: T.dim }}>???</div>
               </div>
             ))}
           </div>
@@ -163,19 +163,19 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {loreFragments.map(r => (
               <div key={r.id} style={{
-                background: '#13131f', border: `1px solid ${T.border}`,
+                background: T.card, border: `1px solid ${T.border}`,
                 borderRadius: 10, padding: '14px 16px',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '0.08em', color: '#4b5563', marginBottom: 4 }}>LORE FRAGMENT</div>
-                    <div style={{ fontFamily: T.mono, fontSize: 13, fontWeight: 700, color: '#818cf8' }}>{r.display_name}</div>
+                    <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: '0.08em', color: T.muted, marginBottom: 4 }}>LORE FRAGMENT</div>
+                    <div style={{ fontFamily: T.mono, fontSize: 13, fontWeight: 700, color: T.indigo }}>{r.display_name}</div>
                   </div>
                   <button
                     onClick={() => setExpandedLore(expandedLore === r.id ? null : r.id)}
                     style={{
-                      background: '#818cf820', border: '1px solid #818cf840',
-                      color: '#818cf8', borderRadius: 5,
+                      background: `${T.indigo}20`, border: `1px solid ${T.indigo}40`,
+                      color: T.indigo, borderRadius: 5,
                       fontFamily: T.mono, fontSize: 10, fontWeight: 700,
                       padding: '4px 10px', cursor: 'pointer', minHeight: 44,
                     }}
@@ -186,7 +186,7 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
                 {expandedLore === r.id && r.body && (
                   <div style={{
                     marginTop: 12, fontFamily: T.serif, fontSize: 13,
-                    color: '#9ca3af', lineHeight: 1.7,
+                    color: T.textDim, lineHeight: 1.7,
                     borderTop: `1px solid ${T.border}`, paddingTop: 12,
                   }}>
                     {r.body}
@@ -196,11 +196,11 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
             ))}
             {Array.from({ length: Math.max(0, REGISTRY_COUNTS.lore - loreFragments.length) }).map((_, i) => (
               <div key={`locked-lore-${i}`} style={{
-                background: '#0d0d17', border: '1px dashed #1e1e2e',
+                background: T.surface, border: `1px dashed ${T.border}`,
                 borderRadius: 10, padding: '14px 16px', opacity: 0.4,
               }}>
-                <div style={{ fontFamily: T.mono, fontSize: 9, color: '#4b5563', marginBottom: 4 }}>LORE FRAGMENT</div>
-                <div style={{ fontFamily: T.mono, fontSize: 12, color: '#2a2a3a' }}>??? Locked</div>
+                <div style={{ fontFamily: T.mono, fontSize: 9, color: T.muted, marginBottom: 4 }}>LORE FRAGMENT</div>
+                <div style={{ fontFamily: T.mono, fontSize: 12, color: T.dim }}>??? Locked</div>
               </div>
             ))}
           </div>

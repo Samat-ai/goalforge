@@ -205,7 +205,7 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
         <div style={{ padding: '0 18px 22px' }}>
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: '#2d1f4e', border: '1px solid #5b21b6',
+            background: T.card2, border: `1px solid ${T.indigo}55`,
             borderRadius: 20, padding: '3px 10px',
             fontSize: 10, fontWeight: 600, letterSpacing: '0.08em',
             color: T.amber, fontFamily: T.mono,

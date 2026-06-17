@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useT } from '../lib/theme'
 
 const DISMISS_KEY = 'pwa_install_dismissed'
 
@@ -9,6 +10,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function InstallPrompt() {
+  const T = useT()
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [visible, setVisible] = useState(false)
 
@@ -60,8 +62,8 @@ export default function InstallPrompt() {
         gap: 12,
         padding: '12px 16px',
         borderRadius: 14,
-        background: 'rgba(15, 15, 35, 0.96)',
-        border: '1px solid rgba(99, 102, 241, 0.35)',
+        background: T.card2,
+        border: `1px solid ${T.indigo}59`,
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(99,102,241,0.1)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
@@ -84,11 +86,11 @@ export default function InstallPrompt() {
         flex: 1,
         fontSize: 12,
         lineHeight: 1.5,
-        color: '#cbd5e1',
-        fontFamily: 'Plus Jakarta Sans, sans-serif',
+        color: T.textDim,
+        fontFamily: T.body,
         margin: 0,
       }}>
-        Add <strong style={{ color: '#e2e8f0' }}>GoalForge</strong> to your home screen for the best experience
+        Add <strong style={{ color: T.text }}>GoalForge</strong> to your home screen for the best experience
       </p>
 
       {/* Install button */}
@@ -101,7 +103,7 @@ export default function InstallPrompt() {
           border: '1px solid rgba(99, 102, 241, 0.5)',
           background: 'rgba(99, 102, 241, 0.2)',
           color: '#a5b4fc',
-          fontFamily: 'JetBrains Mono, monospace',
+          fontFamily: T.mono,
           fontSize: 11,
           fontWeight: 600,
           letterSpacing: '0.04em',
@@ -133,15 +135,15 @@ export default function InstallPrompt() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           border: 'none',
           background: 'transparent',
-          color: '#64748b',
+          color: T.muted,
           cursor: 'pointer',
           fontSize: 16,
           padding: 0,
           borderRadius: 6,
           transition: 'color 0.15s',
         }}
-        onMouseEnter={e => { e.currentTarget.style.color = '#94a3b8' }}
-        onMouseLeave={e => { e.currentTarget.style.color = '#64748b' }}
+        onMouseEnter={e => { e.currentTarget.style.color = T.textDim }}
+        onMouseLeave={e => { e.currentTarget.style.color = T.muted }}
       >
         ×
       </button>

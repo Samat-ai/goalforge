@@ -27,14 +27,14 @@ export default function EnergyModal({ onConfirm, onDismiss, isLoading }: EnergyM
       onClick={e => { if (e.target === e.currentTarget) onDismiss() }}
     >
       <div style={{
-        background: 'linear-gradient(160deg, #130d24 0%, #0f0f1a 100%)',
-        border: '1px solid #7c3aed44',
+        background: T.card2,
+        border: `1px solid ${T.indigo}44`,
         borderRadius: 16,
         padding: '32px 28px',
         textAlign: 'center',
         maxWidth: 340,
         width: '90%',
-        boxShadow: '0 0 60px #7c3aed22',
+        boxShadow: `0 0 60px ${T.indigo}22`,
         animation: 'modalPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)',
       }}>
         {/* Icon */}
