@@ -314,7 +314,8 @@ body {
 
 /* ── Goal-creation hero (glass) ── */
 .gf-create-wrap { position: relative; }
-.gf-amb { position: absolute; border-radius: 50%; filter: blur(42px); opacity: 0.2; transition: opacity .8s cubic-bezier(.22,.61,.36,1), transform .8s cubic-bezier(.22,.61,.36,1); }
+.gf-create-amb { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.gf-amb { position: absolute; border-radius: 50%; filter: blur(42px); opacity: 0.2; pointer-events: none; transition: opacity .8s cubic-bezier(.22,.61,.36,1), transform .8s cubic-bezier(.22,.61,.36,1); }
 .gf-amb.o3, .gf-amb.o4 { display: none; }
 .gf-amb.o1 { width: 30%; height: 120%; left: 0%; top: -18%; background: radial-gradient(circle, color-mix(in oklab, var(--accent) 92%, transparent), transparent 70%); }
 .gf-amb.o2 { width: 32%; height: 120%; right: -2%; top: 6%; background: radial-gradient(circle, var(--indigo), transparent 70%); }
@@ -323,7 +324,7 @@ body {
 [data-theme="light"] .gf-create-wrap:focus-within .gf-amb { opacity: 0.42; }
 .gf-create-wrap:focus-within .gf-amb.o1 { transform: translateX(15%) scale(1.05); }
 .gf-create-wrap:focus-within .gf-amb.o2 { transform: translateX(-16%) scale(1.05); }
-.gf-create { position: relative; border-radius: calc(var(--radius) + 4px); padding: clamp(26px, 4vw, 38px) clamp(18px, 3vw, 30px); overflow: hidden; border: 1px solid var(--accent-line); box-shadow: var(--shadow); transition: border-color .3s, box-shadow .3s; }
+.gf-create { position: relative; z-index: 1; border-radius: calc(var(--radius) + 4px); padding: clamp(26px, 4vw, 38px) clamp(18px, 3vw, 30px); overflow: hidden; border: 1px solid var(--accent-line); box-shadow: var(--shadow); transition: border-color .3s, box-shadow .3s; }
 .gf-create.is-focus { border-color: color-mix(in oklab, var(--accent) 55%, transparent); box-shadow: var(--shadow-hi); }
 .gf-create-bg { position: absolute; inset: 0; background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 9%, transparent) 0%, color-mix(in oklab, var(--indigo) 7%, transparent) 50%, color-mix(in oklab, var(--accent) 6%, transparent) 100%); transition: opacity .5s; }
 .gf-create-blob { position: absolute; border-radius: 50%; filter: blur(26px); pointer-events: none; transition: all .6s ease; }

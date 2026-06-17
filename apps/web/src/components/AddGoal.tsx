@@ -82,7 +82,7 @@ export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoa
 
   return (
     <div className="gf-create-wrap" style={{ marginBottom: 22 }}>
-      <div aria-hidden="true">
+      <div className="gf-create-amb" aria-hidden="true">
         <span className="gf-amb o1" /><span className="gf-amb o2" />
       </div>
       <div className={cx('gf-create', focused && 'is-focus')}>
@@ -114,6 +114,7 @@ export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoa
               </div>
               <button
                 className={cx('gf-create-go', value.trim() && 'is-on')}
+                onMouseDown={e => e.preventDefault()}
                 onClick={submit}
                 aria-label="Create goal"
                 disabled={loading}
