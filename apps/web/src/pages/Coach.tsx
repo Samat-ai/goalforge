@@ -61,7 +61,7 @@ export default function Coach() {
   useEffect(() => {
     if (messages.length > prevLenRef.current) {
       const last = messages[messages.length - 1]
-      if (last && last.role === 'assistant') setStreamId(last.id)
+      if (last && last.role === 'coach') setStreamId(last.id)
     }
     prevLenRef.current = messages.length
   }, [messages.length])
