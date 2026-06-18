@@ -833,6 +833,21 @@ body {
 .gf-reward-btn { flex-shrink: 0; min-height: 40px; min-width: 80px; padding: 0 16px; border-radius: 11px; font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.03em; color: var(--text-mute); border: 1px solid var(--border-hi); background: color-mix(in oklab, var(--text) 4%, transparent); cursor: not-allowed; transition: all .18s; }
 .gf-reward-btn.is-on { color: var(--ring-2); border-color: color-mix(in oklab, var(--ring-2) 55%, transparent); background: color-mix(in oklab, var(--ring-2) 13%, transparent); cursor: pointer; }
 .gf-reward-btn.is-on:hover { transform: translateY(-1px); background: color-mix(in oklab, var(--ring-2) 20%, transparent); }
+/* Jackpot reward modal */
+.gf-jkp-scrim { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.75); animation: fadeIn .2s ease; }
+.gf-jkp { background: var(--card-2); border: 1px solid color-mix(in oklab, var(--indigo) 27%, transparent); border-radius: 16px; padding: 28px 32px; text-align: center; max-width: 320px; width: 90%; box-shadow: 0 0 60px color-mix(in oklab, var(--indigo) 13%, transparent); animation: popIn .45s cubic-bezier(0.34,1.56,0.64,1); }
+.gf-jkp-label { font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--gold); margin-bottom: 10px; }
+.gf-jkp-pts { font-family: var(--font-mono); font-size: 36px; font-weight: 700; color: var(--gold); line-height: 1; }
+.gf-jkp-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); margin-bottom: 20px; }
+.gf-jkp-divider { height: 1px; background: var(--border); margin-bottom: 16px; }
+.gf-jkp-rare-cap { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--text-mute); margin-bottom: 10px; }
+.gf-jkp-drop { background: color-mix(in oklab, var(--indigo) 15%, transparent); border: 1px solid color-mix(in oklab, var(--indigo) 40%, transparent); border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; margin-bottom: 20px; text-align: left; }
+.gf-jkp-drop-ic { font-size: 20px; }
+.gf-jkp-drop-name { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--text); }
+.gf-jkp-drop-meta { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); }
+.gf-jkp-foot { display: flex; gap: 10px; }
+.gf-jkp-equip { flex: 1; background: var(--accent); color: #0a0a14; border: none; border-radius: 8px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 10px 0; cursor: pointer; min-height: 44px; }
+.gf-jkp-close { flex: 1; background: var(--card-hi); color: var(--text-dim); border: 1px solid var(--border); border-radius: 8px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; padding: 10px 0; cursor: pointer; min-height: 44px; }
 
 /* ════════════════════ Settings page ════════════════════ */
 .gf-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 44px; padding: 0 18px; border-radius: 13px; font-weight: 600; font-size: 14px; border: none; cursor: pointer; transition: transform .16s cubic-bezier(.34,1.5,.5,1), box-shadow .2s, opacity .2s; }
