@@ -162,13 +162,12 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
             onChange={e => setDisplayName(e.target.value)}
             placeholder="Your name (optional)"
             maxLength={60}
-            style={{ width: '100%' }}
           />
           <div className="gf-field-hint">Shown in place of your username if set.</div>
         </div>
         <div className="gf-field">
           <label className="gf-field-label">Timezone</label>
-          <div className="gf-input" style={{ color: 'var(--text-dim)', pointerEvents: 'none' }}>
+          <div className="gf-input gf-input-readonly">
             {settings.timezone}
           </div>
           <div className="gf-field-hint">Auto-detected from your browser. Updates when you travel.</div>
@@ -221,12 +220,7 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
           onClick={save}
           disabled={saving}
           className="gf-btn gf-btn-accent"
-          style={{
-            background: 'linear-gradient(140deg, color-mix(in oklab, var(--accent) 88%, white 6%), var(--accent))',
-            color: '#fff', border: 'none',
-            boxShadow: '0 8px 22px -8px var(--accent)',
-            opacity: saving ? 0.6 : 1,
-          }}
+          style={saving ? { opacity: 0.6 } : undefined}
         >
           {saved ? '✓ Saved' : saving ? '···' : 'Save settings'}
         </button>
@@ -237,14 +231,13 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
       <SetSection icon="🤝" title="Accountability partners" subtitle="Invite someone to keep each other on track">
         <div className="gf-field">
           <label className="gf-field-label">Invite by email</label>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="gf-field-row">
             <input
               type="email"
               value={inviteEmail}
               onChange={e => setInviteEmail(e.target.value)}
               placeholder="friend@example.com"
               className="gf-input"
-              style={{ flex: 1 }}
             />
             <button
               onClick={() => {
@@ -255,7 +248,6 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
               }}
               disabled={isSendingInvite}
               className="gf-btn-ghost-indigo"
-              style={{ flexShrink: 0 }}
             >
               {isSendingInvite ? 'Sending…' : 'Send invite'}
             </button>
@@ -265,24 +257,22 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
         {(accountability?.incoming.length ?? 0) > 0 && (
           <div className="gf-field">
             <label className="gf-field-label">Incoming invites</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="gf-acct-list">
               {accountability?.incoming.map(invite => (
-                <div key={invite.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
-                  border: '1px solid var(--border)', borderRadius: 11, background: 'var(--bg)', padding: '10px 14px' }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>
+                <div key={invite.id} className="gf-acct-card">
+                  <div>
+                    <div className="gf-acct-name">
                       {invite.inviter_display_name ?? invite.inviter_email ?? invite.inviter_user_id}
                     </div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)' }}>Pending invite</div>
+                    <div className="gf-acct-meta">Pending invite</div>
                   </div>
-                  <div style={{ display: 'flex', gap: 6 }}>
+                  <div className="gf-acct-actions">
                     <button onClick={() => acceptInvite(invite.id)} disabled={isAcceptingInvite || isDecliningInvite}
                       className="gf-reward-btn is-on" style={{ minWidth: 70, height: 36 }}>
                       {isAcceptingInvite ? '…' : 'Accept'}
                     </button>
                     <button onClick={() => declineInvite(invite.id)} disabled={isAcceptingInvite || isDecliningInvite}
-                      className="gf-reward-btn"
-                      style={{ minWidth: 70, height: 36, color: 'var(--rose)', borderColor: 'color-mix(in oklab, var(--rose) 40%, transparent)' }}>
+                      className="gf-btn-pill is-danger" style={{ height: 36 }}>
                       {isDecliningInvite ? '…' : 'Decline'}
                     </button>
                   </div>
@@ -295,11 +285,11 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
         {(accountability?.partners.length ?? 0) > 0 && (
           <div className="gf-field">
             <label className="gf-field-label">Active partners</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="gf-acct-list">
               {accountability?.partners.map(partner => (
-                <div key={partner.id} style={{ border: '1px solid var(--border)', borderRadius: 11, background: 'var(--bg)', padding: '10px 14px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{partner.partner_display_name ?? partner.partner_email}</div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)' }}>{partner.partner_email}</div>
+                <div key={partner.id} className="gf-acct-card is-partner">
+                  <div className="gf-acct-name">{partner.partner_display_name ?? partner.partner_email}</div>
+                  <div className="gf-acct-meta">{partner.partner_email}</div>
                 </div>
               ))}
             </div>
@@ -307,7 +297,7 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
         )}
 
         {(accountability?.outgoing.length ?? 0) > 0 && (
-          <div className="gf-field-hint" style={{ marginTop: 8 }}>
+          <div className="gf-field-hint">
             Outgoing pending invites: {accountability?.outgoing.length}
           </div>
         )}
@@ -330,17 +320,17 @@ export default function Settings() {
   useEffect(() => { document.title = 'Settings — GoalForge' }, [])
 
   return (
-    <div className="min-h-dvh mesh-bg" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
+    <div className="min-h-dvh mesh-bg">
       <AppHeader pts={pts} />
 
       <main id="main-content" className="gf-main gf-settings">
 
         {/* Eyebrow */}
-        <div className="gf-eyebrow" style={{ marginBottom: 20 }}>Manage your preferences</div>
+        <div className="gf-eyebrow">Manage your preferences</div>
 
         {/* Appearance — always rendered (theme is a local pref) */}
         <SetSection icon="☀️" title="Appearance" subtitle="Choose how GoalForge looks">
-          <div className="gf-row" style={{ border: 'none', padding: '10px 0 0' }}>
+          <div className="gf-row is-top">
             <div>
               <div className="gf-row-title">Theme</div>
               <div className="gf-row-sub">
@@ -365,11 +355,7 @@ export default function Settings() {
         {/* Loading */}
         {loading && (
           <div role="status" aria-label="Loading settings" style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: '50%',
-              border: '2px solid var(--ring-track)', borderTop: '2px solid var(--accent)',
-              animation: 'spin 0.75s linear infinite',
-            }} />
+            <div className="gf-spinner" />
           </div>
         )}
 
