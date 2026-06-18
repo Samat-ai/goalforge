@@ -132,7 +132,7 @@ export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoa
           </div>
           {status === 'thinking' && <div className="gf-create-status think">◉ AI is forging your plan…</div>}
           {status === 'done' && <div className="gf-create-status done"><Icon name="check" size={12} stroke={3} /> Goal added!</div>}
-          {status === 'error' && <div className="gf-create-status" style={{ color: 'var(--rose)' }}>✕ Could not create goal — check your connection and try again.</div>}
+          {status === 'error' && <div className="gf-create-status error">✕ Could not create goal — check your connection and try again.</div>}
         </div>
       </div>
     </div>

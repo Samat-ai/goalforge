@@ -103,35 +103,21 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
             </button>
 
             {equippedTitle && (
-              <span style={{
-                fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gold)',
-                background: 'color-mix(in oklab, var(--gold) 12%, transparent)',
-                border: '1px solid color-mix(in oklab, var(--gold) 35%, transparent)',
-                padding: '2px 8px', borderRadius: 99,
-              }} className="hidden sm:inline">
-                {equippedTitle.display_name}
-              </span>
+              <span className="gf-title-badge hidden sm:inline">{equippedTitle.display_name}</span>
             )}
 
             {relicCount > 0 && onOpenCollection && (
               <button
                 onClick={onOpenCollection}
                 aria-label={`${relicCount} collected relics. Open Trophy Room.`}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--indigo)',
-                  padding: '4px 8px', minHeight: 44,
-                }}
-                className="hidden sm:flex items-center"
+                className="gf-relic-btn hidden sm:flex items-center"
               >
                 🏆 {relicCount} Rare {relicCount === 1 ? 'Relic' : 'Relics'}
               </button>
             )}
 
             {user?.firstName && (
-              <span style={{ fontSize: 11, color: 'var(--text-mute)', fontFamily: 'var(--font-mono)' }} className="hidden sm:inline">
-                {user.firstName}
-              </span>
+              <span className="gf-header-name hidden sm:inline">{user.firstName}</span>
             )}
             <UserButton />
 
