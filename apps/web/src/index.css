@@ -784,3 +784,76 @@ body {
 .gf-danger { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 15px; border-radius: 14px; border: 1px solid color-mix(in oklab, var(--rose) 32%, transparent); background: color-mix(in oklab, var(--rose) 7%, transparent); flex-wrap: wrap; }
 .gf-danger-title { font-size: 14px; font-weight: 600; color: var(--rose); }
 .gf-danger-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; line-height: 1.5; }
+
+/* ════════════════════ Onboarding page ════════════════════ */
+.ob-shell { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; padding: 36px 20px 60px; position: relative; z-index: 1;
+  background:
+    radial-gradient(ellipse 55% 40% at 8% -4%, color-mix(in oklab, var(--accent) 14%, transparent) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 44% at 96% 104%, color-mix(in oklab, var(--indigo) 13%, transparent) 0%, transparent 62%),
+    var(--bg);
+  background-attachment: fixed; background-repeat: no-repeat;
+}
+.ob-brand { font-family: var(--font-display); font-weight: 600; font-size: 22px; letter-spacing: -0.02em; color: var(--text); }
+.ob-brand span { color: var(--accent); }
+/* step dots */
+.ob-stepper { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
+.ob-steps { display: flex; gap: 7px; }
+.ob-dot { height: 9px; border-radius: 99px; background: var(--ring-track); transition: width .5s cubic-bezier(.34,1.2,.4,1), background .4s; width: 9px; }
+.ob-dot.done { background: var(--indigo); }
+.ob-dot.active { width: 30px; background: linear-gradient(90deg, var(--accent), color-mix(in oklab, var(--accent) 75%, var(--gold))); }
+.ob-step-count { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); margin-left: 4px; }
+/* card */
+.ob-stage { width: min(620px, 100%); margin-top: 28px; flex: 1; display: flex; align-items: flex-start; justify-content: center; }
+.ob-card { position: relative; width: 100%; background: linear-gradient(180deg, var(--card-2), var(--card)); border: 1px solid var(--border); border-radius: 26px; padding: 36px 36px 28px; box-shadow: var(--shadow); overflow: hidden; }
+.ob-card::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--border-hi), transparent); }
+/* mascot area */
+.ob-mascot { display: flex; justify-content: center; margin-bottom: 20px; }
+/* step headings */
+.ob-eyebrow { text-align: center; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+.ob-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(24px, 4vw, 32px); letter-spacing: -0.025em; text-align: center; line-height: 1.1; }
+.ob-title span { color: var(--accent); }
+.ob-sub { text-align: center; color: var(--text-dim); font-size: 14.5px; line-height: 1.65; max-width: 46ch; margin: 10px auto 0; }
+/* welcome pills */
+.ob-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 22px auto 0; max-width: 440px; }
+.ob-pill { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-dim); padding: 7px 13px; border-radius: 99px; border: 1px solid var(--border); background: var(--card-hi); }
+/* focus grid */
+.ob-focus-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 22px; }
+.ob-focus-card { display: flex; gap: 12px; align-items: flex-start; text-align: left; padding: 15px; border-radius: 15px; border: 1px solid var(--border); background: var(--card-hi); cursor: pointer; transition: transform .2s, border-color .22s, background .22s; }
+.ob-focus-card:hover { transform: translateY(-2px); border-color: var(--border-hi); }
+.ob-focus-card.sel { border-color: var(--indigo); background: color-mix(in oklab, var(--indigo) 10%, var(--card-hi)); box-shadow: 0 0 0 3px color-mix(in oklab, var(--indigo) 20%, transparent); }
+.ob-fc-ic { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; display: grid; place-items: center; font-size: 20px; background: color-mix(in oklab, var(--indigo) 14%, transparent); }
+.ob-focus-card.sel .ob-fc-ic { background: color-mix(in oklab, var(--indigo) 20%, transparent); }
+.ob-fc-name { display: block; font-family: var(--font-display); font-weight: 600; font-size: 14.5px; color: var(--text); }
+.ob-focus-card.sel .ob-fc-name { color: var(--indigo); }
+.ob-fc-desc { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); margin-top: 3px; line-height: 1.4; }
+/* how it works */
+.ob-how-list { display: flex; flex-direction: column; gap: 11px; margin-top: 22px; }
+.ob-how-row { display: flex; gap: 14px; align-items: flex-start; padding: 15px 17px; border-radius: 15px; border: 1px solid var(--border); background: var(--card-hi); }
+.ob-how-ic { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; display: grid; place-items: center; font-size: 18px; }
+.ob-how-h { font-family: var(--font-display); font-weight: 600; font-size: 14.5px; color: var(--text); }
+.ob-how-p { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-dim); margin-top: 3px; line-height: 1.5; }
+/* goal input */
+.ob-goal-pillwrap { border-radius: 18px; padding: 1.5px; background: linear-gradient(135deg, var(--accent-line), color-mix(in oklab, var(--indigo) 45%, transparent)); transition: box-shadow .3s; }
+.ob-goal-pillwrap.focus { box-shadow: 0 0 0 4px var(--accent-soft); }
+.ob-goal-field { display: flex; gap: 12px; align-items: flex-start; background: var(--bg); border-radius: 16.5px; padding: 16px; }
+.ob-goal-star { color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+.ob-goal-input { flex: 1; border: none; outline: none; background: transparent; color: var(--text); font-family: var(--font-display); font-size: 15px; line-height: 1.55; resize: none; min-height: 52px; }
+.ob-goal-input::placeholder { color: var(--text-mute); font-family: var(--font-mono); font-size: 13px; }
+.ob-goal-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+.ob-gchip { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); padding: 6px 13px; border-radius: 99px; border: 1px solid var(--border); background: var(--card-hi); cursor: pointer; transition: all .18s; }
+.ob-gchip:hover { color: var(--accent); border-color: var(--accent-line); transform: translateY(-1px); }
+.ob-goal-tip { display: flex; align-items: center; gap: 6px; justify-content: center; font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); margin-top: 14px; text-align: center; line-height: 1.5; }
+/* nav */
+.ob-nav { display: flex; align-items: center; gap: 12px; margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.ob-btn-primary { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 50px; padding: 0 24px; border-radius: 14px; font-family: var(--font-display); font-weight: 600; font-size: 15px; color: #fff; background: linear-gradient(140deg, color-mix(in oklab, var(--accent) 80%, var(--gold)), var(--accent)); box-shadow: 0 10px 26px -10px var(--accent), inset 0 1px 0 rgba(255,255,255,.28); border: none; cursor: pointer; transition: transform .18s cubic-bezier(.34,1.5,.5,1), box-shadow .2s, opacity .2s; }
+.ob-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 34px -10px var(--accent), inset 0 1px 0 rgba(255,255,255,.32); }
+.ob-btn-primary:disabled { opacity: 0.42; cursor: not-allowed; transform: none; }
+.ob-btn-back { display: inline-flex; align-items: center; gap: 7px; min-height: 50px; padding: 0 18px; border-radius: 14px; font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--text-dim); border: 1px solid var(--border); background: var(--card-hi); cursor: pointer; transition: color .2s, border-color .2s, transform .15s; white-space: nowrap; }
+.ob-btn-back:hover { color: var(--text); border-color: var(--border-hi); }
+.ob-btn-skip { display: inline-flex; align-items: center; min-height: 44px; font-family: var(--font-mono); font-size: 12px; color: var(--text-mute); padding: 0 10px; border-radius: 10px; cursor: pointer; transition: color .2s; white-space: nowrap; background: none; border: none; }
+.ob-btn-skip:hover { color: var(--text-dim); }
+@media (max-width: 560px) {
+  .ob-card { padding: 28px 18px 22px; }
+  .ob-focus-grid { grid-template-columns: 1fr; }
+  .ob-btn-primary { min-width: 100%; }
+}
