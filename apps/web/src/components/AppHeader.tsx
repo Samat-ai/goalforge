@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/react'
 import { getStage } from '../lib/gamification'
-import { useT } from '../lib/theme'
 import { useRewardsQuery } from '../hooks/useRewards'
 import Icon from './ui/Icon'
 
@@ -29,7 +28,6 @@ interface AppHeaderProps {
 }
 
 export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
-  const T = useT()
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useUser()
@@ -106,8 +104,9 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
 
             {equippedTitle && (
               <span style={{
-                fontFamily: T.mono, fontSize: 10, color: T.amber,
-                background: `${T.amber}15`, border: `1px solid ${T.amber}40`,
+                fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gold)',
+                background: 'color-mix(in oklab, var(--gold) 12%, transparent)',
+                border: '1px solid color-mix(in oklab, var(--gold) 35%, transparent)',
                 padding: '2px 8px', borderRadius: 99,
               }} className="hidden sm:inline">
                 {equippedTitle.display_name}
@@ -120,7 +119,7 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
                 aria-label={`${relicCount} collected relics. Open Trophy Room.`}
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
-                  fontFamily: T.mono, fontSize: 11, color: T.indigo,
+                  fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--indigo)',
                   padding: '4px 8px', minHeight: 44,
                 }}
                 className="hidden sm:flex items-center"
@@ -130,7 +129,7 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
             )}
 
             {user?.firstName && (
-              <span style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }} className="hidden sm:inline">
+              <span style={{ fontSize: 11, color: 'var(--text-mute)', fontFamily: 'var(--font-mono)' }} className="hidden sm:inline">
                 {user.firstName}
               </span>
             )}

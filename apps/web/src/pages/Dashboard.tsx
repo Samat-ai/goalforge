@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { useT } from '../lib/theme'
 import AppHeader from '../components/AppHeader'
 import { Creature } from '../components/GamificationSvgs'
 import TodayBar from '../components/TodayBar'
@@ -198,7 +197,6 @@ const EXAMPLE_GOALS = [
 ]
 
 function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
-  const T = useT()
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -209,13 +207,13 @@ function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
         <Creature pts={0} size={96} />
       </div>
       <h2 style={{
-        fontFamily: T.serif, fontSize: 22, fontWeight: 600,
-        color: T.text, marginBottom: 10, lineHeight: 1.3,
+        fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600,
+        color: 'var(--text)', marginBottom: 10, lineHeight: 1.3,
       }}>
         Your journey starts here ✦
       </h2>
       <p style={{
-        fontSize: 13, color: T.textDim, fontFamily: T.mono,
+        fontSize: 13, color: 'var(--text-dim)', fontFamily: 'var(--font-mono)',
         maxWidth: 380, lineHeight: 1.7, marginBottom: 28,
       }}>
         Describe any goal in plain language. Our AI will turn it into a
@@ -226,22 +224,8 @@ function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
           <button
             key={text}
             onClick={() => onSelect(text)}
-            style={{
-              minHeight: 44, padding: '10px 16px', borderRadius: 22,
-              fontFamily: T.mono, fontSize: 12, cursor: 'pointer',
-              background: `${T.indigo}12`, color: T.indigo,
-              border: `1px solid ${T.indigo}35`,
-              transition: 'background 0.15s, border-color 0.15s',
-              lineHeight: 1.4, textAlign: 'left',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = `${T.indigo}22`
-              e.currentTarget.style.borderColor = `${T.indigo}60`
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = `${T.indigo}12`
-              e.currentTarget.style.borderColor = `${T.indigo}35`
-            }}
+            className="gf-btn-ghost-indigo"
+            style={{ lineHeight: 1.4, textAlign: 'left', height: 'auto', minHeight: 44 }}
           >
             {text}
           </button>
@@ -253,7 +237,6 @@ function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
 
 // ── Dashboard (main page) ─────────────────────────────────────────────────────
 export default function Dashboard() {
-  const T = useT()
   const [searchParams] = useSearchParams()
   const onboardingGoal = searchParams.get('goal') ?? undefined
   const { user } = useUser()
@@ -313,18 +296,7 @@ export default function Dashboard() {
 
   // ── Render ──
   return (
-    <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.mono }}>
-      <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: ${T.dim}; border-radius: 2px; }
-        textarea:focus { border-color: ${T.orange} !important; outline: none; }
-        button:hover { opacity: 0.82; }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
-        .filter-tabs::-webkit-scrollbar { display: none; }
-        button:focus-visible, a:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; border-radius: 4px; }
-      `}</style>
+    <div className="min-h-dvh mesh-bg" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
 
       <AppHeader pts={pts} onOpenCollection={() => setShowCollection(true)} />
 
@@ -340,24 +312,18 @@ export default function Dashboard() {
 
         {/* Error */}
         {!loading && error && (
-          <div style={{
-            padding: '20px 22px', background: `${T.rose}10`, border: `1px solid ${T.rose}30`,
-            borderRadius: 12, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-          }}>
+          <div className="gf-nudge" style={{
+            '--accent': 'var(--rose)',
+            '--accent-soft': 'color-mix(in oklab, var(--rose) 10%, transparent)',
+            '--accent-line': 'color-mix(in oklab, var(--rose) 32%, transparent)',
+            '--accent-ink': 'var(--rose)',
+          } as React.CSSProperties}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, color: T.rose, fontFamily: T.mono, marginBottom: 3 }}>{error}</div>
-              <div style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }}>Check your connection and try again.</div>
+              <div className="gf-nudge-kicker">Load error</div>
+              <div className="gf-nudge-title">{error}</div>
+              <div className="gf-nudge-sub">Check your connection and try again.</div>
             </div>
-            <button
-              onClick={() => refetch()}
-              style={{
-                cursor: 'pointer', padding: '7px 16px', borderRadius: 8, flexShrink: 0,
-                fontFamily: T.mono, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
-                background: `${T.rose}20`, color: T.rose, border: `1px solid ${T.rose}50`,
-              }}
-            >
-              Try again
-            </button>
+            <button onClick={() => refetch()} className="gf-btn-ghost-accent">Try again</button>
           </div>
         )}
 
@@ -386,7 +352,7 @@ export default function Dashboard() {
                 {/* Goal list */}
                 <div aria-live="polite" aria-label="Goal list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {filtered.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '44px 0', color: T.muted, fontSize: 13 }}>
+                    <div style={{ textAlign: 'center', padding: '44px 0', color: 'var(--text-mute)', fontSize: 13 }}>
                       No goals here yet.
                     </div>
                   )}

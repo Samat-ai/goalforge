@@ -15,7 +15,6 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useT } from '../lib/theme'
 import type { Task } from '../lib/types'
 
 interface DailyTaskListProps {
@@ -55,7 +54,6 @@ function TaskRow({
   draggable?: boolean
   dateLabel?: string
 }) {
-  const T = useT()
   const {
     attributes, listeners, setNodeRef, setActivatorNodeRef,
     transform, transition, isDragging,
@@ -69,7 +67,7 @@ function TaskRow({
   }
   const isRegen = regeneratingId === task.id
   const isRestoring = restoringId === task.id
-  const pendingCircleColor = draggable ? T.dim : T.amber
+  const pendingCircleColor = draggable ? 'var(--text-mute)' : 'var(--gold)'
 
   return (
     <div
@@ -90,7 +88,7 @@ function TaskRow({
             touchAction: 'none', minHeight: 44, minWidth: 44, justifyContent: 'center',
           }}
         >
-          <GripVertical size={14} color={T.dim} />
+          <GripVertical size={14} color="var(--text-mute)" />
         </button>
       ) : (
         <div style={{ width: 14, flexShrink: 0 }} />
@@ -109,7 +107,7 @@ function TaskRow({
         }}
       >
         {task.is_completed
-          ? <CheckCircle2 size={16} color={T.emerald} />
+          ? <CheckCircle2 size={16} color="var(--emerald)" />
           : <Circle size={16} color={pendingCircleColor} />
         }
       </button>
@@ -127,24 +125,24 @@ function TaskRow({
               if (e.key === 'Escape') onCancelEdit()
             }}
             style={{
-              width: '100%', fontSize: 13, background: T.surface,
-              border: `1px solid ${T.orange}80`, borderRadius: 5,
-              padding: '2px 7px', color: T.text, outline: 'none', fontFamily: T.mono,
+              width: '100%', fontSize: 13, background: 'var(--card-hi)',
+              border: '1px solid color-mix(in oklab, var(--accent) 50%, transparent)', borderRadius: 5,
+              padding: '2px 7px', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)',
             }}
           />
         ) : (
           <>
             <p style={{
-              fontSize: 13, color: task.is_completed ? T.dim : T.text,
+              fontSize: 13, color: task.is_completed ? 'var(--text-mute)' : 'var(--text)',
               textDecoration: task.is_completed ? 'line-through' : 'none',
-              lineHeight: 1.5, fontFamily: T.mono, margin: 0,
+              lineHeight: 1.5, fontFamily: 'var(--font-mono)', margin: 0,
               display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 0,
             }}>
               {task.is_rescue_task && (
                 <span style={{
                   fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
-                  color: T.amber, fontFamily: T.mono,
-                  border: `1px solid ${T.amber}`,
+                  color: 'var(--gold)', fontFamily: 'var(--font-mono)',
+                  border: '1px solid var(--gold)',
                   borderRadius: 10, padding: '1px 6px',
                   marginRight: 6, textTransform: 'uppercase',
                   flexShrink: 0,
@@ -155,12 +153,12 @@ function TaskRow({
               {task.description}
             </p>
             {dateLabel ? (
-              <p style={{ fontSize: 10, color: T.amber, fontFamily: T.mono, margin: '1px 0 0', opacity: 0.7 }}>
+              <p style={{ fontSize: 10, color: 'var(--gold)', fontFamily: 'var(--font-mono)', margin: '1px 0 0', opacity: 0.7 }}>
                 {dateLabel}
               </p>
             ) : (
               !task.is_completed && task.tip && (
-                <p style={{ fontSize: 11, color: T.orange, fontFamily: T.mono, fontStyle: 'italic', margin: '2px 0 0' }}>
+                <p style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontStyle: 'italic', margin: '2px 0 0' }}>
                   "{task.tip}"
                 </p>
               )
@@ -215,7 +213,6 @@ export default function DailyTaskList({
   goalId, tasks, overdueTasks = [], activeMilestoneId,
   onCompleteTask, onSaveEdit, onAddTask, onRegenerateTask, onReorderTasks, onRestoreTask,
 }: DailyTaskListProps) {
-  const T = useT()
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [editingText, setEditingText] = useState('')
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
@@ -292,8 +289,8 @@ export default function DailyTaskList({
   }
 
   return (
-    <div style={{ margin: '0 18px 14px', padding: '13px 15px', background: T.surface, borderRadius: 9, border: `1px solid ${T.border}` }}>
-      <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 9 }}>
+    <div style={{ margin: '0 18px 14px', padding: '13px 15px', background: 'var(--card-hi)', borderRadius: 9, border: '1px solid var(--border)' }}>
+      <div style={{ fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.1em', fontFamily: 'var(--font-mono)', marginBottom: 9 }}>
         TODAY'S TASKS
       </div>
 
@@ -330,8 +327,8 @@ export default function DailyTaskList({
             onClick={() => setShowCatchUp(o => !o)}
             style={{
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, width: '100%',
-              background: `${T.amber}08`, border: `1px solid ${T.amber}25`, borderRadius: 7,
-              padding: '7px 10px', fontFamily: T.mono, fontSize: 10, color: T.amber,
+              background: 'color-mix(in oklab, var(--gold) 8%, transparent)', border: '1px solid color-mix(in oklab, var(--gold) 25%, transparent)', borderRadius: 7,
+              padding: '7px 10px', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gold)',
               letterSpacing: '0.08em',
             }}
           >
@@ -367,7 +364,7 @@ export default function DailyTaskList({
                   ))}
                 </SortableContext>
               </DndContext>
-              <p style={{ fontSize: 10, color: T.amber, fontFamily: T.mono, opacity: 0.6, margin: '2px 0 0', paddingLeft: 24 }}>
+              <p style={{ fontSize: 10, color: 'var(--gold)', fontFamily: 'var(--font-mono)', opacity: 0.6, margin: '2px 0 0', paddingLeft: 24 }}>
                 Completing these still earns you +10 pts each.
               </p>
             </div>
@@ -389,9 +386,9 @@ export default function DailyTaskList({
             placeholder="Describe your task..."
             disabled={addingTask}
             style={{
-              flex: 1, fontSize: 13, background: T.surface,
-              border: `1px solid ${T.orange}80`, borderRadius: 5,
-              padding: '5px 9px', color: T.text, outline: 'none', fontFamily: T.mono,
+              flex: 1, fontSize: 13, background: 'var(--card-hi)',
+              border: '1px solid color-mix(in oklab, var(--accent) 50%, transparent)', borderRadius: 5,
+              padding: '5px 9px', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)',
             }}
           />
           <button
@@ -399,8 +396,8 @@ export default function DailyTaskList({
             disabled={addingTask || !addTaskText.trim()}
             style={{
               cursor: addingTask || !addTaskText.trim() ? 'default' : 'pointer',
-              padding: '4px 12px', borderRadius: 6, fontFamily: T.mono, fontSize: 11,
-              background: `${T.orange}20`, color: T.orange, border: `1px solid ${T.orange}50`,
+              padding: '4px 12px', borderRadius: 6, fontFamily: 'var(--font-mono)', fontSize: 11,
+              background: 'color-mix(in oklab, var(--accent) 18%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in oklab, var(--accent) 45%, transparent)',
               opacity: addingTask || !addTaskText.trim() ? 0.5 : 1,
             }}
           >
@@ -414,7 +411,7 @@ export default function DailyTaskList({
             marginTop: tasks.length > 0 || overdueTasks.length > 0 ? 8 : 0,
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
             background: 'none', border: 'none', padding: '3px 0',
-            fontFamily: T.mono, fontSize: 11, color: T.muted,
+            fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-mute)',
           }}
         >
           <Plus size={13} /> Add Task
