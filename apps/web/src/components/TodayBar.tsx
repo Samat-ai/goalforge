@@ -1,4 +1,3 @@
-import { useT } from '../lib/theme'
 import { todayStr } from '../lib/gamification'
 import { pickOneThing } from '../lib/pickOneThing'
 import type { Goal } from '../lib/types'
@@ -10,7 +9,6 @@ interface TodayBarProps {
 }
 
 export default function TodayBar({ goals, onFocusOpen, onEnergyOpen }: TodayBarProps) {
-  const T = useT()
   const today  = todayStr()
   const active = goals.filter(g => g.status === 'active')
 
@@ -32,67 +30,41 @@ export default function TodayBar({ goals, onFocusOpen, onEnergyOpen }: TodayBarP
   return (
     <div
       role="status"
+      className="gf-today"
+      style={{ marginBottom: 14 }}
       aria-label={
         hasToday
           ? `Today's progress: ${doneCnt} of ${todayAll.length} tasks done${overdueCnt > 0 ? `, ${overdueCnt} to catch up` : ''}`
           : `${overdueCnt} tasks to catch up on`
       }
-      style={{
-        background: T.surface, border: `1px solid ${T.border}`, borderRadius: 11,
-        padding: '13px 17px', marginBottom: 19, display: 'flex', alignItems: 'center', gap: 15,
-      }}
     >
-      <div>
-        <div style={{ fontSize: 10, color: T.muted, fontFamily: T.mono, marginBottom: 2 }}>TODAY</div>
-        {hasToday ? (
-          <div style={{ fontFamily: T.serif, fontSize: 19, color: T.text }}>
-            {doneCnt} / {todayAll.length} done
-            {overdueCnt > 0 && (
-              <span style={{ fontSize: 12, color: T.amber, fontFamily: T.mono, marginLeft: 10 }}>
-                · {overdueCnt} to catch up
-              </span>
-            )}
-          </div>
-        ) : (
-          <div style={{ fontFamily: T.serif, fontSize: 19, color: T.muted }}>
-            – / –
-            <span style={{ fontSize: 12, color: T.amber, fontFamily: T.mono, marginLeft: 10 }}>
-              {overdueCnt} to catch up
-            </span>
-          </div>
-        )}
+      <div style={{ flexShrink: 0 }}>
+        <div className="gf-today-label">Today</div>
+        <div className="gf-today-stat">
+          {hasToday ? (
+            <>
+              {doneCnt} / {todayAll.length}
+              {overdueCnt > 0 && <span>+{overdueCnt} overdue</span>}
+              {allDone && <span style={{ color: 'var(--emerald)' }}>· All done ✦</span>}
+            </>
+          ) : (
+            <>– / –<span>{overdueCnt} to catch up</span></>
+          )}
+        </div>
       </div>
-      <div style={{ flex: 1, height: 5, background: T.dim, borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{
-          height: '100%', borderRadius: 3,
-          background: !hasToday ? T.amber : T.orange,
-          width: `${barPct}%`, transition: 'width 0.5s',
-        }} />
+
+      <div className="gf-today-track">
+        <div
+          className={['gf-today-fill', !hasToday && 'is-amber'].filter(Boolean).join(' ')}
+          style={{ width: `${barPct}%` }}
+        />
       </div>
-      <span style={{ fontSize: 20 }}>{allDone ? '🏆' : !hasToday ? '⏳' : '🎯'}</span>
 
       {hasFocusItem && (
         <button
           onClick={onFocusOpen}
           aria-label="Enter focus mode"
-          style={{
-            minHeight: 44,
-            minWidth: 44,
-            padding: '0 14px',
-            borderRadius: 8,
-            border: `1px solid ${T.indigo}40`,
-            background: `${T.indigo}12`,
-            color: T.indigo,
-            fontFamily: T.mono,
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: '0.06em',
-            cursor: 'pointer',
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-          }}
+          className="gf-btn-ghost-indigo"
         >
           <span>⚡</span>
           <span>Focus</span>
@@ -103,24 +75,7 @@ export default function TodayBar({ goals, onFocusOpen, onEnergyOpen }: TodayBarP
         <button
           onClick={onEnergyOpen}
           aria-label="Low energy mode — simplify today's tasks"
-          style={{
-            minHeight: 44,
-            minWidth: 44,
-            padding: '0 14px',
-            borderRadius: 8,
-            border: '1px solid #7c3aed40',
-            background: '#7c3aed12',
-            color: '#a78bfa',
-            fontFamily: T.mono,
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: '0.06em',
-            cursor: 'pointer',
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-          }}
+          className="gf-btn-ghost-purple"
         >
           <span>🌙</span>
           <span>Low energy</span>

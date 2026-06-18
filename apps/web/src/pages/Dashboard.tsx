@@ -42,7 +42,6 @@ function computeWelcomeBack(goals: Goal[], today: string): { daysAway: number; l
 }
 
 function WelcomeBackCard({ goals, onFocus }: { goals: Goal[]; onFocus: () => void }) {
-  const T = useT()
   const [dismissed, setDismissed] = useState(() => {
     const ts = localStorage.getItem(WELCOME_DISMISS_KEY)
     return !!ts && Date.now() - Number(ts) < WELCOME_DISMISS_TTL
@@ -59,46 +58,23 @@ function WelcomeBackCard({ goals, onFocus }: { goals: Goal[]; onFocus: () => voi
   }
 
   return (
-    <div className="animate-slide-up" style={{
-      display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-      padding: '14px 18px', borderRadius: 12, marginBottom: 16,
-      background: `${T.indigo}12`, border: `1px solid ${T.indigo}40`,
-      borderLeft: `3px solid ${T.indigo}`,
-    }}>
+    <div className="gf-nudge animate-slide-up" style={{
+      '--accent': 'var(--indigo)',
+      '--accent-soft': 'color-mix(in oklab, var(--indigo) 10%, transparent)',
+      '--accent-line': 'color-mix(in oklab, var(--indigo) 35%, transparent)',
+      '--accent-ink': 'var(--indigo)',
+      marginBottom: 14,
+    } as React.CSSProperties}>
+      <div className="gf-nudge-dot" />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: T.mono, fontSize: 11, fontWeight: 600, color: T.indigo, letterSpacing: '0.06em', marginBottom: 3 }}>
-          WELCOME BACK
-        </div>
-        <div style={{ fontFamily: T.serif, fontSize: 14, color: T.text }}>
-          You were away for {state.daysAway} days. No reset needed.
-        </div>
-        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.textDim, marginTop: 2 }}>
-          Last completion: {state.lastCompletedDate}. One tiny win gets momentum back.
-        </div>
+        <div className="gf-nudge-kicker">Welcome back</div>
+        <div className="gf-nudge-title">You were away for {state.daysAway} days. No reset needed.</div>
+        <div className="gf-nudge-sub">Last completion: {state.lastCompletedDate}. One tiny win gets momentum back.</div>
       </div>
-      <button
-        onClick={onFocus}
-        style={{
-          minHeight: 44, minWidth: 44, padding: '9px 18px', borderRadius: 8,
-          cursor: 'pointer', flexShrink: 0,
-          fontFamily: T.mono, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
-          background: `${T.indigo}18`, color: T.indigo, border: `1px solid ${T.indigo}45`,
-        }}
-      >
+      <button onClick={onFocus} className="gf-btn-ghost-indigo">
         Enter Focus Mode
       </button>
-      <button
-        onClick={dismiss}
-        aria-label="Dismiss"
-        style={{
-          minHeight: 44, minWidth: 44, padding: '9px 12px', borderRadius: 8,
-          cursor: 'pointer', flexShrink: 0,
-          fontFamily: T.mono, fontSize: 11, color: T.dim,
-          background: 'transparent', border: 'none',
-        }}
-      >
-        ✕
-      </button>
+      <button onClick={dismiss} className="gf-nudge-x" aria-label="Dismiss">✕</button>
     </div>
   )
 }
@@ -150,7 +126,6 @@ interface DoThisNowProps {
 }
 
 function DoThisNow({ goals }: DoThisNowProps) {
-  const T = useT()
   const [completing, setCompleting] = useState(false)
   const userId = goals[0]?.user_id ?? ''
   const { completeMilestone } = useGoalMutations(userId)
@@ -160,7 +135,6 @@ function DoThisNow({ goals }: DoThisNowProps) {
   if (!blocker) return null
 
   const isOverdue = blocker.kind === 'overdue'
-  const color = isOverdue ? T.amber : T.emerald
 
   function handleAction() {
     if (!blocker) return
@@ -181,31 +155,34 @@ function DoThisNow({ goals }: DoThisNowProps) {
     : `"${blocker.milestoneTitle}" is done. Advance to the next sprint.`
   const btnLabel = isOverdue ? 'Catch Up ↓' : completing ? 'Unlocking…' : 'Complete Sprint ✦'
 
+  // amber for overdue, emerald for sprint-complete — override accent vars inline
+  const accentColor = isOverdue ? 'var(--gold)' : 'var(--emerald)'
+  const accentSoft = isOverdue
+    ? 'color-mix(in oklab, var(--gold) 10%, transparent)'
+    : 'color-mix(in oklab, var(--emerald) 10%, transparent)'
+  const accentLine = isOverdue
+    ? 'color-mix(in oklab, var(--gold) 32%, transparent)'
+    : 'color-mix(in oklab, var(--emerald) 32%, transparent)'
+
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-      padding: '14px 18px', borderRadius: 12, marginBottom: 18,
-      background: `${color}10`, border: `1px solid ${color}30`,
-      borderLeft: `3px solid ${color}`,
-      animation: 'fadeUp 0.35s ease both',
-    }}>
+    <div className="gf-nudge animate-slide-up" style={{
+      '--accent': accentColor,
+      '--accent-soft': accentSoft,
+      '--accent-line': accentLine,
+      '--accent-ink': accentColor,
+      marginBottom: 14,
+    } as React.CSSProperties}>
+      <div className="gf-nudge-dot" />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: T.mono, fontSize: 11, fontWeight: 600, color, letterSpacing: '0.06em', marginBottom: 3 }}>
-          DO THIS NOW
-        </div>
-        <div style={{ fontFamily: T.serif, fontSize: 14, color: T.text }}>{label}</div>
-        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.textDim, marginTop: 2 }}>{sub}</div>
+        <div className="gf-nudge-kicker">Do this now</div>
+        <div className="gf-nudge-title">{label}</div>
+        <div className="gf-nudge-sub">{sub}</div>
       </div>
       <button
         onClick={handleAction}
         disabled={completing}
-        style={{
-          minHeight: 44, minWidth: 44, padding: '9px 18px', borderRadius: 8,
-          cursor: completing ? 'wait' : 'pointer', flexShrink: 0,
-          fontFamily: T.mono, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
-          background: `${color}18`, color, border: `1px solid ${color}45`,
-          opacity: completing ? 0.6 : 1, transition: 'opacity 0.15s',
-        }}
+        className="gf-btn-ghost-accent"
+        style={{ opacity: completing ? 0.6 : 1, cursor: completing ? 'wait' : 'pointer' }}
       >
         {btnLabel}
       </button>

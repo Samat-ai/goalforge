@@ -27,6 +27,7 @@
   --ring-2: #34d399;
   --gold: #fbbf24;
   --rose: #fb7185;
+  --emerald: #34d399;
   --indigo: #818cf8;
   /* shape / depth / rhythm */
   --radius: 20px;
@@ -53,6 +54,7 @@
   --ring-2: #0a9d68;
   --gold: #b8860b;
   --rose: #e11d6b;
+  --emerald: #0a9d68;
   --indigo: #5b5bd6;
 }
 
@@ -507,6 +509,19 @@ body {
 .gf-nudge-sub { font-size: 13px; color: var(--text-dim); margin-top: 3px; }
 .gf-nudge-x { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; color: var(--text-mute); flex-shrink: 0; background: none; border: none; cursor: pointer; transition: color .2s, background .2s; }
 .gf-nudge-x:hover { color: var(--text); background: var(--border); }
+
+/* today progress bar */
+.gf-today { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--border); }
+.gf-today-label { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-mute); margin-bottom: 4px; }
+.gf-today-stat { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); line-height: 1; }
+.gf-today-stat span { font-size: 12px; color: var(--text-dim); font-family: var(--font-mono); font-weight: 400; margin-left: 8px; }
+.gf-today-track { flex: 1; height: 5px; border-radius: 3px; background: var(--ring-track); overflow: hidden; }
+.gf-today-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.5s ease; }
+.gf-today-fill.is-amber { background: var(--gold); }
+.gf-btn-ghost-indigo { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px; border-radius: 11px; font-family: var(--font-mono); font-weight: 600; font-size: 11px; letter-spacing: 0.04em; color: var(--indigo); background: color-mix(in oklab, var(--indigo) 12%, transparent); border: 1px solid color-mix(in oklab, var(--indigo) 40%, transparent); flex-shrink: 0; cursor: pointer; transition: transform .16s, background .2s; }
+.gf-btn-ghost-indigo:hover { transform: translateY(-1px); background: color-mix(in oklab, var(--indigo) 20%, transparent); }
+.gf-btn-ghost-purple { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px; border-radius: 11px; font-family: var(--font-mono); font-weight: 600; font-size: 11px; letter-spacing: 0.04em; color: #a78bfa; background: rgba(124,58,237,0.10); border: 1px solid rgba(124,58,237,0.28); flex-shrink: 0; cursor: pointer; transition: transform .16s, background .2s; }
+.gf-btn-ghost-purple:hover { transform: translateY(-1px); background: rgba(124,58,237,0.18); }
 
 /* goal card (collapsible + tabs) */
 .gf-gc { padding: 0; overflow: hidden; }
