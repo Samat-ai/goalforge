@@ -328,7 +328,7 @@ export default function Dashboard() {
         )}
 
         {!loading && !error && (
-          <>
+          <div className="gf-page">
             <GreetingStrip goals={goals} />
             <WelcomeBackCard goals={goals} onFocus={() => setFocusOpen(true)} />
             <DoThisNow goals={goals} />
@@ -339,8 +339,9 @@ export default function Dashboard() {
               <EmptyState onSelect={setAddGoalText} />
             ) : (
               <>
-                {/* Filter */}
-                <div style={{ marginBottom: 18 }}>
+                {/* Heading + filter */}
+                <div className="gf-listhead">
+                  <h2 className="gf-h2">Your goals</h2>
                   <Segmented
                     options={['active', 'achieved', 'abandoned']}
                     value={filter}
@@ -350,10 +351,11 @@ export default function Dashboard() {
                 </div>
 
                 {/* Goal list */}
-                <div aria-live="polite" aria-label="Goal list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div aria-live="polite" aria-label="Goal list" className="gf-goallist">
                   {filtered.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '44px 0', color: 'var(--text-mute)', fontSize: 13 }}>
-                      No goals here yet.
+                    <div className="gf-empty">
+                      <div className="gf-empty-ic">✦</div>
+                      <div className="gf-empty-t">No {filter} goals yet.</div>
                     </div>
                   )}
                   {filtered.map(goal => (
@@ -364,7 +366,7 @@ export default function Dashboard() {
                 </div>
               </>
             )}
-          </>
+          </div>
         )}
       </main>
 
