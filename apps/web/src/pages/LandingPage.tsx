@@ -1,168 +1,128 @@
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Show } from '@clerk/react'
-import { Target, Sparkles, Zap, ChevronRight } from 'lucide-react'
-import { useT } from '../lib/theme'
 
-const Btn = ({ children, onClick, primary = false }: { children: React.ReactNode, onClick: () => void, primary?: boolean }) => {
-  const T = useT()
-  return (
-  <button
-    onClick={onClick}
-    style={{
-      fontFamily: T.serif, fontSize: 15, fontWeight: 600, cursor: "pointer",
-      padding: "12px 28px", borderRadius: 10, transition: "opacity 0.15s",
-      background: primary ? T.orange : "transparent",
-      color: primary ? "#fff" : T.muted,
-      border: primary ? "none" : `1px solid ${T.border}`,
-    }}
-    onMouseEnter={e => (e.currentTarget.style.opacity = "0.82")}
-    onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
-  >
-    {children}
-  </button>
-  )
-}
-
-const steps = [
-  { n: "01", title: "Describe Your Goal", desc: "Tell us what you want to achieve in plain language — no frameworks needed." },
-  { n: "02", title: "AI Builds Your Plan", desc: "Gemini converts your input into a SMART goal with milestones and a 7-day sprint." },
-  { n: "03", title: "Complete & Earn Stars", desc: "Finish daily tasks to earn ⭐ star points and evolve your companion." },
+const STEPS = [
+  { n: '01', title: 'Describe your goal', desc: 'Tell us what you want to achieve in plain language — no frameworks needed.' },
+  { n: '02', title: 'AI builds your plan', desc: 'Gemini converts your input into a SMART goal with milestones and a 7-day sprint.' },
+  { n: '03', title: 'Complete tasks, earn stars', desc: 'Finish daily tasks to earn ⭐ star points and evolve your companion.' },
 ]
 
-const features = [
-  { icon: <Target size={20} />, title: "Smart Goals", desc: "AI refines your raw idea into a SMART goal with clear milestones and success criteria." },
-  { icon: <Sparkles size={20} />, title: "Star Companion", desc: "A gamified AI buddy that evolves across 6 stages as you hit milestones." },
-  { icon: <Zap size={20} />, title: "Daily Sprints", desc: "Auto-generated 7-day task plans keep you moving forward every single day." },
+const FEATURES = [
+  { icon: '🎯', title: 'Smart Goals', desc: 'AI refines your raw idea into a SMART goal with clear milestones and success criteria.' },
+  { icon: '✦', title: 'Star Companion', desc: 'A gamified buddy that evolves across 6 stages as you hit milestones.' },
+  { icon: '⚡', title: 'Daily Sprints', desc: 'Auto-generated 7-day task plans keep you moving forward every single day.' },
 ]
 
 export default function LandingPage() {
-  const T = useT()
   const navigate = useNavigate()
+  const navRef = useRef<HTMLElement>(null)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    function onScroll() { setScrolled(window.scrollY > 30) }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  useEffect(() => { document.title = 'GoalForge — Forge your goals, level up your life' }, [])
 
   return (
-    <div className="min-h-dvh mesh-bg text-white flex flex-col" style={{ fontFamily: T.serif, background: T.bg }}>
+    <div className="lp-root" ref={navRef as React.RefObject<HTMLDivElement>}>
 
-      {/* ── Nav ── */}
-      <nav style={{ borderBottom: `1px solid ${T.border}`, background: `${T.bg}f0`, backdropFilter: "blur(10px)" }}
-        className="sticky top-0 z-50 flex items-center justify-between px-6 sm:px-10"
-        role="banner"
-      >
-        <div style={{ height: 54, display: "flex", alignItems: "center" }}>
-          <span style={{ fontFamily: T.serif, fontSize: 21, fontWeight: 700, color: T.text, letterSpacing: "-0.3px" }}>
-            Goal<span style={{ color: T.orange }}>Forge</span>
-          </span>
-        </div>
-        <div className="flex gap-2 sm:gap-3">
-          <Show when="signed-out">
-            <Btn onClick={() => navigate('/sign-in')}>Sign In</Btn>
-            <Btn onClick={() => navigate('/sign-up')} primary>Get Started</Btn>
-          </Show>
-          <Show when="signed-in">
-            <Btn onClick={() => navigate('/dashboard')} primary>Dashboard</Btn>
-          </Show>
+      {/* Nav */}
+      <nav className={['lp-nav', scrolled && 'scrolled'].filter(Boolean).join(' ')}>
+        <div className="lp-container lp-nav-in">
+          <div className="lp-logo">Goal<span>Forge</span></div>
+          <div className="lp-nav-right">
+            <Show when="signed-out">
+              <button onClick={() => navigate('/sign-in')} className="lp-btn lp-btn-ghost">Sign in</button>
+              <button onClick={() => navigate('/sign-up')} className="lp-btn lp-btn-primary">Get started</button>
+            </Show>
+            <Show when="signed-in">
+              <button onClick={() => navigate('/dashboard')} className="lp-btn lp-btn-primary">Dashboard →</button>
+            </Show>
+          </div>
         </div>
       </nav>
 
-      {/* ── Hero ── */}
-      <section className="flex flex-col items-center text-center px-6 sm:px-10 pt-20 pb-16 sm:pt-28 sm:pb-24 gap-7">
-        {/* badge */}
-        <div style={{
-          fontFamily: T.mono, fontSize: 10, letterSpacing: "0.14em",
-          color: T.indigo, background: `${T.indigo}14`, border: `1px solid ${T.indigo}30`,
-          borderRadius: 99, padding: "5px 14px",
-        }}>
-          ✦ AI-POWERED GOAL COMPANION
-        </div>
-
-        <h1 className="text-[38px] sm:text-[58px] lg:text-[72px] leading-[1.08] font-extrabold tracking-tight max-w-3xl" style={{ fontFamily: T.serif }}>
-          Forge your goals,{" "}
-          <span style={{ color: T.amber }}>level up your life</span>
+      {/* Hero */}
+      <section className="lp-hero lp-container">
+        <div className="lp-badge">✦ AI-POWERED GOAL COMPANION</div>
+        <h1 className="lp-hero-h1">
+          Forge your goals,{' '}
+          <span>level up your life</span>
         </h1>
-
-        <p className="text-base sm:text-lg max-w-xl" style={{ color: T.muted, lineHeight: 1.7 }}>
-          GoalForge turns your ambitions into structured sprints — with an AI companion
-          that keeps you accountable and motivated every day.
+        <p className="lp-hero-sub">
+          GoalForge turns your ambitions into structured sprints — with an AI companion that keeps you accountable and motivated every day.
         </p>
-
-        <div className="flex flex-col sm:flex-row gap-3 mt-2">
+        <div className="lp-hero-ctas">
           <Show when="signed-out">
-            <Btn onClick={() => navigate('/sign-up')} primary>Start for free</Btn>
-            <Btn onClick={() => navigate('/sign-in')}>Sign In</Btn>
+            <button onClick={() => navigate('/sign-up')} className="lp-btn lp-btn-primary lp-btn-lg">Start for free</button>
+            <button onClick={() => navigate('/sign-in')} className="lp-btn lp-btn-ghost lp-btn-lg">Sign in</button>
           </Show>
           <Show when="signed-in">
-            <Btn onClick={() => navigate('/dashboard')} primary>Open Dashboard <ChevronRight size={15} style={{ display: "inline", verticalAlign: "middle", marginLeft: 2 }} /></Btn>
+            <button onClick={() => navigate('/dashboard')} className="lp-btn lp-btn-primary lp-btn-lg">Open Dashboard →</button>
           </Show>
         </div>
-
-        {/* social proof */}
-        <p style={{ fontFamily: T.mono, fontSize: 11, color: T.dim, letterSpacing: "0.06em", marginTop: 4 }}>
-          NO CREDIT CARD · FREE TO START · EVOLVE YOUR STAR
-        </p>
+        <p className="lp-proof">NO CREDIT CARD · FREE TO START · EVOLVE YOUR STAR</p>
       </section>
 
-      {/* ── How It Works ── */}
-      <section className="px-6 sm:px-10 pb-20 sm:pb-28 flex flex-col items-center gap-10">
-        <div className="text-center">
-          <p style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: "0.14em", color: T.amber, marginBottom: 10 }}>HOW IT WORKS</p>
-          <h2 className="text-2xl sm:text-3xl font-bold" style={{ fontFamily: T.serif, color: T.text }}>Three steps to momentum</h2>
-        </div>
-
-        <div className="grid sm:grid-cols-3 gap-4 w-full max-w-4xl">
-          {steps.map(({ n, title, desc }) => (
-            <div key={n} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 16, padding: "28px 24px" }}>
-              <span style={{ fontFamily: T.mono, fontSize: 36, fontWeight: 700, color: T.dim, display: "block", marginBottom: 14 }}>{n}</span>
-              <p style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.text, marginBottom: 8 }}>{title}</p>
-              <p style={{ fontSize: 14, color: T.muted, lineHeight: 1.65 }}>{desc}</p>
-            </div>
-          ))}
+      {/* How It Works */}
+      <section className="lp-section">
+        <div className="lp-container">
+          <div className="lp-section-head">
+            <div className="lp-eyebrow" style={{ color: 'var(--lp-gold)' }}>HOW IT WORKS</div>
+            <h2 className="lp-section-h2">Three steps to momentum</h2>
+          </div>
+          <div className="lp-grid-3">
+            {STEPS.map(({ n, title, desc }) => (
+              <div key={n} className="lp-card">
+                <div className="lp-card-num">{n}</div>
+                <div className="lp-card-title">{title}</div>
+                <div className="lp-card-desc">{desc}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section className="px-6 sm:px-10 pb-20 sm:pb-28 flex flex-col items-center gap-10">
-        <div className="text-center">
-          <p style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: "0.14em", color: T.indigo, marginBottom: 10 }}>FEATURES</p>
-          <h2 className="text-2xl sm:text-3xl font-bold" style={{ fontFamily: T.serif, color: T.text }}>Everything you need to follow through</h2>
-        </div>
-
-        <div className="grid sm:grid-cols-3 gap-4 w-full max-w-4xl">
-          {features.map(({ icon, title, desc }) => (
-            <div key={title} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: "24px" }}>
-              <div style={{ color: T.orange, marginBottom: 14 }}>{icon}</div>
-              <p style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 600, color: T.text, marginBottom: 6 }}>{title}</p>
-              <p style={{ fontSize: 13, color: T.muted, lineHeight: 1.65 }}>{desc}</p>
-            </div>
-          ))}
+      {/* Features */}
+      <section className="lp-section">
+        <div className="lp-container">
+          <div className="lp-section-head">
+            <div className="lp-eyebrow" style={{ color: 'var(--lp-indigo)' }}>FEATURES</div>
+            <h2 className="lp-section-h2">Everything you need to follow through</h2>
+          </div>
+          <div className="lp-grid-3">
+            {FEATURES.map(({ icon, title, desc }) => (
+              <div key={title} className="lp-card">
+                <div className="lp-card-icon">{icon}</div>
+                <div className="lp-card-title">{title}</div>
+                <div className="lp-card-desc">{desc}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ── Bottom CTA ── */}
-      <section style={{ borderTop: `1px solid ${T.border}` }}
-        className="flex flex-col items-center text-center px-6 sm:px-10 py-20 sm:py-28 gap-6"
-      >
-        <p style={{ fontFamily: T.mono, fontSize: 11, letterSpacing: "0.14em", color: T.amber }}>START TODAY</p>
-        <h2 className="text-2xl sm:text-4xl font-extrabold max-w-xl" style={{ fontFamily: T.serif, color: T.text, lineHeight: 1.2 }}>
-          Your goals won't forge themselves.
-        </h2>
-        <p style={{ fontSize: 15, color: T.muted, maxWidth: 400, lineHeight: 1.7 }}>
-          Join GoalForge and turn every ambition into a structured, achievable plan — starting now.
-        </p>
+      {/* CTA */}
+      <section className="lp-cta-section">
+        <div className="lp-eyebrow" style={{ color: 'var(--lp-gold)' }}>START TODAY</div>
+        <h2 className="lp-cta-h2">Your goals won&apos;t forge themselves.</h2>
+        <p className="lp-cta-sub">Join GoalForge and turn every ambition into a structured, achievable plan — starting now.</p>
         <Show when="signed-out">
-          <Btn onClick={() => navigate('/sign-up')} primary>Create your free account</Btn>
+          <button onClick={() => navigate('/sign-up')} className="lp-btn lp-btn-primary lp-btn-lg">Create your free account</button>
         </Show>
         <Show when="signed-in">
-          <Btn onClick={() => navigate('/dashboard')} primary>Go to Dashboard</Btn>
+          <button onClick={() => navigate('/dashboard')} className="lp-btn lp-btn-primary lp-btn-lg">Go to Dashboard</button>
         </Show>
-        <p style={{ fontFamily: T.mono, fontSize: 10, color: T.dim, letterSpacing: "0.08em" }}>NO CREDIT CARD REQUIRED</p>
+        <p className="lp-proof">NO CREDIT CARD REQUIRED</p>
       </section>
 
-      {/* ── Footer ── */}
-      <footer style={{ borderTop: `1px solid ${T.border}`, padding: "18px 24px" }}
-        className="flex items-center justify-center"
-      >
-        <span style={{ fontFamily: T.mono, fontSize: 11, color: T.dim }}>
-          © 2026 Goal<span style={{ color: T.orange }}>Forge</span> — Built with AI
-        </span>
+      {/* Footer */}
+      <footer className="lp-footer">
+        © 2026 Goal<span>Forge</span> — Built with AI
       </footer>
     </div>
   )
