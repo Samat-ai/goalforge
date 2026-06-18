@@ -59,11 +59,10 @@ function TaskRow({
     transform, transition, isDragging,
   } = useSortable({ id: task.id, disabled: !draggable || task.is_completed })
 
-  const style = {
+  const dndStyle = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    display: 'flex', alignItems: 'flex-start', gap: 10,
   }
   const isRegen = regeneratingId === task.id
   const isRestoring = restoringId === task.id
@@ -72,26 +71,17 @@ function TaskRow({
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={dndStyle}
       {...attributes}
-      className={`group task-row ${task.is_completed ? 'task-row-complete' : ''}`}
+      className={`gf-tr group task-row ${task.is_completed ? 'task-row-complete' : ''}`}
     >
       {/* Drag handle (draggable + pending) or spacer */}
       {draggable && !task.is_completed ? (
-        <button
-          ref={setActivatorNodeRef}
-          {...listeners}
-          aria-label="Drag to reorder"
-          style={{
-            flexShrink: 0, background: 'none', border: 'none', padding: 0,
-            cursor: 'grab', display: 'flex', alignItems: 'center', marginTop: 2,
-            touchAction: 'none', minHeight: 44, minWidth: 44, justifyContent: 'center',
-          }}
-        >
+        <button ref={setActivatorNodeRef} {...listeners} aria-label="Drag to reorder" className="gf-tr-drag">
           <GripVertical size={14} color="var(--text-mute)" />
         </button>
       ) : (
-        <div style={{ width: 14, flexShrink: 0 }} />
+        <div className="gf-tr-spacer" />
       )}
 
       {/* Complete toggle */}
@@ -100,11 +90,7 @@ function TaskRow({
         aria-pressed={task.is_completed}
         disabled={task.is_completed || isEditing}
         onClick={() => !task.is_completed && !isEditing && onComplete(task.id)}
-        style={{
-          marginTop: 1, flexShrink: 0, background: 'none', border: 'none', padding: 0,
-          cursor: !task.is_completed && !isEditing ? 'pointer' : 'default',
-          display: 'flex', alignItems: 'center',
-        }}
+        className={`gf-tr-check${!task.is_completed && !isEditing ? ' can-complete' : ''}`}
       >
         {task.is_completed
           ? <CheckCircle2 size={16} color="var(--emerald)" />
@@ -113,7 +99,7 @@ function TaskRow({
       </button>
 
       {/* Description */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="gf-tr-body">
         {isEditing ? (
           <input
             autoFocus
@@ -124,43 +110,19 @@ function TaskRow({
               if (e.key === 'Enter')  onSaveEdit(task.id, task.description)
               if (e.key === 'Escape') onCancelEdit()
             }}
-            style={{
-              width: '100%', fontSize: 13, background: 'var(--card-hi)',
-              border: '1px solid color-mix(in oklab, var(--accent) 50%, transparent)', borderRadius: 5,
-              padding: '2px 7px', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)',
-            }}
+            className="gf-tr-edit"
           />
         ) : (
           <>
-            <p style={{
-              fontSize: 13, color: task.is_completed ? 'var(--text-mute)' : 'var(--text)',
-              textDecoration: task.is_completed ? 'line-through' : 'none',
-              lineHeight: 1.5, fontFamily: 'var(--font-mono)', margin: 0,
-              display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 0,
-            }}>
-              {task.is_rescue_task && (
-                <span style={{
-                  fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
-                  color: 'var(--gold)', fontFamily: 'var(--font-mono)',
-                  border: '1px solid var(--gold)',
-                  borderRadius: 10, padding: '1px 6px',
-                  marginRight: 6, textTransform: 'uppercase',
-                  flexShrink: 0,
-                }}>
-                  ✦ EASY MODE
-                </span>
-              )}
+            <p className={`gf-tr-text${task.is_completed ? ' is-done' : ''}`}>
+              {task.is_rescue_task && <span className="gf-tr-rescue">✦ EASY MODE</span>}
               {task.description}
             </p>
             {dateLabel ? (
-              <p style={{ fontSize: 10, color: 'var(--gold)', fontFamily: 'var(--font-mono)', margin: '1px 0 0', opacity: 0.7 }}>
-                {dateLabel}
-              </p>
+              <p className="gf-tr-date">{dateLabel}</p>
             ) : (
               !task.is_completed && task.tip && (
-                <p style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontStyle: 'italic', margin: '2px 0 0' }}>
-                  "{task.tip}"
-                </p>
+                <p className="gf-tr-tip">&quot;{task.tip}&quot;</p>
               )
             )}
           </>
@@ -177,8 +139,8 @@ function TaskRow({
               disabled={isRestoring}
               aria-label="Restore original task"
               title="Restore original task"
-              className="text-[#7c3aed] hover:text-violet-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
-              style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isRestoring ? 0.4 : 1 }}
+              className="gf-tr-icon text-[#7c3aed] hover:text-violet-400 transition-colors"
+              style={isRestoring ? { opacity: 0.4 } : undefined}
             >
               <Undo2 size={13} style={isRestoring ? { animation: 'spin 1s linear infinite' } : undefined} />
             </button>
@@ -188,8 +150,7 @@ function TaskRow({
             onClick={() => onRegenerate(task.id)}
             disabled={isRegen}
             aria-label="Regenerate task via AI"
-            className="text-[#3f3f5c] hover:text-indigo-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
-            style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            className="gf-tr-icon text-[#3f3f5c] hover:text-indigo-400 transition-colors"
           >
             <RefreshCw size={13} style={isRegen ? { animation: 'spin 1s linear infinite' } : undefined} />
           </button>
@@ -197,8 +158,7 @@ function TaskRow({
             onMouseDown={e => e.preventDefault()}
             onClick={() => onStartEdit(task)}
             aria-label="Edit task"
-            className="text-[#3f3f5c] hover:text-indigo-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
-            style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            className="gf-tr-icon text-[#3f3f5c] hover:text-indigo-400 transition-colors"
           >
             <Pencil size={13} />
           </button>
@@ -288,16 +248,16 @@ export default function DailyTaskList({
     )
   }
 
+  const hasTasks = tasks.length > 0 || overdueTasks.length > 0
+
   return (
-    <div style={{ margin: '0 18px 14px', padding: '13px 15px', background: 'var(--card-hi)', borderRadius: 9, border: '1px solid var(--border)' }}>
-      <div style={{ fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.1em', fontFamily: 'var(--font-mono)', marginBottom: 9 }}>
-        TODAY'S TASKS
-      </div>
+    <div className="gf-tl">
+      <div className="gf-tl-cap">TODAY&apos;S TASKS</div>
 
       {tasks.length > 0 && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="gf-tl-rows">
               {tasks.map(task => (
                 <TaskRow
                   key={task.id}
@@ -322,25 +282,14 @@ export default function DailyTaskList({
 
       {/* Catch Up — overdue tasks from previous days */}
       {overdueTasks.length > 0 && (
-        <div style={{ marginTop: tasks.length > 0 ? 10 : 0 }}>
-          <button
-            onClick={() => setShowCatchUp(o => !o)}
-            style={{
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, width: '100%',
-              background: 'color-mix(in oklab, var(--gold) 8%, transparent)', border: '1px solid color-mix(in oklab, var(--gold) 25%, transparent)', borderRadius: 7,
-              padding: '7px 10px', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gold)',
-              letterSpacing: '0.08em',
-            }}
-          >
-            <ChevronDown
-              size={12}
-              style={{ transform: showCatchUp ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}
-            />
+        <div style={tasks.length > 0 ? { marginTop: 10 } : undefined}>
+          <button onClick={() => setShowCatchUp(o => !o)} className="gf-catchup-btn">
+            <ChevronDown size={12} className={`gf-catchup-chev${showCatchUp ? ' is-open' : ''}`} />
             CATCH UP — {overdueTasks.length} task{overdueTasks.length !== 1 ? 's' : ''} from earlier
           </button>
 
           {showCatchUp && (
-            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="gf-tl-rows" style={{ marginTop: 8 }}>
               <DndContext>
                 <SortableContext items={overdueTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
                   {overdueTasks.map(task => (
@@ -364,9 +313,7 @@ export default function DailyTaskList({
                   ))}
                 </SortableContext>
               </DndContext>
-              <p style={{ fontSize: 10, color: 'var(--gold)', fontFamily: 'var(--font-mono)', opacity: 0.6, margin: '2px 0 0', paddingLeft: 24 }}>
-                Completing these still earns you +10 pts each.
-              </p>
+              <p className="gf-catchup-pts">Completing these still earns you +10 pts each.</p>
             </div>
           )}
         </div>
@@ -374,7 +321,7 @@ export default function DailyTaskList({
 
       {/* Add Task */}
       {showAddTask ? (
-        <div style={{ marginTop: tasks.length > 0 || overdueTasks.length > 0 ? 8 : 0, display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div className="gf-addtask-row" style={hasTasks ? { marginTop: 8 } : undefined}>
           <input
             autoFocus
             value={addTaskText}
@@ -385,21 +332,12 @@ export default function DailyTaskList({
             }}
             placeholder="Describe your task..."
             disabled={addingTask}
-            style={{
-              flex: 1, fontSize: 13, background: 'var(--card-hi)',
-              border: '1px solid color-mix(in oklab, var(--accent) 50%, transparent)', borderRadius: 5,
-              padding: '5px 9px', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)',
-            }}
+            className="gf-addtask-in"
           />
           <button
             onClick={handleAddTask}
             disabled={addingTask || !addTaskText.trim()}
-            style={{
-              cursor: addingTask || !addTaskText.trim() ? 'default' : 'pointer',
-              padding: '4px 12px', borderRadius: 6, fontFamily: 'var(--font-mono)', fontSize: 11,
-              background: 'color-mix(in oklab, var(--accent) 18%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in oklab, var(--accent) 45%, transparent)',
-              opacity: addingTask || !addTaskText.trim() ? 0.5 : 1,
-            }}
+            className="gf-addtask-btn"
           >
             {addingTask ? '···' : 'Add'}
           </button>
@@ -407,12 +345,8 @@ export default function DailyTaskList({
       ) : (
         <button
           onClick={() => setShowAddTask(true)}
-          style={{
-            marginTop: tasks.length > 0 || overdueTasks.length > 0 ? 8 : 0,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-            background: 'none', border: 'none', padding: '3px 0',
-            fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-mute)',
-          }}
+          className="gf-addtask-trigger"
+          style={hasTasks ? { marginTop: 8 } : undefined}
         >
           <Plus size={13} /> Add Task
         </button>
