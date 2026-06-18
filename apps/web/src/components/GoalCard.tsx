@@ -52,8 +52,6 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
 
   // ── Milestone-gated computed values ──
   const activeMilestone = goal.milestones.find(m => m.sprint_status === 'active')
-  const failedMilestone = goal.milestones.find(m => m.sprint_status === 'failed')
-    ?? goal.milestones.find(m => m.sprint_status === 'active' && !m.is_completed && goal.daily_tasks.filter(t => t.milestone_id === m.id).length === 0)
   const nextMilestone = activeMilestone ? goal.milestones.find(m => m.position === activeMilestone.position + 1) : undefined
   const currentSprintTasks = activeMilestone ? goal.daily_tasks.filter(t => t.milestone_id === activeMilestone.id) : []
   const allSprintTasksDone = currentSprintTasks.length > 0 && currentSprintTasks.every(t => t.is_completed)
