@@ -333,7 +333,7 @@ export default function Settings() {
     <div className="min-h-dvh mesh-bg" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
       <AppHeader pts={pts} />
 
-      <main id="main-content" style={{ maxWidth: 680, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
+      <main id="main-content" className="gf-main gf-settings">
 
         {/* Eyebrow */}
         <div className="gf-eyebrow" style={{ marginBottom: 20 }}>Manage your preferences</div>

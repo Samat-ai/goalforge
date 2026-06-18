@@ -288,7 +288,7 @@ export default function Dashboard() {
 
       <AppHeader pts={pts} onOpenCollection={() => setShowCollection(true)} />
 
-      <main id="main-content" className="gf-main px-4 sm:px-8">
+      <main id="main-content" className="gf-main">
 
         {/* Loading skeletons */}
         {loading && (

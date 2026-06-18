@@ -673,6 +673,7 @@ body {
 .gf-eyebrow { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-mute); margin-bottom: 7px; }
 .gf-page { display: flex; flex-direction: column; gap: var(--gap); }
 .gf-main { max-width: 1180px; margin: 0 auto; padding: 26px 20px 80px; }
+.gf-settings { max-width: 680px; margin: 0 auto; width: 100%; }
 .gf-h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(19px, 2.4vw, 24px); letter-spacing: -0.02em; }
 .gf-listhead { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .gf-goallist { display: flex; flex-direction: column; gap: var(--gap); }
