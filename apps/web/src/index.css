@@ -412,6 +412,7 @@ body {
 .gf-co-solly-lg .solly-clip { opacity: 0; }
 .gf-co-text { color: var(--text); font-size: 15px; line-height: 1.75; max-width: 100%; }
 .gf-co-text em { color: var(--text-dim); font-style: italic; }
+.gf-co-stream { display: inline; }
 .gf-co-word { animation: coWordIn .34s ease both; }
 @keyframes coWordIn { from { opacity: 0; } to { opacity: 1; } }
 .gf-co-userbub { background: var(--card-hi); color: var(--text); padding: 12px 16px; border-radius: 16px; max-width: min(78%, 540px); border: 1px solid var(--border); font-size: 14.5px; line-height: 1.6; }
@@ -465,7 +466,7 @@ body {
 
 /* ════════════════════ Goal card + tabs + nudges — redesign ════════════════════ */
 
-.gf-card { background: linear-gradient(180deg, var(--card-2), var(--card)); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--pad); box-shadow: var(--shadow); }
+.gf-card { background: linear-gradient(180deg, var(--card-2), var(--card)); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--pad); box-shadow: var(--shadow); transition: transform .35s cubic-bezier(.34,1.2,.5,1), box-shadow .35s, border-color .35s; }
 .gf-bar { height: 7px; border-radius: 99px; background: var(--ring-track); overflow: hidden; }
 .gf-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), color-mix(in oklab, var(--accent) 55%, var(--ring-2))); transition: width 1.1s cubic-bezier(.34,1.1,.4,1); }
 .gf-bar-gold { margin-top: 10px; }
@@ -532,6 +533,7 @@ body {
 
 /* goal card (collapsible + tabs) */
 .gf-gc { padding: 0; overflow: hidden; }
+.gf-gc:hover { transform: none; }
 .gf-gc-head { display: flex; align-items: flex-start; gap: 13px; width: 100%; text-align: left; padding: 15px 16px; background: none; border: none; cursor: pointer; }
 .gf-puffy { position: relative; display: grid; place-items: center; flex-shrink: 0; }
 .gf-puffy-glow { position: absolute; inset: 0; border-radius: 50%; animation: puffyPulse 3.4s ease-in-out infinite; }
@@ -688,6 +690,7 @@ body {
 .gf-donut-legend { flex: 1; min-width: 130px; display: flex; flex-direction: column; gap: 9px; }
 .gf-legrow-int { cursor: default; border-radius: 9px; padding: 4px 6px; margin: -4px -6px; transition: background .15s ease; }
 .gf-legrow-int:hover { background: color-mix(in oklab, var(--text) 7%, transparent); }
+.gf-goal-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
 /* heatmap */
 .gf-heat .gf-card-cap { margin-bottom: 14px; }
 .hm-months { display: flex; font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); margin: 0 0 7px 30px; gap: 0; }
