@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useT } from '../lib/theme'
 import type { ShopReward } from '../lib/types'
 
 interface StarShopProps {
@@ -12,139 +11,108 @@ interface StarShopProps {
 }
 
 export default function StarShop({ pts, rewards, onAdd, onRedeem, isCreating, isRedeeming }: StarShopProps) {
-  const T = useT()
   const [title, setTitle] = useState('')
   const [cost, setCost] = useState('50')
 
+  function handleAdd() {
+    const costNum = Number(cost)
+    if (!title.trim() || !Number.isFinite(costNum) || costNum <= 0) return
+    onAdd({ title: title.trim(), cost: costNum })
+    setTitle('')
+    setCost('50')
+  }
+
   return (
-    <section style={{
-      marginTop: 14,
-      marginBottom: 20,
-      border: `1px solid ${T.border}`,
-      background: T.card,
-      borderRadius: 12,
-      padding: '14px 14px 12px',
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+    <div className="gf-card">
+      <div className="gf-shop-head">
         <div>
-          <div style={{ fontFamily: T.mono, fontSize: 11, color: T.muted, letterSpacing: '0.08em' }}>STAR SHOP</div>
-          <h3 style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 500, color: T.text }}>Redeem your momentum</h3>
+          <div className="gf-card-cap" style={{ marginBottom: 4 }}>Star Shop</div>
+          <div className="gf-shop-title">Redeem your momentum</div>
         </div>
-        <div style={{ fontFamily: T.mono, fontSize: 12, color: T.amber }}>Balance: {pts} pts</div>
+        <span className="gf-shop-bal">★ {pts} balance</span>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+      {/* Add custom reward */}
+      <div className="gf-shop-addrow">
         <input
-          value={title}
-          onChange={e => setTitle(e.target.value)}
+          className="gf-input gf-shop-title-in"
           placeholder="Custom reward (e.g. Coffee break)"
           maxLength={120}
-          style={{
-            flex: 1,
-            minWidth: 220,
-            minHeight: 44,
-            background: T.surface,
-            border: `1px solid ${T.border}`,
-            borderRadius: 8,
-            padding: '10px 12px',
-            color: T.text,
-            fontFamily: T.mono,
-            fontSize: 12,
-          }}
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handleAdd() }}
         />
-        <input
-          value={cost}
-          onChange={e => setCost(e.target.value.replace(/[^0-9]/g, ''))}
-          placeholder="Cost"
-          inputMode="numeric"
-          style={{
-            width: 96,
-            minHeight: 44,
-            background: T.surface,
-            border: `1px solid ${T.border}`,
-            borderRadius: 8,
-            padding: '10px 12px',
-            color: T.text,
-            fontFamily: T.mono,
-            fontSize: 12,
-          }}
-        />
+        <div className="gf-shop-costwrap">
+          <span style={{ fontSize: 13 }}>★</span>
+          <input
+            className="gf-shop-cost-in"
+            placeholder="50"
+            inputMode="numeric"
+            aria-label="Cost in stars"
+            value={cost}
+            onChange={e => setCost(e.target.value.replace(/[^0-9]/g, ''))}
+          />
+        </div>
         <button
-          onClick={() => {
-            const costNum = Number(cost)
-            if (!title.trim() || !Number.isFinite(costNum) || costNum <= 0) return
-            onAdd({ title: title.trim(), cost: costNum })
-            setTitle('')
-            setCost('50')
-          }}
-          disabled={isCreating}
+          onClick={handleAdd}
+          disabled={isCreating || !title.trim()}
+          className="gf-btn-accent"
           style={{
-            minHeight: 44,
-            minWidth: 44,
-            border: 'none',
-            borderRadius: 8,
-            padding: '0 14px',
-            cursor: isCreating ? 'default' : 'pointer',
-            background: `${T.indigo}22`,
-            color: T.indigo,
-            fontFamily: T.mono,
-            fontSize: 11,
-            letterSpacing: '0.05em',
-            opacity: isCreating ? 0.6 : 1,
+            minHeight: 44, padding: '0 20px', borderRadius: 11,
+            fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13,
+            color: '#fff',
+            background: 'linear-gradient(140deg, color-mix(in oklab, var(--accent) 88%, white 6%), var(--accent))',
+            boxShadow: '0 8px 22px -8px var(--accent)',
+            border: 'none', cursor: isCreating ? 'wait' : 'pointer',
+            opacity: !title.trim() ? 0.5 : 1,
           }}
         >
-          Add Reward
+          Add
         </button>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+      {/* Reward list */}
+      <div className="gf-shop-list">
         {rewards.length === 0 && (
-          <div style={{ fontFamily: T.mono, fontSize: 12, color: T.textDim }}>
-            No custom rewards yet. Add one to turn stars into something tangible.
+          <div className="gf-shop-empty">
+            No rewards yet. Add one to turn stars into something tangible.
           </div>
         )}
-        {rewards.map(reward => {
+        {rewards.map((reward, i) => {
           const canRedeem = reward.is_active && pts >= reward.cost
+          const shortfall = reward.cost - pts
+          const pct = Math.min(1, pts / reward.cost)
           return (
-            <div key={reward.id} style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: 10,
-              padding: '10px 12px',
-              borderRadius: 8,
-              border: `1px solid ${T.border}`,
-              background: T.surface,
-            }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: T.serif, fontSize: 15, color: T.text }}>{reward.title}</div>
-                <div style={{ fontFamily: T.mono, fontSize: 11, color: T.textDim }}>
-                  {reward.cost} pts · redeemed {reward.redemption_count}x
+            <div key={reward.id} className="gf-reward" style={{ animationDelay: `${i * 50}ms` }}>
+              <div className="gf-reward-ic">★</div>
+              <div className="gf-reward-mid">
+                <div className="gf-reward-title">{reward.title}</div>
+                <div className="gf-reward-meta">
+                  <span className="gf-reward-cost">★ {reward.cost}</span>
+                  {reward.redemption_count > 0 && (
+                    <span className="gf-reward-redeemed">redeemed {reward.redemption_count}×</span>
+                  )}
+                  {!canRedeem && shortfall > 0 && (
+                    <span className="gf-reward-need">{shortfall} more needed</span>
+                  )}
                 </div>
+                {!canRedeem && (
+                  <div className="gf-reward-track">
+                    <div className="gf-reward-fill" style={{ width: `${pct * 100}%` }} />
+                  </div>
+                )}
               </div>
               <button
-                onClick={() => onRedeem(reward.id)}
+                onClick={() => canRedeem && !isRedeeming && onRedeem(reward.id)}
                 disabled={!canRedeem || isRedeeming}
-                style={{
-                  minHeight: 44,
-                  minWidth: 44,
-                  border: `1px solid ${canRedeem ? T.emerald : T.border}`,
-                  borderRadius: 8,
-                  background: canRedeem ? `${T.emerald}15` : `${T.border}20`,
-                  color: canRedeem ? T.emerald : T.textDim,
-                  cursor: canRedeem ? 'pointer' : 'default',
-                  fontFamily: T.mono,
-                  fontSize: 11,
-                  letterSpacing: '0.05em',
-                  padding: '0 12px',
-                }}
+                className={['gf-reward-btn', canRedeem && 'is-on'].filter(Boolean).join(' ')}
               >
-                Redeem
+                {canRedeem ? 'Redeem' : 'Locked'}
               </button>
             </div>
           )
         })}
       </div>
-    </section>
+    </div>
   )
 }

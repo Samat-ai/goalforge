@@ -689,3 +689,49 @@ body {
 /* responsive */
 @media (max-width: 980px) { .gf-grid-2 { grid-template-columns: 1fr; } .gf-statgrid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 560px) { .gf-statgrid { grid-template-columns: 1fr 1fr; } }
+
+/* ════════════════════ Stars page ════════════════════ */
+.gf-input { min-height: 44px; border-radius: 11px; border: 1px solid var(--border); background: var(--bg); color: var(--text); padding: 11px 14px; font-size: 14px; font-family: var(--font-body); outline: none; transition: border-color .2s, box-shadow .2s; }
+.gf-input::placeholder { color: var(--text-mute); }
+.gf-input:focus-visible { outline: none; border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+/* star log */
+.gf-starlog { position: relative; display: grid; grid-template-columns: minmax(220px, 0.82fr) minmax(0, 1.25fr); gap: clamp(28px, 4vw, 56px); align-items: center; border-color: color-mix(in oklab, var(--gold) 28%, transparent); padding: clamp(22px, 3.5vw, 44px) clamp(22px, 3.5vw, 42px) clamp(22px, 3.5vw, 44px) clamp(24px, 3vw, 38px); }
+.gf-starlog-rail { position: absolute; left: 0; top: 16px; bottom: 16px; width: 3px; border-radius: 99px; background: linear-gradient(180deg, var(--gold), color-mix(in oklab, var(--gold) 20%, transparent)); }
+.gf-starlog-aside { min-width: 0; }
+.gf-starlog-main { min-width: 0; padding-left: clamp(22px, 4vw, 50px); border-left: 1px solid var(--border); }
+.gf-starlog-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; }
+.gf-starlog-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(22px, 2.8vw, 32px); line-height: 1.1; color: var(--text); letter-spacing: -0.025em; margin: 0 0 18px; }
+.gf-starlog-body { font-size: clamp(14px, 1.4vw, 17px); line-height: 1.8; color: var(--text-dim); margin: 0; }
+.gf-starlog-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.gf-starlog-tag { font-family: var(--font-mono); font-size: 11px; padding: 5px 11px; border-radius: 99px; color: var(--gold); border: 1px solid color-mix(in oklab, var(--gold) 35%, transparent); background: color-mix(in oklab, var(--gold) 10%, transparent); }
+.gf-starlog-foot { display: flex; gap: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.gf-starlog-foot span { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11.5px; color: var(--ring-2); }
+@media (max-width: 720px) {
+  .gf-starlog { grid-template-columns: 1fr; gap: 0; }
+  .gf-starlog-main { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: 20px; margin-top: 4px; }
+}
+/* shop */
+.gf-shop-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.gf-shop-title { font-family: var(--font-display); font-weight: 600; font-size: 19px; letter-spacing: -0.02em; }
+.gf-shop-bal { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 99px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--gold); background: color-mix(in oklab, var(--gold) 12%, transparent); border: 1px solid color-mix(in oklab, var(--gold) 32%, transparent); }
+.gf-shop-addrow { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.gf-shop-title-in { flex: 1; min-width: 200px; }
+.gf-shop-costwrap { display: flex; align-items: center; gap: 6px; padding-left: 12px; border-radius: 11px; border: 1px solid var(--border); background: var(--bg); color: var(--gold); width: 96px; }
+.gf-shop-cost-in { border: none; background: none; min-height: 42px; padding: 0 8px 0 0; width: 100%; color: var(--text); font-size: 14px; outline: none; }
+.gf-shop-list { display: flex; flex-direction: column; gap: 8px; }
+.gf-shop-empty { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-mute); padding: 14px 0; text-align: center; }
+/* reward rows */
+.gf-reward { display: flex; align-items: center; gap: 13px; padding: 13px 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg); transition: border-color .2s, transform .2s; }
+.gf-reward:hover { border-color: var(--border-hi); transform: translateX(2px); }
+.gf-reward-ic { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; color: var(--gold); background: color-mix(in oklab, var(--gold) 12%, transparent); flex-shrink: 0; font-size: 16px; }
+.gf-reward-mid { flex: 1; min-width: 0; }
+.gf-reward-title { font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+.gf-reward-meta { display: flex; align-items: center; gap: 10px; margin-top: 3px; flex-wrap: wrap; }
+.gf-reward-cost { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; color: var(--gold); }
+.gf-reward-redeemed { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-mute); }
+.gf-reward-need { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-mute); }
+.gf-reward-track { height: 3px; border-radius: 99px; background: var(--ring-track); overflow: hidden; margin-top: 8px; max-width: 200px; }
+.gf-reward-fill { height: 100%; border-radius: 99px; background: var(--gold); transition: width .6s cubic-bezier(.34,1.1,.4,1); }
+.gf-reward-btn { flex-shrink: 0; min-height: 40px; min-width: 80px; padding: 0 16px; border-radius: 11px; font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.03em; color: var(--text-mute); border: 1px solid var(--border-hi); background: color-mix(in oklab, var(--text) 4%, transparent); cursor: not-allowed; transition: all .18s; }
+.gf-reward-btn.is-on { color: var(--ring-2); border-color: color-mix(in oklab, var(--ring-2) 55%, transparent); background: color-mix(in oklab, var(--ring-2) 13%, transparent); cursor: pointer; }
+.gf-reward-btn.is-on:hover { transform: translateY(-1px); background: color-mix(in oklab, var(--ring-2) 20%, transparent); }
