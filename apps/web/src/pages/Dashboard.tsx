@@ -65,7 +65,7 @@ function WelcomeBackCard({ goals, onFocus }: { goals: Goal[]; onFocus: () => voi
       marginBottom: 14,
     } as React.CSSProperties}>
       <div className="gf-nudge-dot" />
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="gf-nudge-body">
         <div className="gf-nudge-kicker">Welcome back</div>
         <div className="gf-nudge-title">You were away for {state.daysAway} days. No reset needed.</div>
         <div className="gf-nudge-sub">Last completion: {state.lastCompletedDate}. One tiny win gets momentum back.</div>
@@ -172,7 +172,7 @@ function DoThisNow({ goals }: DoThisNowProps) {
       marginBottom: 14,
     } as React.CSSProperties}>
       <div className="gf-nudge-dot" />
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="gf-nudge-body">
         <div className="gf-nudge-kicker">Do this now</div>
         <div className="gf-nudge-title">{label}</div>
         <div className="gf-nudge-sub">{sub}</div>
@@ -198,34 +198,22 @@ const EXAMPLE_GOALS = [
 
 function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      textAlign: 'center', padding: '40px 16px 32px',
-      animation: 'fadeUp 0.5s ease both',
-    }}>
+    <div className="gf-empty-page">
       <div style={{ marginBottom: 20, opacity: 0.85 }}>
         <Creature pts={0} size={96} />
       </div>
-      <h2 style={{
-        fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600,
-        color: 'var(--text)', marginBottom: 10, lineHeight: 1.3,
-      }}>
-        Your journey starts here ✦
-      </h2>
-      <p style={{
-        fontSize: 13, color: 'var(--text-dim)', fontFamily: 'var(--font-mono)',
-        maxWidth: 380, lineHeight: 1.7, marginBottom: 28,
-      }}>
+      <h2>Your journey starts here ✦</h2>
+      <p>
         Describe any goal in plain language. Our AI will turn it into a
         step-by-step plan with daily tasks.
       </p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', maxWidth: 480 }}>
+      <div className="gf-empty-page-chips">
         {EXAMPLE_GOALS.map(text => (
           <button
             key={text}
             onClick={() => onSelect(text)}
             className="gf-btn-ghost-indigo"
-            style={{ lineHeight: 1.4, textAlign: 'left', height: 'auto', minHeight: 44 }}
+            style={{ lineHeight: 1.4, textAlign: 'left', height: 'auto' }}
           >
             {text}
           </button>
@@ -296,15 +284,15 @@ export default function Dashboard() {
 
   // ── Render ──
   return (
-    <div className="min-h-dvh mesh-bg" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
+    <div className="min-h-dvh mesh-bg">
 
       <AppHeader pts={pts} onOpenCollection={() => setShowCollection(true)} />
 
-      <main id="main-content" style={{ maxWidth: 1100, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
+      <main id="main-content" className="gf-main px-4 sm:px-8">
 
         {/* Loading skeletons */}
         {loading && (
-          <div role="status" aria-label="Loading goals" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div role="status" aria-label="Loading goals" className="gf-page">
             <GoalCardSkeleton />
             <GoalCardSkeleton />
           </div>
@@ -318,7 +306,7 @@ export default function Dashboard() {
             '--accent-line': 'color-mix(in oklab, var(--rose) 32%, transparent)',
             '--accent-ink': 'var(--rose)',
           } as React.CSSProperties}>
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="gf-nudge-body">
               <div className="gf-nudge-kicker">Load error</div>
               <div className="gf-nudge-title">{error}</div>
               <div className="gf-nudge-sub">Check your connection and try again.</div>
