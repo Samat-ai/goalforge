@@ -1,16 +1,35 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useUser } from '@clerk/react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import AppHeader from '../components/AppHeader'
-import { useT } from '../lib/theme'
+import Icon from '../components/ui/Icon'
+import SollyIdle from '../components/SollyIdle'
+import StreamingText from '../components/StreamingText'
 import { CoachPanelSkeleton } from '../components/ui/Skeleton'
 import { useCoachSessionQuery, useProfileQuery, useSendCoachMessageMutation, useStartCoachSessionMutation } from '../hooks'
 
 const TOTAL_INTAKE_QUESTIONS = 5
+const cx = (...a: (string | false | undefined)[]) => a.filter(Boolean).join(' ')
+
+// minimal *italic* -> <em> for non-streamed messages
+function renderItalics(text: string): ReactNode[] {
+  return text.split(/(\*[^*]+\*)/g).filter(Boolean).map((seg, i) =>
+    seg.length > 1 && seg.startsWith('*') && seg.endsWith('*')
+      ? <em key={i}>{seg.slice(1, -1)}</em>
+      : <span key={i}>{seg}</span>,
+  )
+}
+
+function TypingDots() {
+  return (
+    <div className="gf-co-msg gf-co-assistant gf-co-think">
+      <span className="gf-think-pulse" role="status" aria-label="Thinking"><i /><span>Thinking</span></span>
+    </div>
+  )
+}
 
 export default function Coach() {
-  const T = useT()
   const { user } = useUser()
   const userId = user?.id
 
@@ -20,272 +39,190 @@ export default function Coach() {
   const { send, isSending, result } = useSendCoachMessageMutation(userId ?? '')
 
   const [draft, setDraft] = useState('')
+  const [streamId, setStreamId] = useState<string | null>(null)
   const feedRef = useRef<HTMLDivElement | null>(null)
+  const taRef = useRef<HTMLTextAreaElement | null>(null)
+  const prevLenRef = useRef(0)
 
-  const answeredCount = session ? session.messages.filter(m => m.role === 'user').length : 0
-  const progressPct = Math.min(100, Math.round((answeredCount / TOTAL_INTAKE_QUESTIONS) * 100))
-  const forgedGoal = result?.forged_goal
+  const messages = session?.messages ?? []
+  const answeredCount = messages.filter(m => m.role === 'user').length
+  const forgedGoal = result?.forged_goal ?? null
+  const isCompleted = !!session?.is_completed
 
+  useEffect(() => { document.title = 'Chat — GoalForge' }, [])
+
+  const scrollFeed = () => {
+    const f = feedRef.current
+    if (f) f.scrollTo({ top: f.scrollHeight, behavior: 'smooth' })
+  }
+  useEffect(() => { scrollFeed() }, [messages.length, isSending, isCompleted])
+
+  // Stream the newest coach reply word-by-word when it arrives.
   useEffect(() => {
-    document.title = 'Coach Forge - GoalForge'
-  }, [])
-
-  useEffect(() => {
-    if (feedRef.current) {
-      feedRef.current.scrollTo({ top: feedRef.current.scrollHeight, behavior: 'smooth' })
+    if (messages.length > prevLenRef.current) {
+      const last = messages[messages.length - 1]
+      if (last && last.role === 'assistant') setStreamId(last.id)
     }
-  }, [session?.messages.length])
+    prevLenRef.current = messages.length
+  }, [messages.length])
 
   async function handleStart() {
     if (!userId || isStarting) return
-    try {
-      await start()
-    } catch {
-      toast.error('Could not start coach session. Please try again.')
-    }
+    try { await start() } catch { toast.error('Could not start coach session. Please try again.') }
   }
 
   async function handleSend() {
     if (!session || !userId || isSending || isStarting || session.is_completed) return
     const content = draft.trim()
     if (!content) return
-
     try {
       await send({ sessionId: session.id, content })
       setDraft('')
-    } catch {
-      toast.error('Coach message failed. Please retry.')
-    }
+      if (taRef.current) taRef.current.style.height = 'auto'
+    } catch { toast.error('Coach message failed. Please retry.') }
+  }
+
+  function grow(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setDraft(e.target.value)
+    const el = e.target
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 160) + 'px'
   }
 
   return (
-    <div className="mesh-bg" style={{ minHeight: '100dvh', background: T.bg, color: T.text, fontFamily: T.mono }}>
-      <style>{`
-        * { box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: ${T.dim}; border-radius: 2px; }
-      `}</style>
-
+    <div className="mesh-bg" style={{ minHeight: '100dvh', color: 'var(--text)' }}>
       <AppHeader pts={pts} />
 
-      <main id="main-content" style={{ maxWidth: 1120, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
-        <section style={{
-          marginBottom: 16,
-          borderRadius: 14,
-          border: `1px solid ${T.indigo}45`,
-          background: `linear-gradient(135deg, ${T.card}, #101a2f)`,
-          padding: '16px 18px',
-        }}>
-          <div style={{ fontFamily: T.mono, color: T.muted, fontSize: 10, letterSpacing: '0.12em', marginBottom: 8 }}>
-            COACH FORGE
-          </div>
-          <h1 style={{ fontFamily: T.serif, fontWeight: 500, fontSize: 30, lineHeight: 1.2, marginBottom: 8 }}>
-            Personalized AI Coach, Not Generic Advice
-          </h1>
-          <p style={{ color: T.textDim, fontSize: 13, lineHeight: 1.7, maxWidth: 780 }}>
-            Answer five focused questions. Coach Forge will convert your real constraints and motivations into
-            a personalized SMART goal with sprint milestones and your first 7-day task sequence.
-          </p>
-        </section>
-
-        {isLoading && <CoachPanelSkeleton />}
-
-        {!session && !isLoading && (
-          <section style={{
-            borderRadius: 14,
-            border: `1px solid ${T.borderHi}`,
-            background: T.card,
-            padding: '16px 18px',
-          }}>
-            <div style={{ fontFamily: T.serif, fontSize: 20, marginBottom: 8 }}>Ready to Forge?</div>
-            <div style={{ fontFamily: T.mono, fontSize: 12, color: T.textDim, marginBottom: 14 }}>
-              You will get a real plan, not a motivational speech.
-            </div>
-            <button
-              onClick={() => { void handleStart() }}
-              disabled={isStarting}
-              style={{
-                minHeight: 44,
-                minWidth: 44,
-                borderRadius: 8,
-                border: `1px solid ${T.indigo}55`,
-                background: `${T.indigo}22`,
-                color: T.indigo,
-                padding: '0 16px',
-                cursor: isStarting ? 'wait' : 'pointer',
-                fontFamily: T.mono,
-                fontSize: 12,
-                letterSpacing: '0.05em',
-              }}
-            >
-              {isStarting ? 'Starting...' : 'Start Coach Session'}
-            </button>
-          </section>
-        )}
-
-        {session && (
-          <section style={{
-            borderRadius: 14,
-            border: `1px solid ${T.border}`,
-            background: T.card,
-            overflow: 'hidden',
-          }}>
-            <div style={{
-              borderBottom: `1px solid ${T.border}`,
-              background: T.surface,
-              padding: '12px 14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              flexWrap: 'wrap',
-            }}>
-              <div style={{ fontFamily: T.mono, fontSize: 11, color: T.textDim }}>
-                Intake Progress: {Math.min(answeredCount, TOTAL_INTAKE_QUESTIONS)}/{TOTAL_INTAKE_QUESTIONS}
-              </div>
-              <div style={{ height: 6, borderRadius: 99, background: T.dim, width: 180, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${progressPct}%`, background: T.indigo }} />
-              </div>
-              <div style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 10, color: session.is_completed ? T.emerald : T.amber }}>
-                {session.is_completed ? 'GOAL FORGED' : 'COACHING LIVE'}
-              </div>
-            </div>
-
-            <div
-              ref={feedRef}
-              style={{
-                maxHeight: 440,
-                overflowY: 'auto',
-                padding: '14px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
-              }}
-            >
-              {session.messages.map(message => (
-                <article
-                  key={message.id}
-                  style={{
-                    alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start',
-                    width: 'min(88%, 760px)',
-                    borderRadius: 12,
-                    border: `1px solid ${message.role === 'user' ? `${T.indigo}50` : T.border}`,
-                    background: message.role === 'user' ? `${T.indigo}1f` : T.surface,
-                    padding: '10px 12px',
-                  }}
-                >
-                  <div style={{ fontFamily: T.mono, fontSize: 10, color: message.role === 'user' ? T.indigo : T.muted, marginBottom: 4 }}>
-                    {message.role === 'user' ? 'YOU' : 'COACH'}
+      <main id="main-content" style={{ maxWidth: 900, margin: '0 auto' }} className="px-4 sm:px-8">
+        {isLoading ? (
+          <div className="py-6"><CoachPanelSkeleton /></div>
+        ) : (
+          <div className="gf-co-shell">
+            {session && (
+              <div className="gf-co-head">
+                <div className="gf-co-head-l">
+                  <div className="gf-co-av">
+                    <img src="/solly/solly.png" alt="Solly" className="gf-co-solly" width={34} height={34} />
                   </div>
-                  <div style={{ whiteSpace: 'pre-wrap', fontFamily: T.serif, fontSize: 15, lineHeight: 1.6 }}>
-                    {message.content}
-                  </div>
-                </article>
-              ))}
-            </div>
-
-            {!session.is_completed && (
-              <div style={{ borderTop: `1px solid ${T.border}`, background: '#0c1020', padding: 12 }}>
-                <div style={{
-                  border: `1px solid ${T.borderHi}`,
-                  borderRadius: 12,
-                  background: '#090f1f',
-                  padding: 10,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 10,
-                }}>
-                  <textarea
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                        e.preventDefault()
-                        void handleSend()
-                      }
-                    }}
-                    placeholder="Answer with concrete details. Ctrl/Cmd+Enter to send."
-                    rows={3}
-                    style={{
-                      width: '100%',
-                      border: `1px solid ${T.border}`,
-                      borderRadius: 10,
-                      background: T.surface,
-                      color: T.text,
-                      padding: '10px 12px',
-                      fontFamily: T.mono,
-                      fontSize: 13,
-                      outline: 'none',
-                      resize: 'none',
-                    }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-                    <div style={{ fontFamily: T.mono, fontSize: 10, color: T.muted }}>
-                      Keep it honest. The plan quality depends on answer quality.
+                  <div>
+                    <div className="gf-co-head-title">Chat</div>
+                    <div className="gf-co-head-sub">
+                      {isCompleted
+                        ? 'Plan forged · ready to go'
+                        : `Intake · question ${Math.min(answeredCount + 1, TOTAL_INTAKE_QUESTIONS)} of ${TOTAL_INTAKE_QUESTIONS}`}
                     </div>
-                    <button
-                      onClick={() => { void handleSend() }}
-                      disabled={isSending || isStarting || !draft.trim()}
-                      style={{
-                        minHeight: 44,
-                        minWidth: 44,
-                        borderRadius: 8,
-                        border: `1px solid ${T.emerald}50`,
-                        background: `${T.emerald}1f`,
-                        color: T.emerald,
-                        padding: '0 16px',
-                        cursor: isSending ? 'wait' : 'pointer',
-                        opacity: isSending || isStarting || !draft.trim() ? 0.55 : 1,
-                        fontFamily: T.mono,
-                        fontSize: 12,
-                        letterSpacing: '0.05em',
-                      }}
-                    >
-                      {isSending ? 'Sending...' : 'Send'}
-                    </button>
                   </div>
+                </div>
+                <div className="gf-co-prog" aria-label={`Progress ${answeredCount} of ${TOTAL_INTAKE_QUESTIONS}`}>
+                  {Array.from({ length: TOTAL_INTAKE_QUESTIONS }, (_, i) => (
+                    <span key={i} className={cx('gf-co-prog-seg', i < answeredCount && 'is-done', i === answeredCount && !isCompleted && 'is-cur')} />
+                  ))}
                 </div>
               </div>
             )}
-          </section>
-        )}
 
-        {(session?.is_completed || forgedGoal) && (
-          <section style={{
-            marginTop: 14,
-            borderRadius: 14,
-            border: `1px solid ${T.emerald}40`,
-            background: `${T.emerald}10`,
-            padding: '14px 16px',
-          }}>
-            <div style={{ fontFamily: T.mono, fontSize: 10, color: T.emerald, letterSpacing: '0.1em', marginBottom: 6 }}>
-              PLAN READY
+            <div className="gf-co-feed" ref={feedRef}>
+              {!session ? (
+                <div className="gf-co-empty">
+                  <div className="gf-co-empty-av"><SollyIdle className="gf-co-solly-lg" /></div>
+                  <h2 className="gf-co-empty-title">Let's forge your next goal</h2>
+                  <p className="gf-co-empty-sub">
+                    Answer five quick questions and I'll turn your real constraints and motivation into a
+                    personalized SMART goal — with sprint milestones and your first week of tasks. Not a motivational speech.
+                  </p>
+                  <button className="gf-btn gf-btn-accent gf-co-startbtn" onClick={() => { void handleStart() }} disabled={isStarting}>
+                    {isStarting ? 'Starting…' : 'Start coaching session'} <Icon name="arrowUp" size={15} style={{ transform: 'rotate(90deg)' }} />
+                  </button>
+                </div>
+              ) : (
+                <div className="gf-co-thread">
+                  {messages.map((m, i) => {
+                    const isLast = i === messages.length - 1
+                    if (m.role === 'user') {
+                      return (
+                        <div key={m.id} className={cx('gf-co-msg gf-co-user', isLast && 'gf-co-in')}>
+                          <div className="gf-co-userbub">{m.content}</div>
+                        </div>
+                      )
+                    }
+                    const stream = isLast && m.id === streamId
+                    return (
+                      <div key={m.id} className={cx('gf-co-msg gf-co-assistant', isLast && !stream && 'gf-co-in')}>
+                        <div className="gf-co-text">
+                          {stream ? <StreamingText content={m.content} onTick={scrollFeed} /> : renderItalics(m.content)}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {isSending && <TypingDots />}
+                  {(isCompleted || forgedGoal) && (
+                    <div className="gf-co-msg gf-co-assistant gf-co-in">
+                      <div className="gf-co-plan">
+                        <div className="gf-co-plan-glow" />
+                        <div className="gf-co-plan-cap"><Icon name="spark" size={12} /> Plan forged · your SMART goal</div>
+                        <h3 className="gf-co-plan-title">{forgedGoal?.smart_title ?? 'Your personalized goal has been forged.'}</h3>
+                        {forgedGoal?.smart_description && <p className="gf-co-plan-desc">{forgedGoal.smart_description}</p>}
+                        {forgedGoal && (forgedGoal.milestones?.length || forgedGoal.daily_tasks?.length) ? (
+                          <div className="gf-co-plan-grid">
+                            {forgedGoal.milestones?.length ? (
+                              <div>
+                                <div className="gf-co-plan-h">Sprint milestones</div>
+                                <ul className="gf-co-plan-list">
+                                  {forgedGoal.milestones.map((m, i) => (
+                                    <li key={m.id}><span className="gf-co-dot">{i + 1}</span>{m.title}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
+                            {forgedGoal.daily_tasks?.length ? (
+                              <div>
+                                <div className="gf-co-plan-h">Your first tasks</div>
+                                <ul className="gf-co-plan-list">
+                                  {forgedGoal.daily_tasks.slice(0, 3).map(t => (
+                                    <li key={t.id}><span className="gf-co-tick"><Icon name="check" size={11} stroke={3} /></span>{t.description}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        <div className="gf-co-plan-foot">
+                          <Link to="/dashboard" className="gf-btn gf-btn-accent">Open Dashboard <Icon name="arrowUp" size={14} style={{ transform: 'rotate(90deg)' }} /></Link>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div style={{ fontFamily: T.serif, fontSize: 18, marginBottom: 8 }}>
-              {forgedGoal ? forgedGoal.smart_title : 'Your personalized goal has been forged.'}
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Link
-                to="/dashboard"
-                style={{
-                  minHeight: 44,
-                  minWidth: 44,
-                  borderRadius: 8,
-                  border: `1px solid ${T.emerald}55`,
-                  background: `${T.emerald}1f`,
-                  color: T.emerald,
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  padding: '0 14px',
-                  fontFamily: T.mono,
-                  fontSize: 11,
-                  letterSpacing: '0.05em',
-                }}
-              >
-                Open Dashboard
-              </Link>
-            </div>
-          </section>
+
+            {session && !isCompleted && (
+              <div className="gf-co-composer">
+                <div className="gf-co-inputbar">
+                  <textarea
+                    ref={taRef}
+                    className="gf-co-input"
+                    rows={1}
+                    placeholder="Answer with concrete details…"
+                    aria-label="Your answer"
+                    value={draft}
+                    onChange={grow}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend() } }}
+                  />
+                  <button
+                    className={cx('gf-co-send', draft.trim() && 'is-on')}
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={() => { void handleSend() }}
+                    aria-label="Send"
+                    disabled={!draft.trim() || isSending || isStarting}
+                  >
+                    <Icon name="arrowUp" size={18} stroke={2.4} />
+                  </button>
+                </div>
+                <div className="gf-co-hint">Press <kbd>Enter</kbd> to send · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line</div>
+              </div>
+            )}
+          </div>
         )}
       </main>
     </div>
