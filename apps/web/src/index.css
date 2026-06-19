@@ -584,6 +584,8 @@ body {
 .gf-today-track { flex: 1; height: 5px; border-radius: 3px; background: var(--ring-track); overflow: hidden; }
 .gf-today-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.5s ease; }
 .gf-today-fill.is-amber { background: var(--gold); }
+.gf-offline-banner { position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999; background: color-mix(in oklab, var(--gold) 18%, transparent); border-top: 1px solid color-mix(in oklab, var(--gold) 45%, transparent); backdrop-filter: blur(8px); padding: 11px 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--gold); letter-spacing: 0.02em; }
+.gf-offline-dot { font-size: 10px; opacity: 0.8; }
 .gf-btn-ghost-indigo { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px; border-radius: 11px; font-family: var(--font-mono); font-weight: 600; font-size: 11px; letter-spacing: 0.04em; color: var(--indigo); background: color-mix(in oklab, var(--indigo) 12%, transparent); border: 1px solid color-mix(in oklab, var(--indigo) 40%, transparent); flex-shrink: 0; cursor: pointer; transition: transform .16s, background .2s; }
 .gf-btn-ghost-indigo:hover { transform: translateY(-1px); background: color-mix(in oklab, var(--indigo) 20%, transparent); }
 .gf-btn-ghost-purple { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px; border-radius: 11px; font-family: var(--font-mono); font-weight: 600; font-size: 11px; letter-spacing: 0.04em; color: #a78bfa; background: rgba(124,58,237,0.10); border: 1px solid rgba(124,58,237,0.28); flex-shrink: 0; cursor: pointer; transition: transform .16s, background .2s; }
@@ -715,6 +717,7 @@ body {
 .gf-tip span { display: block; color: var(--text-mute); font-size: 10.5px; margin-top: 2px; }
 .gf-avatar { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 15px; color: #fff; background: linear-gradient(140deg, var(--accent), color-mix(in oklab, var(--accent) 50%, #7c6bff)); box-shadow: 0 4px 14px -4px var(--accent); }
 .gf-card-cap { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-mute); margin-bottom: 16px; }
+.gf-card-cap.mb-4 { margin-bottom: 4px; }
 .gf-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); align-items: start; }
 .gf-section-cap { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-mute); margin: 14px 0 4px; }
 /* stat tiles */
@@ -824,6 +827,7 @@ body {
 .gf-shop-addrow { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
 .gf-shop-title-in { flex: 1; min-width: 200px; }
 .gf-shop-costwrap { display: flex; align-items: center; gap: 6px; padding-left: 12px; border-radius: 11px; border: 1px solid var(--border); background: var(--bg); color: var(--gold); width: 96px; }
+.gf-shop-star { font-size: 13px; }
 .gf-shop-cost-in { border: none; background: none; min-height: 42px; padding: 0 8px 0 0; width: 100%; color: var(--text); font-size: 14px; outline: none; }
 .gf-shop-list { display: flex; flex-direction: column; gap: 8px; }
 .gf-shop-empty { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-mute); padding: 14px 0; text-align: center; }

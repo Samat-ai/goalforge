@@ -26,7 +26,7 @@ export default function StarShop({ pts, rewards, onAdd, onRedeem, isCreating, is
     <div className="gf-card">
       <div className="gf-shop-head">
         <div>
-          <div className="gf-card-cap" style={{ marginBottom: 4 }}>Star Shop</div>
+          <div className="gf-card-cap mb-4">Star Shop</div>
           <div className="gf-shop-title">Redeem your momentum</div>
         </div>
         <span className="gf-shop-bal">★ {pts} balance</span>
@@ -43,7 +43,7 @@ export default function StarShop({ pts, rewards, onAdd, onRedeem, isCreating, is
           onKeyDown={e => { if (e.key === 'Enter') handleAdd() }}
         />
         <div className="gf-shop-costwrap">
-          <span style={{ fontSize: 13 }}>★</span>
+          <span className="gf-shop-star">★</span>
           <input
             className="gf-shop-cost-in"
             placeholder="50"
@@ -56,14 +56,9 @@ export default function StarShop({ pts, rewards, onAdd, onRedeem, isCreating, is
         <button
           onClick={handleAdd}
           disabled={isCreating || !title.trim()}
-          className="gf-btn-accent"
+          className="gf-btn gf-btn-accent"
           style={{
-            minHeight: 44, padding: '0 20px', borderRadius: 11,
-            fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 13,
-            color: '#fff',
-            background: 'linear-gradient(140deg, color-mix(in oklab, var(--accent) 88%, white 6%), var(--accent))',
-            boxShadow: '0 8px 22px -8px var(--accent)',
-            border: 'none', cursor: isCreating ? 'wait' : 'pointer',
+            cursor: isCreating ? 'wait' : 'pointer',
             opacity: !title.trim() ? 0.5 : 1,
           }}
         >

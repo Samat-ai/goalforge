@@ -19,7 +19,7 @@ export default function Stars() {
   useEffect(() => { document.title = 'Stars — GoalForge' }, [])
 
   return (
-    <div className="min-h-dvh mesh-bg" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
+    <div className="min-h-dvh mesh-bg">
       <AppHeader pts={pts} />
       <main id="main-content" className="gf-main">
         <div className="gf-page">
