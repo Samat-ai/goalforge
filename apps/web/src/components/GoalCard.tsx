@@ -44,7 +44,9 @@ const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
 function WeekCalendar({ completedDays }: { completedDays: string[] }) {
   const doneSet = new Set(completedDays)
-  const today = new Date()
+  // Use todayStr() (ESLint-safe) then construct Date from string, not new Date()
+  const todayIso = todayStr()
+  const today = new Date(todayIso + 'T12:00:00')
   const totalDays = 56
   const startDate = new Date(today)
   startDate.setDate(startDate.getDate() - (totalDays - 1))
@@ -96,9 +98,9 @@ function HistoryTabContent({ goal, b }: { goal: Goal; b: number }) {
           <span className="gf-hh-r">{Math.round(b * 100)}%</span>
         </div>
         <div className="gf-bar gf-bar-gold">
-          <div className="gf-bar-fill" style={{ width: `${b * 100}%`, background: 'linear-gradient(90deg,#f97316,#fbbf24)' }} />
+          <div className="gf-bar-fill" style={{ width: `${b * 100}%` }} />
         </div>
-        <div className="gf-ov-sub" style={{ marginTop: 6 }}>
+        <div className="gf-ov-sub">
           {b < 0.3 ? 'Almost out — complete tasks to recharge' : b < 0.6 ? 'Fading — keep going' : 'Burning bright'}
         </div>
       </div>
@@ -250,16 +252,10 @@ export default function GoalCard({ goal, onJackpot, index = 0 }: GoalCardProps) 
 
   return (
     <div
-      className={`gf-card gf-gc${isAchieved ? ' goal-achieved' : ''}`}
-      style={{
-        opacity: isAbandoned ? 0.5 : 1,
-        ...(isAbandoned
-          ? { borderColor: 'rgba(107,108,132,0.25)' }
-          : open ? { borderColor: 'var(--border-hi)' } : {}),
-        ...(completionRatio > 0 && !isAbandoned
-          ? { boxShadow: `0 0 ${Math.round(8 + completionRatio * 12)}px rgba(16,185,129,${(Math.max(0.08, 0.04 + completionRatio * 0.1)).toFixed(2)})` }
-          : {}),
-      }}
+      className={`gf-card gf-gc${isAchieved ? ' goal-achieved' : ''}${isAbandoned ? ' is-abandoned' : ''}${open && !isAbandoned ? ' is-expanded' : ''}`}
+      style={completionRatio > 0 && !isAbandoned
+        ? { boxShadow: `0 0 ${Math.round(8 + completionRatio * 12)}px rgba(16,185,129,${(Math.max(0.08, 0.04 + completionRatio * 0.1)).toFixed(2)})` }
+        : undefined}
     >
       {/* ── Header row ── */}
       <button
@@ -324,11 +320,11 @@ export default function GoalCard({ goal, onJackpot, index = 0 }: GoalCardProps) 
 
                 {/* Generating skeleton */}
                 {isGenerating && (
-                  <div style={{ padding: '14px 16px', background: 'color-mix(in oklab, var(--indigo) 10%, transparent)', borderRadius: 10, border: '1px solid color-mix(in oklab, var(--indigo) 30%, transparent)', display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'color-mix(in oklab, var(--indigo) 20%, transparent)', border: '1.5px solid color-mix(in oklab, var(--indigo) 50%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, animation: 'pulse 1.5s ease-in-out infinite', color: 'var(--indigo)', flexShrink: 0 }}>✦</div>
+                  <div className="gf-gen-state">
+                    <div className="gf-gen-icon">✦</div>
                     <div>
-                      <div style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font-display)', marginBottom: 3 }}>Building your plan…</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-mute)', fontFamily: 'var(--font-mono)' }}>AI is generating milestones and tasks — this takes a few seconds</div>
+                      <div className="gf-gen-title">Building your plan…</div>
+                      <div className="gf-gen-sub">AI is generating milestones and tasks — this takes a few seconds</div>
                     </div>
                   </div>
                 )}
@@ -336,15 +332,15 @@ export default function GoalCard({ goal, onJackpot, index = 0 }: GoalCardProps) 
                 {/* Recovery Sprint card */}
                 {!isGenerating && isRescueMode && !dismissed && !isAbandoned && !isAchieved && (
                   <div>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#2d1f4e', border: '1px solid #5b21b6', borderRadius: 20, padding: '3px 10px', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--gold)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', marginBottom: 14 }}>✦ EASY MODE</div>
-                    <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', marginBottom: 6, lineHeight: 1.3 }}>Let&apos;s make today easy.</div>
-                    <div style={{ fontSize: 13, color: 'var(--text-mute)', lineHeight: 1.6, marginBottom: 18 }}>
+                    <div className="gf-rescue-badge">✦ EASY MODE</div>
+                    <div className="gf-rescue-title">Let&apos;s make today easy.</div>
+                    <div className="gf-rescue-sub">
                       It looks like you&apos;ve been busy. We paused your schedule and set up two quick wins for today — no pressure, no catching up.
                     </div>
                     <button className="gf-btn-pill is-sprint" style={{ width: '100%', marginBottom: 10 }} onClick={handleStartEasyMode} disabled={mutations.isTriggeringRescue}>
                       {mutations.isTriggeringRescue ? 'Starting easy mode…' : 'Start Easy Mode (2 min)'}
                     </button>
-                    <button onClick={handleDismiss} style={{ display: 'block', width: '100%', textAlign: 'center', fontSize: 12, color: 'var(--text-mute)', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 4, minHeight: 44 }}>
+                    <button onClick={handleDismiss} className="gf-rescue-dismiss">
                       I&apos;m feeling good — show my full plan
                     </button>
                   </div>
@@ -352,7 +348,7 @@ export default function GoalCard({ goal, onJackpot, index = 0 }: GoalCardProps) 
 
                 {/* Abandoned banner */}
                 {isAbandoned && (
-                  <div className="gf-nudge" style={{ '--accent': 'var(--text-mute)', '--accent-soft': 'color-mix(in oklab, var(--text) 5%, transparent)', '--accent-line': 'color-mix(in oklab, var(--text) 10%, transparent)', '--accent-ink': 'var(--text-mute)' } as React.CSSProperties}>
+                  <div className="gf-nudge gf-nudge-muted">
                     <div className="gf-nudge-body">
                       <div className="gf-nudge-kicker">Abandoned</div>
                       <div className="gf-nudge-title">Star faded — goal abandoned.</div>
@@ -363,9 +359,7 @@ export default function GoalCard({ goal, onJackpot, index = 0 }: GoalCardProps) 
 
                 {/* Achieved banner */}
                 {isAchieved && (
-                  <div style={{ padding: '11px 14px', background: 'color-mix(in oklab, var(--gold) 10%, transparent)', borderRadius: 9, border: '1px solid color-mix(in oklab, var(--gold) 40%, transparent)' }}>
-                    <div style={{ fontSize: 12, color: 'var(--gold)', fontFamily: 'var(--font-mono)' }}>🏆 Goal achieved — it lives in your Hall of Fame.</div>
-                  </div>
+                  <div className="gf-achieved-banner">🏆 Goal achieved — it lives in your Hall of Fame.</div>
                 )}
 
                 {/* Mini progress bar */}
@@ -408,12 +402,11 @@ export default function GoalCard({ goal, onJackpot, index = 0 }: GoalCardProps) 
                         onClick={async () => { setCompletingMilestone(true); await mutations.completeMilestone(goal.id, activeMilestone.id); setCompletingMilestone(false) }}
                         disabled={completingMilestone}
                         className="gf-btn-pill is-sprint"
-                        style={{ opacity: completingMilestone ? 0.6 : 1 }}
                       >
                         {completingMilestone ? '···' : `✦ Complete Sprint → ${nextMilestone ? 'Start ' + nextMilestone.title : 'Final Lap'}`}
                       </button>
                     ) : doneToday ? (
-                      <span className="gf-btn-pill" style={{ cursor: 'default', color: 'var(--ring-2)', borderColor: 'color-mix(in oklab, var(--ring-2) 35%, transparent)' }}>
+                      <span className="gf-btn-pill is-done">
                         ✓ Today&apos;s Work Done
                       </span>
                     ) : (
@@ -475,7 +468,7 @@ export default function GoalCard({ goal, onJackpot, index = 0 }: GoalCardProps) 
                     <span className="gf-ov-pct">{milestonesProgress}%</span>
                   </div>
                   <div className="gf-bar">
-                    <div className="gf-bar-fill" style={{ width: `${milestonesProgress}%`, ...(milestonesProgress === 100 ? { background: 'linear-gradient(90deg, var(--gold), #f59e0b)' } : {}) }} />
+                    <div className={`gf-bar-fill${milestonesProgress === 100 ? ' is-full' : ''}`} style={{ width: `${milestonesProgress}%` }} />
                   </div>
                   <div className="gf-ov-sub">{goal.milestones_completed} of {goal.milestones_total} sprints completed</div>
                 </div>
@@ -493,7 +486,7 @@ export default function GoalCard({ goal, onJackpot, index = 0 }: GoalCardProps) 
                             {m.is_completed ? '✓' : isFailed ? '✕' : m.position}
                           </span>
                           <span className={`gf-ms-title${m.is_completed ? ' is-done' : isActive ? ' is-active' : ''}`}>{m.title}</span>
-                          {m.sprint_status === 'generating' && <span className="gf-ms-tag is-active" style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>gen…</span>}
+                          {m.sprint_status === 'generating' && <span className="gf-ms-tag is-active">gen…</span>}
                           {m.sprint_status === 'failed'     && <span className="gf-ms-tag is-fail">failed</span>}
                           {m.sprint_status === 'ready'      && <span className="gf-ms-tag is-active">ready</span>}
                           {m.is_completed                   && <span className="gf-ms-tag is-done">done</span>}
