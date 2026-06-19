@@ -268,11 +268,11 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
                   </div>
                   <div className="gf-acct-actions">
                     <button onClick={() => acceptInvite(invite.id)} disabled={isAcceptingInvite || isDecliningInvite}
-                      className="gf-reward-btn is-on" style={{ minWidth: 70, height: 36 }}>
+                      className="gf-reward-btn is-on is-compact">
                       {isAcceptingInvite ? '…' : 'Accept'}
                     </button>
                     <button onClick={() => declineInvite(invite.id)} disabled={isAcceptingInvite || isDecliningInvite}
-                      className="gf-btn-pill is-danger" style={{ height: 36 }}>
+                      className="gf-btn-pill is-danger is-md">
                       {isDecliningInvite ? '…' : 'Decline'}
                     </button>
                   </div>
@@ -354,7 +354,7 @@ export default function Settings() {
 
         {/* Loading */}
         {loading && (
-          <div role="status" aria-label="Loading settings" style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
+          <div role="status" aria-label="Loading settings" className="gf-spinner-wrap">
             <div className="gf-spinner" />
           </div>
         )}
