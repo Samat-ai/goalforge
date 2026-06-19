@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Circle, CheckCircle2, GripVertical, Pencil, Plus, RefreshCw, ChevronDown, Undo2 } from 'lucide-react'
+import { GripVertical, Pencil, Plus, RefreshCw, ChevronDown, Undo2 } from 'lucide-react'
+import Icon from './ui/Icon'
 import {
   DndContext,
   closestCenter,
@@ -15,7 +16,6 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { T } from '../lib/theme'
 import type { Task } from '../lib/types'
 
 interface DailyTaskListProps {
@@ -60,26 +60,15 @@ function TaskRow({
     transform, transition, isDragging,
   } = useSortable({ id: task.id, disabled: !draggable || task.is_completed })
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    display: 'flex', alignItems: 'flex-start', gap: 10,
-    borderRadius: 9,
-    border: task.is_completed ? '1px solid rgba(16,185,129,0.22)' : `1px solid ${T.border}`,
-    background: task.is_completed ? 'rgba(16,185,129,0.07)' : 'transparent',
-    padding: '4px 8px',
-  }
   const isRegen = regeneratingId === task.id
   const isRestoring = restoringId === task.id
-  const pendingCircleColor = draggable ? T.dim : T.amber
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
       {...attributes}
-      className={`group task-row ${task.is_completed ? 'task-row-complete' : ''}`}
+      className={`group gf-task${task.is_completed ? ' is-done' : ''}${dateLabel ? ' is-overdue' : ''}`}
     >
       {/* Drag handle (draggable + pending) or spacer */}
       {draggable && !task.is_completed ? (
@@ -87,16 +76,12 @@ function TaskRow({
           ref={setActivatorNodeRef}
           {...listeners}
           aria-label="Drag to reorder"
-          style={{
-            flexShrink: 0, background: 'none', border: 'none', padding: 0,
-            cursor: 'grab', display: 'flex', alignItems: 'center', marginTop: 2,
-            touchAction: 'none', minHeight: 44, minWidth: 44, justifyContent: 'center',
-          }}
+          style={{ flexShrink: 0, background: 'none', border: 'none', padding: 0, cursor: 'grab', display: 'flex', alignItems: 'center', touchAction: 'none', minHeight: 44, minWidth: 22, justifyContent: 'center' }}
         >
-          <GripVertical size={14} color={T.dim} />
+          <GripVertical size={14} color="var(--text-mute)" />
         </button>
       ) : (
-        <div style={{ width: 14, flexShrink: 0 }} />
+        <div style={{ width: 10, flexShrink: 0 }} />
       )}
 
       {/* Complete toggle */}
@@ -105,16 +90,10 @@ function TaskRow({
         aria-pressed={task.is_completed}
         disabled={task.is_completed || isEditing}
         onClick={() => !task.is_completed && !isEditing && onComplete(task.id)}
-        style={{
-          marginTop: 1, flexShrink: 0, background: 'none', border: 'none', padding: 0,
-          cursor: !task.is_completed && !isEditing ? 'pointer' : 'default',
-          display: 'flex', alignItems: 'center',
-        }}
+        className="gf-check"
+        style={{ background: 'none', cursor: !task.is_completed && !isEditing ? 'pointer' : 'default' }}
       >
-        {task.is_completed
-          ? <CheckCircle2 size={16} color={T.emerald} />
-          : <Circle size={16} color={pendingCircleColor} />
-        }
+        <Icon name="check" size={13} stroke={3} />
       </button>
 
       {/* Description */}
@@ -130,24 +109,19 @@ function TaskRow({
               if (e.key === 'Escape') onCancelEdit()
             }}
             style={{
-              width: '100%', fontSize: 13, background: T.surface,
-              border: `1px solid ${T.orange}80`, borderRadius: 5,
-              padding: '2px 7px', color: T.text, outline: 'none', fontFamily: T.mono,
+              width: '100%', fontSize: 13, background: 'var(--card-2)',
+              border: '1px solid color-mix(in oklab, var(--accent) 50%, transparent)', borderRadius: 6,
+              padding: '2px 7px', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)',
             }}
           />
         ) : (
           <>
-            <p style={{
-              fontSize: 13, color: task.is_completed ? T.dim : T.text,
-              textDecoration: task.is_completed ? 'line-through' : 'none',
-              lineHeight: 1.5, fontFamily: T.mono, margin: 0,
-              display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 0,
-            }}>
+            <p className="gf-task-label" style={{ margin: 0, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 0 }}>
               {task.is_rescue_task && (
                 <span style={{
                   fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
-                  color: T.amber, fontFamily: T.mono,
-                  border: `1px solid ${T.amber}`,
+                  color: 'var(--gold)', fontFamily: 'var(--font-mono)',
+                  border: '1px solid var(--gold)',
                   borderRadius: 10, padding: '1px 6px',
                   marginRight: 6, textTransform: 'uppercase',
                   flexShrink: 0,
@@ -158,13 +132,13 @@ function TaskRow({
               {task.description}
             </p>
             {dateLabel ? (
-              <p style={{ fontSize: 10, color: T.amber, fontFamily: T.mono, margin: '1px 0 0', opacity: 0.7 }}>
+              <p style={{ fontSize: 10, color: 'var(--gold)', fontFamily: 'var(--font-mono)', margin: '1px 0 0', opacity: 0.7 }}>
                 {dateLabel}
               </p>
             ) : (
               !task.is_completed && task.tip && (
-                <p style={{ fontSize: 11, color: T.orange, fontFamily: T.mono, fontStyle: 'italic', margin: '2px 0 0' }}>
-                  "{task.tip}"
+                <p style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontStyle: 'italic', margin: '2px 0 0' }}>
+                  &ldquo;{task.tip}&rdquo;
                 </p>
               )
             )}
@@ -294,15 +268,15 @@ export default function DailyTaskList({
   }
 
   return (
-    <div style={{ margin: '0 18px 14px', padding: '13px 15px', background: T.surface, borderRadius: 9, border: `1px solid ${T.border}` }}>
-      <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 9 }}>
-        TODAY'S TASKS
+    <div style={{ padding: '0 2px 2px' }}>
+      <div style={{ fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.1em', fontFamily: 'var(--font-mono)', marginBottom: 7, paddingLeft: 2 }}>
+        TODAY&apos;S TASKS
       </div>
 
       {tasks.length > 0 && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="gf-tasks">
               {tasks.map(task => (
                 <TaskRow
                   key={task.id}
@@ -327,49 +301,43 @@ export default function DailyTaskList({
 
       {/* Catch Up — overdue tasks from previous days */}
       {overdueTasks.length > 0 && (
-        <div style={{ marginTop: tasks.length > 0 ? 10 : 0 }}>
+        <div style={{ marginTop: tasks.length > 0 ? 8 : 0 }}>
           <button
             onClick={() => setShowCatchUp(o => !o)}
-            style={{
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, width: '100%',
-              background: `${T.amber}08`, border: `1px solid ${T.amber}25`, borderRadius: 7,
-              padding: '7px 10px', fontFamily: T.mono, fontSize: 10, color: T.amber,
-              letterSpacing: '0.08em',
-            }}
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, width: '100%', background: 'color-mix(in oklab, var(--gold) 8%, transparent)', border: '1px solid color-mix(in oklab, var(--gold) 25%, transparent)', borderRadius: 8, padding: '7px 10px', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gold)', letterSpacing: '0.08em' }}
           >
-            <ChevronDown
-              size={12}
-              style={{ transform: showCatchUp ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}
-            />
+            <ChevronDown size={12} style={{ transform: showCatchUp ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
             CATCH UP — {overdueTasks.length} task{overdueTasks.length !== 1 ? 's' : ''} from earlier
           </button>
 
           {showCatchUp && (
-            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ marginTop: 6 }}>
               <DndContext>
                 <SortableContext items={overdueTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                  {overdueTasks.map(task => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      draggable={false}
-                      dateLabel={`from ${task.assigned_date}`}
-                      isEditing={editingTaskId === task.id}
-                      editingText={editingText}
-                      setEditingText={setEditingText}
-                      onComplete={onCompleteTask}
-                      onStartEdit={startEdit}
-                      onCancelEdit={cancelEdit}
-                      onSaveEdit={handleSaveEdit}
-                      regeneratingId={regeneratingId}
-                      onRegenerate={handleRegenerate}
-                      restoringId={restoringId}
-                      onRestore={handleRestore}
-                    />
-                  ))}
+                  <div className="gf-tasks">
+                    {overdueTasks.map(task => (
+                      <TaskRow
+                        key={task.id}
+                        task={task}
+                        draggable={false}
+                        dateLabel={`from ${task.assigned_date}`}
+                        isEditing={editingTaskId === task.id}
+                        editingText={editingText}
+                        setEditingText={setEditingText}
+                        onComplete={onCompleteTask}
+                        onStartEdit={startEdit}
+                        onCancelEdit={cancelEdit}
+                        onSaveEdit={handleSaveEdit}
+                        regeneratingId={regeneratingId}
+                        onRegenerate={handleRegenerate}
+                        restoringId={restoringId}
+                        onRestore={handleRestore}
+                      />
+                    ))}
+                  </div>
                 </SortableContext>
               </DndContext>
-              <p style={{ fontSize: 10, color: T.amber, fontFamily: T.mono, opacity: 0.6, margin: '2px 0 0', paddingLeft: 24 }}>
+              <p style={{ fontSize: 10, color: 'var(--gold)', fontFamily: 'var(--font-mono)', opacity: 0.6, margin: '4px 0 0', paddingLeft: 10 }}>
                 Completing these still earns you +10 pts each.
               </p>
             </div>
@@ -379,7 +347,7 @@ export default function DailyTaskList({
 
       {/* Add Task */}
       {showAddTask ? (
-        <div style={{ marginTop: tasks.length > 0 || overdueTasks.length > 0 ? 8 : 0, display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
           <input
             autoFocus
             value={addTaskText}
@@ -390,21 +358,13 @@ export default function DailyTaskList({
             }}
             placeholder="Describe your task..."
             disabled={addingTask}
-            style={{
-              flex: 1, fontSize: 13, background: T.surface,
-              border: `1px solid ${T.orange}80`, borderRadius: 5,
-              padding: '5px 9px', color: T.text, outline: 'none', fontFamily: T.mono,
-            }}
+            style={{ flex: 1, fontSize: 13, background: 'var(--card-2)', border: '1px solid color-mix(in oklab, var(--accent) 50%, transparent)', borderRadius: 6, padding: '6px 9px', color: 'var(--text)', outline: 'none', fontFamily: 'var(--font-mono)' }}
           />
           <button
             onClick={handleAddTask}
             disabled={addingTask || !addTaskText.trim()}
-            style={{
-              cursor: addingTask || !addTaskText.trim() ? 'default' : 'pointer',
-              padding: '4px 12px', borderRadius: 6, fontFamily: T.mono, fontSize: 11,
-              background: `${T.orange}20`, color: T.orange, border: `1px solid ${T.orange}50`,
-              opacity: addingTask || !addTaskText.trim() ? 0.5 : 1,
-            }}
+            className="gf-btn-pill"
+            style={{ opacity: addingTask || !addTaskText.trim() ? 0.5 : 1, color: 'var(--accent)', borderColor: 'color-mix(in oklab, var(--accent) 40%, transparent)' }}
           >
             {addingTask ? '···' : 'Add'}
           </button>
@@ -412,12 +372,7 @@ export default function DailyTaskList({
       ) : (
         <button
           onClick={() => setShowAddTask(true)}
-          style={{
-            marginTop: tasks.length > 0 || overdueTasks.length > 0 ? 8 : 0,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-            background: 'none', border: 'none', padding: '3px 0',
-            fontFamily: T.mono, fontSize: 11, color: T.muted,
-          }}
+          style={{ marginTop: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', padding: '3px 2px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-mute)' }}
         >
           <Plus size={13} /> Add Task
         </button>
