@@ -72,7 +72,7 @@ export default function LandingPage() {
       <section className="lp-section">
         <div className="lp-container">
           <div className="lp-section-head">
-            <div className="lp-eyebrow" style={{ color: 'var(--lp-gold)' }}>HOW IT WORKS</div>
+            <div className="lp-eyebrow is-gold">HOW IT WORKS</div>
             <h2 className="lp-section-h2">Three steps to momentum</h2>
           </div>
           <div className="lp-grid-3">
@@ -91,7 +91,7 @@ export default function LandingPage() {
       <section className="lp-section">
         <div className="lp-container">
           <div className="lp-section-head">
-            <div className="lp-eyebrow" style={{ color: 'var(--lp-indigo)' }}>FEATURES</div>
+            <div className="lp-eyebrow is-indigo">FEATURES</div>
             <h2 className="lp-section-h2">Everything you need to follow through</h2>
           </div>
           <div className="lp-grid-3">
@@ -108,7 +108,7 @@ export default function LandingPage() {
 
       {/* CTA */}
       <section className="lp-cta-section">
-        <div className="lp-eyebrow" style={{ color: 'var(--lp-gold)' }}>START TODAY</div>
+        <div className="lp-eyebrow is-gold">START TODAY</div>
         <h2 className="lp-cta-h2">Your goals won&apos;t forge themselves.</h2>
         <p className="lp-cta-sub">Join GoalForge and turn every ambition into a structured, achievable plan — starting now.</p>
         <Show when="signed-out">
