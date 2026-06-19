@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useId } from 'react'
-import { motion } from 'motion/react'
 import { todayStr, streak, starBrightness, lastStreakLength } from '../lib/gamification'
 import Icon from './ui/Icon'
+import StreakBarsComponent from './StreakBars'
 import SprintRail from './SprintRail'
 import DailyTaskList from './DailyTaskList'
 import { useGoalMutations } from '../hooks'
@@ -80,86 +80,6 @@ function WeekCalendar({ completedDays }: { completedDays: string[] }) {
   )
 }
 
-// ── StreakBars ────────────────────────────────────────────────────────────────
-function StreakBars({ completedDays }: { completedDays: string[] }) {
-  const doneSet = new Set(completedDays)
-  const today = new Date()
-  const totalDays = 56
-  const days: boolean[] = []
-  for (let i = totalDays - 1; i >= 0; i--) {
-    const d = new Date(today)
-    d.setDate(d.getDate() - i)
-    days.push(doneSet.has(d.toISOString().slice(0, 10)))
-  }
-
-  const streaks: { start: number; length: number }[] = []
-  let i = 0
-  while (i < days.length) {
-    if (days[i]) {
-      const start = i
-      while (i < days.length && days[i]) i++
-      streaks.push({ start, length: i - start })
-    } else i++
-  }
-
-  const longest = Math.max(...streaks.map(s => s.length), 1)
-  let currentLen = 0
-  if (days[days.length - 1]) {
-    let j = days.length - 1
-    while (j >= 0 && days[j]) { currentLen++; j-- }
-  }
-  const totalDone = days.filter(Boolean).length
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', gap: 16 }}>
-        {[
-          { label: 'Current', value: currentLen, color: 'var(--accent)' },
-          { label: 'Longest', value: longest, color: 'var(--text)' },
-          { label: 'Total', value: totalDone, color: 'var(--text)' },
-        ].map(({ label, value, color }) => (
-          <div key={label}>
-            <div style={{ fontSize: 9, color: 'var(--text-mute)', fontFamily: 'var(--font-mono)', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
-            <div style={{ fontSize: 18, color, fontFamily: 'var(--font-display)', lineHeight: 1 }}>
-              {value}<span style={{ fontSize: 11, color: 'var(--text-mute)', fontFamily: 'var(--font-mono)', marginLeft: 4 }}>days</span>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{ position: 'relative', height: 48 }}>
-        <div style={{ position: 'absolute', top: 19, left: 0, right: 0, height: 3, background: 'var(--text-mute)', borderRadius: 99 }} />
-        {streaks.map((s, idx) => {
-          const left = (s.start / totalDays) * 100
-          const width = Math.max((s.length / totalDays) * 100, 0.5)
-          const isLongest = s.length === longest
-          const isCurrent = idx === streaks.length - 1 && days[days.length - 1]
-          const barH = 4 + Math.round((s.length / longest) * 20)
-          return (
-            <motion.div key={idx} title={`${s.length}-day streak`}
-              initial={{ scaleY: 0, opacity: 0 }}
-              animate={{ scaleY: 1, opacity: 1 }}
-              transition={{ delay: idx * 0.04, duration: 0.35, ease: 'easeOut' }}
-              style={{
-                position: 'absolute',
-                left: `${left}%`, width: `${width}%`,
-                height: barH, top: `${19.5 - barH / 2}px`,
-                borderRadius: 3, transformOrigin: 'bottom',
-                background: isCurrent
-                  ? 'linear-gradient(180deg,#fb923c,#f97316)'
-                  : isLongest ? 'rgba(249,115,22,0.5)' : 'rgba(249,115,22,0.25)',
-              }}
-            />
-          )
-        })}
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: -4 }}>
-        {['Day 1', `Day ${Math.round(totalDays / 2)}`, `Day ${totalDays}`].map((l, idx) => (
-          <span key={idx} style={{ fontSize: 9, color: 'var(--text-mute)', fontFamily: 'var(--font-mono)' }}>{l}</span>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 // ── HistoryTabContent ─────────────────────────────────────────────────────────
 type HistoryView = 'calendar' | 'streaks'
@@ -199,7 +119,7 @@ function HistoryTabContent({ goal, b }: { goal: Goal; b: number }) {
         </div>
         {view === 'calendar'
           ? <WeekCalendar completedDays={goal.completed_days} />
-          : <StreakBars completedDays={goal.completed_days} />
+          : <StreakBarsComponent days={goal.completed_days} />
         }
       </div>
 
