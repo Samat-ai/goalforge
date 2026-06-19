@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { T } from '../lib/theme'
 import { Creature } from '../components/GamificationSvgs'
 import TodayBar from '../components/TodayBar'
+import GreetingStrip from '../components/GreetingStrip'
+import Segmented from '../components/ui/Segmented'
 import AddGoal from '../components/AddGoal'
 import GoalCard from '../components/GoalCard'
 import FocusOverlay from '../components/FocusOverlay'
@@ -54,46 +55,23 @@ function WelcomeBackCard({ goals, onFocus }: { goals: Goal[]; onFocus: () => voi
   }
 
   return (
-    <div className="animate-slide-up" style={{
-      display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-      padding: '14px 18px', borderRadius: 12, marginBottom: 16,
-      background: `${T.indigo}12`, border: `1px solid ${T.indigo}40`,
-      borderLeft: `3px solid ${T.indigo}`,
-    }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: T.mono, fontSize: 11, fontWeight: 600, color: T.indigo, letterSpacing: '0.06em', marginBottom: 3 }}>
-          WELCOME BACK
-        </div>
-        <div style={{ fontFamily: T.serif, fontSize: 14, color: T.text }}>
-          You were away for {state.daysAway} days. No reset needed.
-        </div>
-        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.textDim, marginTop: 2 }}>
-          Last completion: {state.lastCompletedDate}. One tiny win gets momentum back.
-        </div>
+    <div className="gf-nudge animate-slide-up" style={{
+      '--accent': 'var(--indigo)',
+      '--accent-soft': 'color-mix(in oklab, var(--indigo) 10%, transparent)',
+      '--accent-line': 'color-mix(in oklab, var(--indigo) 35%, transparent)',
+      '--accent-ink': 'var(--indigo)',
+      marginBottom: 14,
+    } as React.CSSProperties}>
+      <div className="gf-nudge-dot" />
+      <div className="gf-nudge-body">
+        <div className="gf-nudge-kicker">Welcome back</div>
+        <div className="gf-nudge-title">You were away for {state.daysAway} days. No reset needed.</div>
+        <div className="gf-nudge-sub">Last completion: {state.lastCompletedDate}. One tiny win gets momentum back.</div>
       </div>
-      <button
-        onClick={onFocus}
-        style={{
-          minHeight: 44, minWidth: 44, padding: '9px 18px', borderRadius: 8,
-          cursor: 'pointer', flexShrink: 0,
-          fontFamily: T.mono, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
-          background: `${T.indigo}18`, color: T.indigo, border: `1px solid ${T.indigo}45`,
-        }}
-      >
+      <button onClick={onFocus} className="gf-btn-ghost-indigo">
         Enter Focus Mode
       </button>
-      <button
-        onClick={dismiss}
-        aria-label="Dismiss"
-        style={{
-          minHeight: 44, minWidth: 44, padding: '9px 12px', borderRadius: 8,
-          cursor: 'pointer', flexShrink: 0,
-          fontFamily: T.mono, fontSize: 11, color: T.dim,
-          background: 'transparent', border: 'none',
-        }}
-      >
-        ✕
-      </button>
+      <button onClick={dismiss} className="gf-nudge-x" aria-label="Dismiss">✕</button>
     </div>
   )
 }
@@ -154,7 +132,6 @@ function DoThisNow({ goals }: DoThisNowProps) {
   if (!blocker) return null
 
   const isOverdue = blocker.kind === 'overdue'
-  const color = isOverdue ? T.amber : T.emerald
 
   function handleAction() {
     if (!blocker) return
@@ -175,31 +152,34 @@ function DoThisNow({ goals }: DoThisNowProps) {
     : `"${blocker.milestoneTitle}" is done. Advance to the next sprint.`
   const btnLabel = isOverdue ? 'Catch Up ↓' : completing ? 'Unlocking…' : 'Complete Sprint ✦'
 
+  // amber for overdue, emerald for sprint-complete — override accent vars inline
+  const accentColor = isOverdue ? 'var(--gold)' : 'var(--emerald)'
+  const accentSoft = isOverdue
+    ? 'color-mix(in oklab, var(--gold) 10%, transparent)'
+    : 'color-mix(in oklab, var(--emerald) 10%, transparent)'
+  const accentLine = isOverdue
+    ? 'color-mix(in oklab, var(--gold) 32%, transparent)'
+    : 'color-mix(in oklab, var(--emerald) 32%, transparent)'
+
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-      padding: '14px 18px', borderRadius: 12, marginBottom: 18,
-      background: `${color}10`, border: `1px solid ${color}30`,
-      borderLeft: `3px solid ${color}`,
-      animation: 'fadeUp 0.35s ease both',
-    }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: T.mono, fontSize: 11, fontWeight: 600, color, letterSpacing: '0.06em', marginBottom: 3 }}>
-          DO THIS NOW
-        </div>
-        <div style={{ fontFamily: T.serif, fontSize: 14, color: T.text }}>{label}</div>
-        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.textDim, marginTop: 2 }}>{sub}</div>
+    <div className="gf-nudge animate-slide-up" style={{
+      '--accent': accentColor,
+      '--accent-soft': accentSoft,
+      '--accent-line': accentLine,
+      '--accent-ink': accentColor,
+      marginBottom: 14,
+    } as React.CSSProperties}>
+      <div className="gf-nudge-dot" />
+      <div className="gf-nudge-body">
+        <div className="gf-nudge-kicker">Do this now</div>
+        <div className="gf-nudge-title">{label}</div>
+        <div className="gf-nudge-sub">{sub}</div>
       </div>
       <button
         onClick={handleAction}
         disabled={completing}
-        style={{
-          minHeight: 44, minWidth: 44, padding: '9px 18px', borderRadius: 8,
-          cursor: completing ? 'wait' : 'pointer', flexShrink: 0,
-          fontFamily: T.mono, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
-          background: `${color}18`, color, border: `1px solid ${color}45`,
-          opacity: completing ? 0.6 : 1, transition: 'opacity 0.15s',
-        }}
+        className="gf-btn-ghost-accent"
+        style={{ opacity: completing ? 0.6 : 1, cursor: completing ? 'wait' : 'pointer' }}
       >
         {btnLabel}
       </button>
@@ -216,48 +196,22 @@ const EXAMPLE_GOALS = [
 
 function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      textAlign: 'center', padding: '40px 16px 32px',
-      animation: 'fadeUp 0.5s ease both',
-    }}>
+    <div className="gf-empty-page">
       <div style={{ marginBottom: 20, opacity: 0.85 }}>
         <Creature pts={0} size={96} />
       </div>
-      <h2 style={{
-        fontFamily: T.serif, fontSize: 22, fontWeight: 600,
-        color: T.text, marginBottom: 10, lineHeight: 1.3,
-      }}>
-        Your journey starts here ✦
-      </h2>
-      <p style={{
-        fontSize: 13, color: T.textDim, fontFamily: T.mono,
-        maxWidth: 380, lineHeight: 1.7, marginBottom: 28,
-      }}>
+      <h2>Your journey starts here ✦</h2>
+      <p>
         Describe any goal in plain language. Our AI will turn it into a
         step-by-step plan with daily tasks.
       </p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', maxWidth: 480 }}>
+      <div className="gf-empty-page-chips">
         {EXAMPLE_GOALS.map(text => (
           <button
             key={text}
             onClick={() => onSelect(text)}
-            style={{
-              minHeight: 44, padding: '10px 16px', borderRadius: 22,
-              fontFamily: T.mono, fontSize: 12, cursor: 'pointer',
-              background: `${T.indigo}12`, color: T.indigo,
-              border: `1px solid ${T.indigo}35`,
-              transition: 'background 0.15s, border-color 0.15s',
-              lineHeight: 1.4, textAlign: 'left',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = `${T.indigo}22`
-              e.currentTarget.style.borderColor = `${T.indigo}60`
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = `${T.indigo}12`
-              e.currentTarget.style.borderColor = `${T.indigo}35`
-            }}
+            className="gf-btn-ghost-indigo"
+            style={{ lineHeight: 1.4, textAlign: 'left', height: 'auto' }}
           >
             {text}
           </button>
@@ -285,7 +239,7 @@ export default function Dashboard() {
   const [addGoalText, setAddGoalText] = useState('')
   const [focusOpen, setFocusOpen] = useState(false)
   const [activeRewardDrop, setActiveRewardDrop] = useState<RewardDrop | null>(null)
-const [showEnergyModal, setShowEnergyModal] = useState(() => {
+  const [showEnergyModal, setShowEnergyModal] = useState(() => {
     const triggered = sessionStorage.getItem('energy') === 'low'
     if (triggered) sessionStorage.removeItem('energy')
     return triggered
@@ -327,34 +281,14 @@ const [showEnergyModal, setShowEnergyModal] = useState(() => {
 
   // ── Render ──
   return (
-    <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.mono }}>
-      <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: ${T.dim}; border-radius: 2px; }
-        textarea:focus { border-color: ${T.orange} !important; outline: none; }
-        button:hover { opacity: 0.82; }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
-        .filter-tabs::-webkit-scrollbar { display: none; }
-        button:focus-visible, a:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; border-radius: 4px; }
-      `}</style>
+    <div className="min-h-dvh mesh-bg">
 
-      <main id="main-content" style={{ maxWidth: 1100, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
 
-        {/* Page heading */}
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontFamily: T.serif, fontWeight: 400, color: T.text, marginBottom: 3 }} className="text-[26px] sm:text-[32px] lg:text-[38px]">
-            Your Goals
-          </h1>
-          <p style={{ fontSize: 12, color: T.muted }}>
-            {goals.filter(g => g.status === 'active').length} active · {goals.length} total
-          </p>
-        </div>
+      <main id="main-content" className="gf-main">
 
         {/* Loading skeletons */}
         {loading && (
-          <div role="status" aria-label="Loading goals" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div role="status" aria-label="Loading goals" className="gf-page">
             <GoalCardSkeleton />
             <GoalCardSkeleton />
           </div>
@@ -362,29 +296,24 @@ const [showEnergyModal, setShowEnergyModal] = useState(() => {
 
         {/* Error */}
         {!loading && error && (
-          <div style={{
-            padding: '20px 22px', background: `${T.rose}10`, border: `1px solid ${T.rose}30`,
-            borderRadius: 12, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-          }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, color: T.rose, fontFamily: T.mono, marginBottom: 3 }}>{error}</div>
-              <div style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }}>Check your connection and try again.</div>
+          <div className="gf-nudge" style={{
+            '--accent': 'var(--rose)',
+            '--accent-soft': 'color-mix(in oklab, var(--rose) 10%, transparent)',
+            '--accent-line': 'color-mix(in oklab, var(--rose) 32%, transparent)',
+            '--accent-ink': 'var(--rose)',
+          } as React.CSSProperties}>
+            <div className="gf-nudge-body">
+              <div className="gf-nudge-kicker">Load error</div>
+              <div className="gf-nudge-title">{error}</div>
+              <div className="gf-nudge-sub">Check your connection and try again.</div>
             </div>
-            <button
-              onClick={() => refetch()}
-              style={{
-                cursor: 'pointer', padding: '7px 16px', borderRadius: 8, flexShrink: 0,
-                fontFamily: T.mono, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em',
-                background: `${T.rose}20`, color: T.rose, border: `1px solid ${T.rose}50`,
-              }}
-            >
-              Try again
-            </button>
+            <button onClick={() => refetch()} className="gf-btn-ghost-accent">Try again</button>
           </div>
         )}
 
         {!loading && !error && (
-          <>
+          <div className="gf-page">
+            <GreetingStrip goals={goals} />
             <WelcomeBackCard goals={goals} onFocus={() => setFocusOpen(true)} />
             <DoThisNow goals={goals} />
             <TodayBar goals={goals} onFocusOpen={() => setFocusOpen(true)} onEnergyOpen={() => setShowEnergyModal(true)} />
@@ -394,30 +323,23 @@ const [showEnergyModal, setShowEnergyModal] = useState(() => {
               <EmptyState onSelect={setAddGoalText} />
             ) : (
               <>
-                {/* Filter tabs */}
-                <div style={{ display: 'flex', borderBottom: `1px solid ${T.border}`, marginBottom: 18, overflowX: 'auto', scrollbarWidth: 'none' }} className="filter-tabs">
-                  {(['active', 'achieved', 'abandoned'] as const).map(f => (
-                    <button
-                      key={f}
-                      onClick={() => setFilter(f)}
-                      style={{
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        padding: '7px 14px', fontFamily: T.mono, fontSize: 11,
-                        letterSpacing: '0.06em', flexShrink: 0,
-                        color: filter === f ? T.text : T.muted,
-                        borderBottom: filter === f ? `2px solid ${T.orange}` : '2px solid transparent',
-                      }}
-                    >
-                      {f} ({goals.filter(g => g.status === f).length})
-                    </button>
-                  ))}
+                {/* Heading + filter */}
+                <div className="gf-listhead">
+                  <h2 className="gf-h2">Your goals</h2>
+                  <Segmented
+                    options={['active', 'achieved', 'abandoned']}
+                    value={filter}
+                    onChange={setFilter}
+                    getLabel={o => `${o} ${goals.filter(g => g.status === o).length}`}
+                  />
                 </div>
 
                 {/* Goal list */}
-                <div aria-live="polite" aria-label="Goal list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div aria-live="polite" aria-label="Goal list" className="gf-goallist">
                   {filtered.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '44px 0', color: T.muted, fontSize: 13 }}>
-                      No goals here yet.
+                    <div className="gf-empty">
+                      <div className="gf-empty-ic">✦</div>
+                      <div className="gf-empty-t">No {filter} goals yet.</div>
                     </div>
                   )}
                   {filtered.map(goal => (
@@ -428,7 +350,7 @@ const [showEnergyModal, setShowEnergyModal] = useState(() => {
                 </div>
               </>
             )}
-          </>
+          </div>
         )}
       </main>
 
@@ -456,7 +378,7 @@ const [showEnergyModal, setShowEnergyModal] = useState(() => {
       })()}
 
 
-{showEnergyModal && (
+      {showEnergyModal && (
         <EnergyModal
           isLoading={energyResizeMutation.isPending}
           onConfirm={() => {

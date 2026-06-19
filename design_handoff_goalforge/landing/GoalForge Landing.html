@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Solly — your goal-getting buddy · GoalForge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --accent: #ff6a3d;
+  --accent-2: #ff9a3d;
+  --peach: #ffd9b0;
+  --green: #1f9d6b;
+  --gold: #e0992a;
+  --indigo: #6d6ae6;
+  --rose: #f0617a;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Hanken Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-serif: 'Instrument Serif', serif;
+  --maxw: 1180px;
+}
+html[data-theme="light"] {
+  --bg: #fbf5ec; --bg-2: #fffaf2; --warm: #fff3e4; --card: #fffdf9;
+  --border: rgba(60,40,20,0.10); --border-hi: rgba(60,40,20,0.16);
+  --text: #241c14; --text-dim: #6a5d50; --text-mute: #9b8d7e;
+  --shadow: 0 1px 2px rgba(80,50,20,0.04), 0 18px 40px -22px rgba(120,70,30,0.28);
+  --glow: 0.5;
+}
+html[data-theme="dark"] {
+  --bg: #1a140f; --bg-2: #221a13; --warm: #2a1f16; --card: #241a12;
+  --border: rgba(255,220,180,0.10); --border-hi: rgba(255,220,180,0.18);
+  --text: #f6ece0; --text-dim: #c4b3a0; --text-mute: #8a7a68;
+  --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 18px 44px -22px rgba(0,0,0,0.7);
+  --glow: 0.85;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-body); -webkit-font-smoothing: antialiased; overflow-x: hidden; transition: background .5s, color .4s; }
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+::selection { background: color-mix(in oklab, var(--accent) 30%, transparent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 10px; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 6px; }
+
+.bg-warm { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.bg-warm span { position: absolute; border-radius: 50%; filter: blur(80px); opacity: calc(0.55 * var(--glow)); animation: float 24s ease-in-out infinite; will-change: transform, translate; }
+.bg-warm .w1 { width: 50vw; height: 50vw; left: -12vw; top: -16vw; background: radial-gradient(circle, var(--accent), transparent 66%); }
+.bg-warm .w2 { width: 42vw; height: 42vw; right: -12vw; top: 26vh; background: radial-gradient(circle, var(--gold), transparent 68%); animation-delay: -10s; }
+.bg-warm .w3 { width: 36vw; height: 36vw; left: 30vw; bottom: -16vw; background: radial-gradient(circle, var(--peach), transparent 70%); animation-delay: -16s; }
+.bg-warm .w4 { width: 30vw; height: 30vw; right: 8vw; top: -10vw; background: radial-gradient(circle, var(--green), transparent 70%); opacity: calc(0.22 * var(--glow)); animation-delay: -6s; }
+.bg-warm .w5 { width: 34vw; height: 34vw; left: -8vw; bottom: 4vh; background: radial-gradient(circle, var(--indigo), transparent 72%); opacity: calc(0.20 * var(--glow)); animation-delay: -20s; }
+@keyframes float { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(3vw,-3vh) scale(1.07); } }
+@media (prefers-reduced-motion: reduce) { .bg-warm span { animation: none; } }
+
+.wrap { position: relative; z-index: 2; }
+.container { width: min(var(--maxw), 92vw); margin: 0 auto; }
+
+/* NAV */
+nav.top { position: fixed; top: 0; left: 0; right: 0; z-index: 60; backdrop-filter: blur(16px) saturate(1.3); background: color-mix(in oklab, var(--bg) 70%, transparent); border-bottom: 1px solid transparent; transition: border-color .3s; }
+nav.top.scrolled { border-bottom-color: var(--border); }
+.nav-in { width: min(var(--maxw), 92vw); margin: 0 auto; height: 72px; display: flex; align-items: center; gap: 26px; }
+.logo { font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: -0.02em; display: flex; align-items: center; gap: 9px; }
+.logo img { width: 30px; height: 30px; }
+.logo .b { color: var(--accent); }
+.nav-links { display: flex; gap: 26px; margin-left: 18px; }
+.nav-links a { font-size: 14.5px; color: var(--text-dim); font-weight: 500; transition: color .2s; }
+.nav-links a:hover { color: var(--text); }
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.theme-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); display: grid; place-items: center; background: var(--card); box-shadow: var(--shadow); transition: transform .2s; }
+.theme-btn:hover { transform: translateY(-1px) rotate(-8deg); }
+.theme-btn svg { width: 18px; height: 18px; }
+.btn-primary { font-family: var(--font-display); font-weight: 600; font-size: 14.5px; padding: 12px 22px; border-radius: 99px; color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: 0 8px 22px -8px color-mix(in oklab, var(--accent) 75%, transparent); transition: transform .2s, box-shadow .2s; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 32px -10px color-mix(in oklab, var(--accent) 80%, transparent); }
+.btn-lg { padding: 16px 30px; font-size: 16.5px; }
+.btn-ghost { font-family: var(--font-display); font-weight: 600; font-size: 16.5px; padding: 15px 26px; border-radius: 99px; color: var(--text); border: 1px solid var(--border-hi); background: var(--card); transition: transform .2s, border-color .2s; }
+.btn-ghost:hover { transform: translateY(-2px); border-color: var(--accent); }
+/* mobile nav (hamburger) */
+.nav-burger { display: none; width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); cursor: pointer; align-items: center; justify-content: center; flex-direction: column; gap: 5px; }
+.nav-burger span { display: block; width: 20px; height: 2px; border-radius: 2px; background: var(--text); transition: transform .26s cubic-bezier(.2,.7,.2,1), opacity .2s; }
+.nav-burger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-burger.open span:nth-child(2) { opacity: 0; }
+.nav-burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+.nav-menu { display: none; position: fixed; left: 0; right: 0; top: 64px; z-index: 55; flex-direction: column; gap: 4px; padding: 10px 16px 18px; background: color-mix(in oklab, var(--bg) 94%, transparent); backdrop-filter: blur(18px) saturate(1.3); border-bottom: 1px solid var(--border); box-shadow: var(--shadow); opacity: 0; transform: translateY(-10px); transition: opacity .22s ease, transform .26s cubic-bezier(.2,.7,.2,1); }
+.nav-menu.open { display: flex; }
+.nav-menu.show { opacity: 1; transform: none; }
+.nav-menu .m-link { font-family: var(--font-display); font-weight: 600; font-size: 17px; color: var(--text); padding: 0 14px; min-height: 50px; display: flex; align-items: center; border-radius: 12px; }
+.nav-menu .m-link:hover, .nav-menu .m-link:focus-visible { background: var(--warm); }
+.nav-menu .btn-primary { margin-top: 10px; justify-content: center; text-align: center; padding: 15px; font-size: 16px; width: 100%; }
+
+/* HERO — Solly forward */
+header.hero { padding: 116px 0 36px; text-align: center; position: relative; }
+.eyebrow { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-mono); font-size: 12.5px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--accent); padding: 7px 15px; border-radius: 99px; border: 1px solid color-mix(in oklab, var(--accent) 30%, transparent); background: var(--warm); margin-bottom: 26px; }
+.eyebrow .wave { animation: wavehand 2.4s ease-in-out infinite; transform-origin: 70% 70%; display: inline-block; }
+@keyframes wavehand { 0%,60%,100% { transform: rotate(0); } 10% { transform: rotate(16deg); } 20% { transform: rotate(-8deg); } 30% { transform: rotate(16deg); } 40% { transform: rotate(-4deg); } 50% { transform: rotate(10deg); } }
+
+/* Solly stage */
+.solly-stage { position: relative; width: min(420px, 80vw); margin: 0 auto 6px; }
+.solly-hero-wrap { width: clamp(200px, 30vw, 320px); margin: 0 auto; position: relative; cursor: pointer; z-index: 2; animation: sollyBob 4.6s ease-in-out infinite; }
+@keyframes sollyBob { 50% { transform: translateY(-12px); } }
+.solly-hero-wrap.hop { animation: sollyHop .6s cubic-bezier(.3,1.4,.5,1); }
+@keyframes sollyHop { 30% { transform: translateY(-34px) scale(1.04); } 60% { transform: translateY(0) scaleY(.94) scaleX(1.05); } 100% { transform: translateY(0); } }
+.solly-svg { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(0 22px 40px color-mix(in oklab, var(--accent) 45%, transparent)); }
+.solly-idle { width: 100%; height: auto; display: block; filter: drop-shadow(0 22px 40px color-mix(in oklab, var(--accent) 42%, transparent)); transition: opacity .25s ease; }
+.solly-clip { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity .25s ease; filter: drop-shadow(0 22px 40px color-mix(in oklab, var(--accent) 42%, transparent)); pointer-events: none; }
+.solly-hero-wrap.greeting .solly-clip { opacity: 1; }
+.solly-hero-wrap.greeting .solly-idle { opacity: 0; }
+.solly-hero-wrap.greeting .solly-svg { opacity: 0; }
+.solly-svg { transition: opacity .25s ease; }
+.solly-glow { position: absolute; left: 50%; top: 52%; transform: translate(-50%,-50%); width: 72%; height: 72%; border-radius: 50%; background: radial-gradient(circle, color-mix(in oklab, var(--accent) 42%, transparent), transparent 64%); filter: blur(22px); opacity: var(--glow); z-index: 1; pointer-events: none; }
+.s-body { transform-box: fill-box; transform-origin: 50% 93%; }
+.s-body.waving { animation: sollyWave 1.15s ease-in-out; }
+@keyframes sollyWave { 0%{transform:rotate(0)} 14%{transform:rotate(-10deg)} 30%{transform:rotate(8deg)} 46%{transform:rotate(-8deg)} 62%{transform:rotate(6deg)} 78%{transform:rotate(-3deg)} 100%{transform:rotate(0)} }
+.s-eye { transform-box: fill-box; transform-origin: center; }
+.s-eye.blink { animation: sollyBlink .26s ease-in-out; }
+@keyframes sollyBlink { 50% { transform: scaleY(0.1); } }
+.s-eye.wink { animation: sollyWink .42s ease; }
+@keyframes sollyWink { 0%,100% { transform: scaleY(1); } 45%,55% { transform: scaleY(0.08); } }
+.solly-hero-wrap:hover .solly-svg, .solly-hero-wrap:hover .solly-clip, .solly-hero-wrap:hover .solly-idle { filter: drop-shadow(0 26px 48px color-mix(in oklab, var(--accent) 55%, transparent)); }
+.speech { position: absolute; opacity: 1; background: var(--card); border: 1px solid var(--border-hi); box-shadow: var(--shadow); border-radius: 18px; padding: 12px 16px; font-size: 14.5px; font-weight: 500; z-index: 5; white-space: nowrap; transition: transform .26s cubic-bezier(.3,1.5,.5,1); }
+.speech::after { content: ""; position: absolute; bottom: -7px; left: 50%; margin-left: -7px; width: 14px; height: 14px; background: var(--card); border-right: 1px solid var(--border-hi); border-bottom: 1px solid var(--border-hi); transform: rotate(45deg); }
+.speech b { color: var(--accent); }
+.speech.s-main { top: -3%; left: 50%; transform: translateX(-50%); }
+.speech.s-main.bump { transform: translateX(-50%) scale(1.09); }
+@keyframes pop { from { opacity: 0; transform: translateX(-50%) scale(.82); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .solly-hero-wrap { animation: none; } }
+
+h1.hero-title { font-family: var(--font-display); font-weight: 700; font-size: clamp(44px, 7.6vw, 92px); line-height: 0.98; letter-spacing: -0.035em; max-width: 15ch; margin: 14px auto 0; text-wrap: balance; }
+h1.hero-title em { font-family: var(--font-serif); font-style: italic; font-weight: 400; color: var(--accent); }
+.hero-sub { font-size: clamp(16.5px, 1.8vw, 20px); color: var(--text-dim); max-width: 50ch; margin: 24px auto 0; line-height: 1.6; text-wrap: pretty; }
+.hero-cta { display: flex; gap: 14px; align-items: center; justify-content: center; margin-top: 34px; flex-wrap: wrap; }
+.hero-meta { margin-top: 20px; font-size: 13.5px; color: var(--text-mute); display: flex; align-items: center; gap: 8px; justify-content: center; }
+.hero-meta .av { display: flex; } .hero-meta .av i { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--bg); margin-left: -8px; display: block; }
+
+/* MARQUEE (borrowed, warmed) */
+.marquee { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); overflow: hidden; padding: 16px 0; margin-top: 40px; background: var(--warm); }
+.marquee-track { display: flex; gap: 38px; white-space: nowrap; width: max-content; animation: scrollx 30s linear infinite; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+.marquee-track span { font-family: var(--font-display); font-weight: 600; font-size: 20px; letter-spacing: -0.01em; display: flex; align-items: center; gap: 38px; color: var(--text); }
+.marquee-track span::after { content: "✦"; color: var(--accent); }
+@keyframes scrollx { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } }
+
+/* CHAT DEMO */
+.chat-shell { width: min(640px, 94vw); margin: 60px auto 96px; }
+.chat-card { border: 1px solid var(--border-hi); border-radius: 26px; background: var(--card); box-shadow: var(--shadow); overflow: hidden; }
+.chat-head { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--warm); }
+.chat-head img { width: 38px; height: 38px; }
+.chat-head b { font-family: var(--font-display); font-size: 16px; }
+.chat-head .stat { font-size: 12.5px; color: var(--green); display: flex; align-items: center; gap: 6px; padding: 0; text-align: left; }
+.chat-head .stat::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+.chat-body { padding: 22px 20px; display: flex; flex-direction: column; gap: 12px; min-height: 230px; max-height: 360px; overflow-y: auto; }
+.msg { font-size: 14.5px; line-height: 1.5; padding: 12px 15px; border-radius: 16px; max-width: 80%; animation: popm .35s ease both; }
+@keyframes popm { from { opacity: 0; transform: scale(.9) translateY(6px); } }
+.msg.them { align-self: flex-start; background: var(--warm); border: 1px solid var(--border); border-bottom-left-radius: 5px; }
+.msg.you { align-self: flex-end; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; border-bottom-right-radius: 5px; }
+.msg.typing { display: flex; gap: 4px; align-items: center; }
+.msg.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-mute); animation: blinkd 1.2s infinite; }
+.msg.typing i:nth-child(2){ animation-delay: .2s; } .msg.typing i:nth-child(3){ animation-delay: .4s; }
+@keyframes blinkd { 0%,60%,100% { opacity: .25; } 30% { opacity: 1; } }
+.chat-foot { display: flex; gap: 10px; padding: 14px; border-top: 1px solid var(--border); }
+.chat-input { flex: 1; background: var(--bg-2); border: 1px solid var(--border-hi); border-radius: 99px; padding: 13px 18px; color: var(--text); font-size: 15px; font-family: var(--font-body); transition: border-color .2s, box-shadow .2s; }
+.chat-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 14%, transparent); }
+.chat-input[readonly] { cursor: default; }
+.chat-input[readonly]:focus { border-color: var(--border-hi); box-shadow: none; }
+.chat-send { width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; display: grid; place-items: center; transition: transform .2s; }
+.chat-send:hover { transform: scale(1.06); }
+.chat-send svg { width: 19px; height: 19px; }
+.chat-suggest { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 20px 18px; }
+.chat-suggest span { font-size: 13px; color: var(--text-dim); padding: 7px 13px; border-radius: 99px; border: 1px solid var(--border); cursor: pointer; transition: all .2s; }
+.chat-suggest span:hover { border-color: var(--accent); color: var(--accent); }
+
+/* SECTION */
+section { padding: 94px 0; position: relative; }
+.sec-eyebrow { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); text-align: center; margin-bottom: 16px; }
+.sec-title { font-family: var(--font-display); font-weight: 700; font-size: clamp(30px, 4.4vw, 50px); line-height: 1.05; letter-spacing: -0.03em; text-align: center; max-width: 18ch; margin: 0 auto; text-wrap: balance; }
+.sec-title em { font-family: var(--font-serif); font-style: italic; font-weight: 400; color: var(--accent); }
+.sec-sub { text-align: center; color: var(--text-dim); font-size: 17.5px; max-width: 52ch; margin: 18px auto 0; line-height: 1.55; }
+.reveal { opacity: 0; transform: translateY(26px); transition: opacity .7s cubic-bezier(.2,.6,.3,1), transform .7s cubic-bezier(.2,.6,.3,1); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; } }
+
+/* STATS BAND (borrowed, warmed) */
+.stats-band { background: var(--warm); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; }
+.stat { text-align: center; padding: 14px; }
+.stat .n { font-family: var(--font-display); font-weight: 700; font-size: clamp(38px, 5vw, 58px); line-height: 1; letter-spacing: -0.03em; color: var(--accent); }
+.stat .l { font-size: 14px; color: var(--text-dim); margin-top: 10px; }
+.ph-note { text-align: center; font-family: var(--font-mono); font-size: 12px; color: var(--text-mute); margin-top: 26px; }
+@media (max-width: 720px) { .stats { grid-template-columns: 1fr 1fr; gap: 30px; } }
+
+/* STEPS */
+.steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 22px; margin-top: 58px; }
+.step { padding: 32px; border-radius: 24px; border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow); }
+.step-ic { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--warm); margin-bottom: 18px; }
+.step-ic svg { width: 27px; height: 27px; color: var(--accent); }
+.step-n { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-mute); margin-bottom: 10px; }
+.step h3 { font-family: var(--font-display); font-weight: 600; font-size: 20px; letter-spacing: -0.01em; }
+.step p { color: var(--text-dim); font-size: 14.5px; margin-top: 10px; line-height: 1.55; }
+@media (max-width: 820px) { .steps { grid-template-columns: 1fr; } }
+
+/* HOW IT WORKS — shuffle deck */
+.deck-wrap { display: flex; flex-direction: column; align-items: center; margin-top: 56px; }
+.deck-stage { position: relative; width: min(440px, 92vw); height: 372px; }
+.deck-card { position: absolute; left: 0; right: 0; top: 0; height: 340px; padding: 28px 28px 24px; border-radius: 26px; border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow); display: flex; flex-direction: column; cursor: grab; transform-origin: 50% 0; transition: transform .55s cubic-bezier(.22,.9,.32,1), opacity .45s, box-shadow .45s; user-select: none; -webkit-user-select: none; touch-action: pan-y; overflow: hidden; }
+.deck-card::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 5px; background: var(--cc); }
+.deck-card.dragging { transition: opacity .2s; cursor: grabbing; }
+.deck-card.flying { transition: transform .48s cubic-bezier(.55,0,.62,1), opacity .48s; }
+.dc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.dc-n { font-family: var(--font-display); font-weight: 700; font-size: 30px; letter-spacing: -0.02em; color: var(--cc); }
+.dc-ic { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: color-mix(in oklab, var(--cc) 13%, transparent); }
+.dc-ic svg { width: 24px; height: 24px; color: var(--cc); }
+.deck-card h3 { font-family: var(--font-display); font-weight: 600; font-size: 22px; letter-spacing: -0.01em; }
+.deck-card p { color: var(--text-dim); font-size: 14.5px; line-height: 1.55; margin-top: 9px; }
+.dc-demo { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding-top: 18px; }
+.dc-chat .dc-bub { font-size: 13.5px; line-height: 1.4; padding: 9px 13px; border-radius: 14px; max-width: 84%; }
+.dc-bub.them { align-self: flex-start; background: var(--warm); border: 1px solid var(--border); border-bottom-left-radius: 5px; }
+.dc-bub.you { align-self: flex-end; color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-bottom-right-radius: 5px; }
+.dc-list .dc-task { display: flex; align-items: center; gap: 11px; font-size: 14px; color: var(--text-dim); }
+.dc-task i { width: 18px; height: 18px; border-radius: 6px; border: 2px solid var(--border-hi); flex-shrink: 0; position: relative; }
+.dc-task.done { color: var(--text); }
+.dc-task.done i { background: var(--green); border-color: var(--green); }
+.dc-task.done i::after { content: ""; position: absolute; left: 5px; top: 1px; width: 5px; height: 9px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.dc-streak { flex-direction: row; gap: 12px; align-items: center; }
+.dc-flame { font-size: 14px; font-weight: 600; padding: 8px 14px; border-radius: 99px; background: color-mix(in oklab, var(--accent) 13%, transparent); color: var(--accent); }
+.dc-pts { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
+.deck-foot { display: flex; align-items: center; gap: 18px; margin-top: 26px; }
+.deck-dots { display: flex; gap: 8px; align-items: center; }
+.deck-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border-hi); transition: all .3s; cursor: pointer; }
+.deck-dots i.on { width: 24px; border-radius: 99px; background: var(--accent); }
+.deck-next { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--text); padding: 10px 16px; border-radius: 99px; border: 1px solid var(--border-hi); background: var(--card); box-shadow: var(--shadow); transition: transform .2s, border-color .2s; }
+.deck-next:hover { transform: translateY(-2px); border-color: var(--accent); }
+.deck-next svg { width: 15px; height: 15px; }
+@media (prefers-reduced-motion: reduce) { .deck-card { transition: none; } }
+
+/* MEET SOLLY */
+.meet { background: var(--warm); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); overflow: hidden; }
+.meet-grid { display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 46px; align-items: center; }
+.meet-art { position: relative; min-height: 440px; }
+.meet-solly { position: absolute; left: 2%; bottom: -30px; width: clamp(280px, 36vw, 440px); will-change: transform, opacity; }
+.meet-solly .solly-svg { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(0 26px 42px color-mix(in oklab, var(--accent) 42%, transparent)); }
+.meet-solly .solly-faces { position: relative; width: 100%; aspect-ratio: 1 / 1; }
+.meet-solly .face { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transform: scale(0.94); transition: opacity 1s ease, transform 1.1s cubic-bezier(.22,.9,.32,1); filter: drop-shadow(0 26px 42px color-mix(in oklab, var(--accent) 42%, transparent)); }
+.meet-solly .face.on { opacity: 1; transform: scale(1); }
+@media (prefers-reduced-motion: reduce) { .meet-solly .face { transition: none; } }
+.meet h2 { font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 3.6vw, 42px); letter-spacing: -0.025em; line-height: 1.08; }
+.meet h2 em { font-family: var(--font-serif); font-style: italic; font-weight: 400; color: var(--accent); }
+.meet-list { margin-top: 26px; display: flex; flex-direction: column; gap: 18px; }
+.meet-item { display: flex; gap: 14px; align-items: flex-start; }
+.meet-item .ic { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; display: grid; place-items: center; background: var(--card); border: 1px solid var(--border); }
+.meet-item .ic svg { width: 20px; height: 20px; color: var(--accent); }
+.meet-item h4 { font-family: var(--font-display); font-weight: 600; font-size: 17px; }
+.meet-item p { color: var(--text-dim); font-size: 14.5px; margin-top: 4px; line-height: 1.5; }
+@media (max-width: 820px) { .meet-grid { grid-template-columns: 1fr; gap: 12px; } .meet-art { min-height: 290px; } .meet-solly { position: relative; left: 0; bottom: 0; width: clamp(200px, 54vw, 280px); margin: 0 auto; transform: none !important; opacity: 1 !important; } }
+
+/* STAGES — brightness star cards */
+.journey { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-top: 60px; }
+.stage { position: relative; overflow: hidden; padding: 28px 14px 22px; border-radius: 20px; border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow); text-align: center; transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease; }
+.stage::before { content: ""; position: absolute; left: 50%; top: -12%; width: 130%; height: 72%; transform: translateX(-50%); background: radial-gradient(ellipse at 50% 0%, color-mix(in oklab, var(--c) 60%, transparent), transparent 68%); opacity: calc(var(--lvl) * 0.5); pointer-events: none; }
+.stage:hover { transform: translateY(-6px); border-color: color-mix(in oklab, var(--c) 50%, transparent); box-shadow: 0 18px 40px -18px var(--c); }
+.stage-star { position: relative; display: grid; place-items: center; height: 68px; margin-bottom: 12px; }
+.stage-star svg { width: var(--sz); height: var(--sz); color: var(--c); filter: drop-shadow(0 0 calc(4px + var(--lvl) * 18px) color-mix(in oklab, var(--c) 85%, transparent)); transition: transform .35s ease; }
+.stage:hover .stage-star svg { transform: scale(1.12) rotate(10deg); }
+.stage-name { font-family: var(--font-display); font-weight: 600; font-size: 16px; position: relative; }
+.stage-pts { display: inline-block; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); background: color-mix(in oklab, var(--c) 12%, transparent); border: 1px solid color-mix(in oklab, var(--c) 26%, transparent); padding: 2px 9px; border-radius: 99px; margin-top: 9px; }
+.stage-desc { font-size: 12px; color: var(--text-mute); margin-top: 10px; line-height: 1.35; }
+@media (max-width: 860px) { .journey { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 520px) { .journey { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+
+/* STORIES */
+.quotes { display: grid; grid-template-columns: repeat(3,1fr); gap: 22px; margin-top: 54px; }
+.quote { padding: 28px; border-radius: 22px; border: 1px solid var(--border); background: var(--card); box-shadow: var(--shadow); }
+.quote .stars { color: var(--gold); font-size: 15px; letter-spacing: 2px; margin-bottom: 12px; }
+.quote p { font-size: 16px; line-height: 1.55; }
+.quote .who { display: flex; align-items: center; gap: 11px; margin-top: 18px; }
+.quote .av { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; }
+.quote .who b { font-family: var(--font-display); font-size: 14.5px; display: block; }
+.quote .who span { font-size: 12.5px; color: var(--text-mute); }
+@media (max-width: 820px) { .quotes { grid-template-columns: 1fr; } }
+
+/* CTA */
+.final { text-align: center; }
+.final-card { border: 1px solid var(--border-hi); border-radius: 34px; background: linear-gradient(160deg, var(--warm), var(--card)); box-shadow: var(--shadow); padding: 60px 40px 66px; position: relative; overflow: hidden; }
+.final .solly-hero-wrap { width: clamp(130px, 16vw, 170px); margin-bottom: 10px; }
+.final h2 { font-family: var(--font-display); font-weight: 700; font-size: clamp(30px, 4.6vw, 54px); letter-spacing: -0.03em; line-height: 1.05; }
+.final h2 em { font-family: var(--font-serif); font-style: italic; font-weight: 400; color: var(--accent); }
+.final p { color: var(--text-dim); font-size: 18px; margin: 16px auto 0; max-width: 44ch; }
+
+/* FOOTER */
+footer { border-top: 1px solid var(--border); padding: 50px 0 60px; }
+.foot-in { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.foot-in .logo { font-size: 18px; }
+.foot-links { margin-left: auto; display: flex; gap: 24px; }
+.foot-links a { font-size: 14px; color: var(--text-mute); transition: color .2s; }
+.foot-links a:hover { color: var(--text); }
+.foot-copy { font-family: var(--font-mono); font-size: 12px; color: var(--text-mute); margin-top: 22px; }
+
+/* SWITCHER */
+.switcher { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 80; display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 99px; background: color-mix(in oklab, var(--bg) 82%, transparent); backdrop-filter: blur(16px) saturate(1.3); border: 1px solid var(--border-hi); box-shadow: var(--shadow); }
+.switcher span.lab { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-mute); padding: 0 10px 0 8px; }
+.switcher a { font-family: var(--font-display); font-weight: 600; font-size: 13px; padding: 8px 14px; border-radius: 99px; color: var(--text-dim); transition: all .2s; }
+.switcher a:hover { color: var(--text); }
+.switcher a.active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; }
+@media (max-width: 600px) { .switcher span.lab { display: none; } .switcher a { padding: 8px 11px; font-size: 12px; } }
+
+@media (max-width: 760px) {
+  .nav-in { height: 64px; gap: 12px; }
+  .nav-links { display: none; }
+  .nav-right .nav-cta { display: none; }
+  .nav-burger { display: flex; }
+  .theme-btn { width: 44px; height: 44px; }
+  header.hero { padding: 92px 0 24px; }
+  section { padding: 60px 0; }
+  .marquee { margin-top: 24px; }
+  .chat-shell { margin: 40px auto 64px; }
+  .final-card { padding: 44px 22px 48px; border-radius: 26px; }
+  .hero-sub { font-size: 16.5px; margin-top: 20px; }
+  .hero-cta { gap: 10px; margin-top: 28px; }
+  .hero-cta .btn-primary, .hero-cta .btn-ghost { width: 100%; }
+  .btn-lg { padding: 16px 24px; font-size: 16px; }
+}
+</style>
+</head>
+<body>
+<div class="bg-warm"><span class="w1"></span><span class="w2"></span><span class="w3"></span><span class="w4"></span><span class="w5"></span></div>
+
+<div class="wrap">
+<nav class="top" id="nav">
+  <div class="nav-in">
+    <a class="logo" href="#top">GoalForge</a>
+    <div class="nav-links">
+      <a href="#chat">Chat with Solly</a>
+      <a href="#how">How it works</a>
+      <a href="#stages">Stages</a>
+      <a href="#loved">Stories</a>
+    </div>
+    <div class="nav-right">
+      <button class="theme-btn" id="themeBtn" aria-label="Toggle theme"></button>
+      <a class="btn-primary nav-cta" href="#cta">Let's plan</a>
+      <button class="nav-burger" id="navBurger" aria-label="Open menu" aria-expanded="false" aria-controls="navMenu"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+  <div class="nav-menu" id="navMenu">
+    <a class="m-link" href="#chat">Chat with Solly</a>
+    <a class="m-link" href="#how">How it works</a>
+    <a class="m-link" href="#stages">Stages</a>
+    <a class="m-link" href="#loved">Stories</a>
+    <a class="btn-primary" href="#cta">Let's plan</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero" id="top">
+  <div class="container">
+    <div class="solly-stage">
+      <div class="solly-glow"></div>
+      <div class="speech s-main" id="speech">Hi! I'm <b>Solly</b> 👋</div>
+      <div class="solly-hero-wrap" id="sollyHero" role="img" aria-label="Solly the star mascot, waving hello"><img class="solly-idle" src="assets/Solly.png" alt="Solly the star mascot" /><video class="solly-clip" id="sollyVideo" src="assets/solly-greet.webm" muted playsinline preload="auto" aria-hidden="true"></video></div>
+    </div>
+    <h1 class="hero-title">Meet Solly — your <em>goal-getting</em> buddy.</h1>
+    <p class="hero-sub">Tell Solly what you're trying to do. Together you'll break it into a friendly plan, knock out one small step a day, and actually keep the streak going — with a little encouragement whenever you need it.</p>
+    <div class="hero-cta">
+      <a class="btn-primary btn-lg" href="#chat">Say hi to Solly</a>
+      <a class="btn-ghost" href="#how">See how it works</a>
+    </div>
+    <div class="hero-meta">
+      <span class="av"><i style="background:linear-gradient(135deg,var(--accent),var(--gold))"></i><i style="background:linear-gradient(135deg,var(--green),var(--accent))"></i><i style="background:linear-gradient(135deg,var(--indigo),var(--rose))"></i></span>
+      Join thousands turning “someday” into done.
+    </div>
+  </div>
+  <div class="marquee">
+    <div class="marquee-track" id="mq"></div>
+  </div>
+</header>
+
+<!-- CHAT -->
+<div class="chat-shell" id="chat">
+  <div class="chat-card reveal">
+    <div class="chat-head">
+      <img src="assets/Solly.png" alt="Solly" />
+      <div style="flex:1"><b>Solly</b><div class="stat">your goal buddy · online</div></div>
+    </div>
+    <div class="chat-body" id="chatBody">
+      <div class="msg them">Hey! 👋 I'm Solly. What's something you've been wanting to do but keep putting off?</div>
+    </div>
+    <div class="chat-suggest" id="suggest">
+      <span>I want to get fit</span>
+      <span>Learn to play guitar</span>
+      <span>I keep procrastinating</span>
+    </div>
+    <div class="chat-foot">
+      <input class="chat-input" id="chatInput" placeholder="👆 Tap a prompt above to chat with Solly" readonly tabindex="-1" aria-readonly="true" autocomplete="off" />
+      <button class="chat-send" id="chatSend" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<section class="stats-band">
+  <div class="container">
+    <div class="stats reveal">
+      <div class="stat"><div class="n" data-to="12400" data-suf="+">0</div><div class="l">Goals forged</div></div>
+      <div class="stat"><div class="n" data-to="94" data-suf="%">0</div><div class="l">Keep their streak</div></div>
+      <div class="stat"><div class="n" data-to="6" data-suf="">0</div><div class="l">Brightness stages</div></div>
+      <div class="stat"><div class="n" data-to="60" data-suf="s">0</div><div class="l">To your first goal</div></div>
+    </div>
+    <div class="ph-note reveal">✦ Illustrative figures — replace with real metrics before launch</div>
+  </div>
+</section>
+
+<!-- HOW -->
+<section id="how">
+  <div class="container">
+    <div class="reveal">
+      <div class="sec-eyebrow">How it works</div>
+      <h2 class="sec-title">No willpower required. Just <em>show up</em> and chat.</h2>
+    </div>
+    <div class="deck-wrap reveal">
+      <div class="deck-stage" id="deck" role="group" aria-label="How it works — three steps, drag or click to shuffle">
+        <article class="deck-card" data-step="0" style="--cc:var(--accent)">
+          <div class="dc-top"><span class="dc-n">01</span><span class="dc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span></div>
+          <h3>Tell Solly your goal</h3>
+          <p>Just talk to it like a friend. Solly asks a couple of gentle questions to really get what you're after.</p>
+          <div class="dc-demo dc-chat">
+            <span class="dc-bub them">What have you been meaning to do?</span>
+            <span class="dc-bub you">Finally run a 5K 🏃</span>
+          </div>
+        </article>
+        <article class="deck-card" data-step="1" style="--cc:var(--green)">
+          <div class="dc-top"><span class="dc-n">02</span><span class="dc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span></div>
+          <h3>Get a doable plan</h3>
+          <p>It breaks the big scary goal into small daily steps you can actually finish between everything else.</p>
+          <div class="dc-demo dc-list">
+            <span class="dc-task done"><i></i>Walk 15 minutes</span>
+            <span class="dc-task done"><i></i>Jog one block, walk one</span>
+            <span class="dc-task"><i></i>Run 5 minutes straight</span>
+          </div>
+        </article>
+        <article class="deck-card" data-step="2" style="--cc:var(--indigo)">
+          <div class="dc-top"><span class="dc-n">03</span><span class="dc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg></span></div>
+          <h3>Keep each other going</h3>
+          <p>Solly checks in, cheers your wins, and helps you bounce back on the off days. You're never doing it alone.</p>
+          <div class="dc-demo dc-streak">
+            <span class="dc-flame">🔥 7-day streak</span>
+            <span class="dc-pts">+120 star points</span>
+          </div>
+        </article>
+      </div>
+      <div class="deck-foot">
+        <div class="deck-dots" id="deckDots"></div>
+        <button class="deck-next" id="deckNext" aria-label="Shuffle to next step">Shuffle<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7"/></svg></button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MEET SOLLY -->
+<section class="meet" id="solly">
+  <div class="container">
+    <div class="meet-grid">
+      <div class="meet-art"><div class="meet-solly" id="meetSolly" role="img" aria-label="Solly the star mascot"><div class="solly-faces" id="sollyFaces"><img class="face on" src="assets/solly-wink.svg" alt="Solly winking" /><img class="face" src="assets/solly-sunglasses.svg" alt="Solly wearing sunglasses" /><img class="face" src="assets/solly-sussy.svg" alt="Solly grinning" /><img class="face" src="assets/solly-kiss.svg" alt="Solly blowing a kiss" /><img class="face" src="assets/solly-tired.svg" alt="Solly looking tired" /><img class="face" src="assets/solly-sad.svg" alt="Solly looking sad" /><img class="face" src="assets/solly-gangster.svg" alt="Solly looking tough" /></div></div></div>
+      <div class="reveal">
+        <h2>Solly's the buddy who <em>remembers</em>.</h2>
+        <div class="meet-list">
+          <div class="meet-item"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8V4l8 8-8 8v-4H4V8z"/></svg></div><div><h4>Knows where you're at</h4><p>Solly remembers your goals, your streak, and your rough days — so its nudges always feel personal.</p></div></div>
+          <div class="meet-item"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div><h4>Nudges, never nags</h4><p>A warm check-in when you stall, a high-five when you ship. Encouragement tuned to how you're doing.</p></div></div>
+          <div class="meet-item"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15 9 22 9.3 16.5 14 18.5 21 12 17 5.5 21 7.5 14 2 9.3 9 9 12 2"/></svg></div><div><h4>Celebrates the small stuff</h4><p>Every finished task earns star points and brightens your goal. Tiny wins, real momentum.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STAGES -->
+<section id="stages">
+  <div class="container">
+    <div class="reveal">
+      <div class="sec-eyebrow">The brightness system</div>
+      <h2 class="sec-title">Your goal gets <em>brighter</em> every day you show up.</h2>
+      <p class="sec-sub">Show up, check a task, keep the streak — and watch your goal climb from a faint Speck all the way to Celestial.</p>
+    </div>
+    <div class="journey reveal" id="journey"></div>
+  </div>
+</section>
+
+<!-- STORIES -->
+<section id="loved">
+  <div class="container">
+    <div class="reveal">
+      <div class="sec-eyebrow">Real stories</div>
+      <h2 class="sec-title">Goals that finally <em>stuck</em>.</h2>
+    </div>
+    <div class="quotes">
+      <div class="quote reveal"><div class="stars">★★★★★</div><p>“It feels less like an app and more like a friend texting to check in. I've never kept a habit this long.”</p><div class="who"><div class="av" style="background:linear-gradient(135deg,var(--accent),var(--gold))"></div><div><b>Priya N.</b><span>Nurse</span></div></div></div>
+      <div class="quote reveal"><div class="stars">★★★★★</div><p>“Solly broke ‘learn guitar' into ten-minute days. Eight weeks in and I can actually play songs.”</p><div class="who"><div class="av" style="background:linear-gradient(135deg,var(--green),var(--accent))"></div><div><b>Marco D.</b><span>Student</span></div></div></div>
+      <div class="quote reveal"><div class="stars">★★★★★</div><p>“The gentle nudges got me through the slump. I didn't quit this time — that's a first.”</p><div class="who"><div class="av" style="background:linear-gradient(135deg,var(--indigo),var(--rose))"></div><div><b>Tara L.</b><span>Freelancer</span></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="final" id="cta">
+  <div class="container">
+    <div class="final-card reveal">
+      <div class="solly-hero-wrap" id="sollyCta" role="img" aria-label="Solly waving"><video class="solly-clip" id="sollyIdleVideo" src="assets/solly-hero.webm" muted playsinline preload="auto" aria-hidden="true"></video><svg class="solly-svg" viewBox="0 0 497 497" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<path d="M419.16 260.1C417.627 259.947 415.9 260.167 413.98 260.76C406.64 263.01 397.24 265.07 389.99 267.59C381.363 270.583 374.467 272.867 369.3 274.44C365.32 275.65 361.92 277.52 360.03 280.56C352.32 292.95 343.24 305.11 331.72 313.98C323.067 320.653 314.737 325.793 306.73 329.4C279.357 341.733 250.66 343.353 220.64 334.26C210.473 331.187 200.307 326.247 190.14 319.44C181.227 313.473 174.487 307.73 169.92 302.21C166.69 298.29 161.53 292.47 158.45 287.39C155.65 282.77 153.32 279.163 151.46 276.57C150.934 275.833 150.137 275.33 149.24 275.17C145.25 274.46 141.68 273.76 138.67 272.65C127.73 268.65 116.86 265.363 106.06 262.79C103.45 262.17 99.0601 260.47 95.2501 259.99C92.9501 258.317 91.2401 256.047 90.1201 253.18C88.2601 246.72 89.1701 241.327 92.8501 237C94.7434 234.773 98.2067 232.44 103.24 230C123.733 220.053 139.82 212.19 151.5 206.41C151.533 206.397 151.559 206.372 151.574 206.338C151.589 206.305 151.591 206.266 151.58 206.23C146.233 186.217 141.43 169.223 137.17 155.25C135.177 148.703 134.353 144.06 134.7 141.32C135.79 132.65 143.57 126.1 152.4 126.72C154.32 126.86 157.217 127.54 161.09 128.76C180.963 135.013 198.063 140.39 212.39 144.89C212.54 144.935 212.701 144.928 212.846 144.87C212.992 144.812 213.113 144.706 213.19 144.57C223.257 126.297 232.26 109.76 240.2 94.9601C242.707 90.2801 244.917 87.2367 246.83 85.8301C254.09 80.4801 265.44 81.5801 270.55 89.6901C272.21 92.3301 273.86 95.1767 275.5 98.2301C282.74 111.697 291.067 127.08 300.48 144.38C300.554 144.513 300.671 144.617 300.812 144.673C300.952 144.73 301.107 144.736 301.25 144.69C313.963 140.797 330.713 135.69 351.5 129.37C357.993 127.397 362.517 126.597 365.07 126.97C369.777 127.657 373.577 130.097 376.47 134.29C379.47 138.637 380.19 143.607 378.63 149.2C374.35 164.533 368.907 183.45 362.3 205.95C362.255 206.11 362.271 206.279 362.343 206.427C362.415 206.575 362.538 206.69 362.69 206.75C372.43 210.79 383.07 216.66 393.74 221.79C406.213 227.783 413.42 231.32 415.36 232.4C422.327 236.28 425.41 242.31 424.61 250.49C424.35 253.13 422.533 256.333 419.16 260.1ZM203.29 174.06C207.1 172.77 210.45 172.99 214.37 173.31C214.996 173.361 215.624 173.23 216.179 172.932C216.734 172.634 217.193 172.182 217.5 171.63C219.247 168.477 218.64 166.117 215.68 164.55C215.374 164.382 215.043 164.264 214.7 164.2C209.847 163.293 205.05 163.64 200.31 165.24C195.57 166.84 191.547 169.47 188.24 173.13C188 173.39 187.805 173.687 187.66 174.01C186.253 177.043 187.203 179.287 190.51 180.74C191.089 180.994 191.728 181.076 192.351 180.976C192.973 180.877 193.553 180.6 194.02 180.18C196.94 177.55 199.48 175.34 203.29 174.06ZM310.8 174.34C314.62 175.69 317.15 177.96 320.05 180.65C320.516 181.079 321.096 181.365 321.722 181.473C322.348 181.581 322.993 181.507 323.58 181.26C326.927 179.847 327.913 177.6 326.54 174.52C326.402 174.195 326.213 173.895 325.98 173.63C322.7 169.897 318.68 167.19 313.92 165.51C309.167 163.83 304.34 163.41 299.44 164.25C299.094 164.31 298.76 164.425 298.45 164.59C295.443 166.123 294.797 168.49 296.51 171.69C296.812 172.252 297.27 172.716 297.826 173.024C298.383 173.333 299.017 173.474 299.65 173.43C303.59 173.17 306.98 172.99 310.8 174.34ZM234.83 229.81C234.823 225.803 234.73 223.127 234.55 221.78C232.74 208.07 222.8 197.75 208.49 197.78C194.18 197.81 184.28 208.17 182.53 221.89C182.357 223.237 182.273 225.913 182.28 229.92C182.287 233.933 182.38 236.61 182.56 237.95C184.37 251.66 194.31 261.98 208.62 261.95C222.94 261.92 232.83 251.56 234.58 237.84C234.753 236.5 234.837 233.823 234.83 229.81ZM279.16 229.95C279.173 233.963 279.27 236.64 279.45 237.98C281.27 251.7 291.22 262.01 305.54 261.97C319.85 261.93 329.74 251.56 331.49 237.84C331.663 236.493 331.743 233.813 331.73 229.8C331.723 225.793 331.63 223.117 331.45 221.77C329.62 208.06 319.68 197.74 305.36 197.78C291.04 197.82 281.15 208.19 279.4 221.91C279.233 223.257 279.153 225.937 279.16 229.95ZM256.27 281.85C264.3 282.12 275.25 279.24 276.58 269.7C276.621 269.382 276.604 269.057 276.53 268.74C275.937 266.127 274.177 264.987 271.25 265.32C267.47 265.74 261.87 268.1 256.74 267.93C251.62 267.76 246.19 265.03 242.45 264.35C239.55 263.823 237.713 264.843 236.94 267.41C236.846 267.723 236.808 268.048 236.83 268.37C237.52 277.97 248.25 281.58 256.27 281.85Z" fill="#FA8215"></path>
+<path d="M203.29 174.06C199.48 175.34 196.94 177.55 194.02 180.18C193.553 180.6 192.973 180.877 192.351 180.976C191.728 181.075 191.089 180.993 190.51 180.74C187.203 179.287 186.253 177.043 187.66 174.01C187.804 173.687 188 173.39 188.24 173.13C191.547 169.47 195.57 166.84 200.31 165.24C205.05 163.64 209.847 163.293 214.7 164.2C215.043 164.263 215.374 164.382 215.68 164.55C218.64 166.117 219.247 168.477 217.5 171.63C217.193 172.182 216.734 172.634 216.179 172.932C215.624 173.23 214.996 173.361 214.37 173.31C210.45 172.99 207.1 172.77 203.29 174.06Z" fill="#D05D02"></path>
+<path d="M313.92 165.51C318.68 167.19 322.7 169.897 325.98 173.63C326.213 173.895 326.402 174.195 326.54 174.52C327.913 177.6 326.927 179.847 323.58 181.26C322.993 181.507 322.348 181.581 321.722 181.473C321.096 181.365 320.516 181.079 320.05 180.65C317.15 177.96 314.62 175.69 310.8 174.34C306.98 172.99 303.59 173.17 299.65 173.43C299.017 173.474 298.383 173.333 297.826 173.024C297.27 172.716 296.812 172.252 296.51 171.69C294.797 168.49 295.443 166.123 298.45 164.59C298.76 164.425 299.094 164.31 299.44 164.25C304.34 163.41 309.167 163.83 313.92 165.51Z" fill="#D05D02"></path>
+<path d="M234.83 229.81C234.837 233.823 234.753 236.5 234.58 237.84C232.83 251.56 222.94 261.92 208.62 261.95C194.31 261.98 184.37 251.66 182.56 237.95C182.38 236.61 182.287 233.933 182.28 229.92C182.273 225.913 182.357 223.237 182.53 221.89C184.28 208.17 194.18 197.81 208.49 197.78C222.8 197.75 232.74 208.07 234.55 221.78C234.73 223.127 234.823 225.803 234.83 229.81ZM200.88 224.42C200.62 230.72 200.587 234.647 200.78 236.2C201.6 242.79 206.38 248.43 213.21 249.02C219.89 249.59 226.01 244.5 227.68 238.3C228.45 235.45 227.94 230.86 228.08 227.01C228.28 221.14 227.13 217.2 222.77 213.78C218.637 210.52 214.07 209.887 209.07 211.88C208.984 211.915 208.907 211.97 208.847 212.04C208.787 212.11 208.744 212.194 208.723 212.284C208.703 212.374 208.704 212.467 208.728 212.555C208.752 212.643 208.797 212.724 208.86 212.79C212.073 216.203 212.41 219.493 209.87 222.66C208.4 224.49 204.4 225.56 202.39 224.32C202.017 224.087 201.723 223.95 201.51 223.91C201.434 223.897 201.357 223.901 201.283 223.92C201.209 223.94 201.139 223.975 201.08 224.023C201.02 224.071 200.972 224.131 200.937 224.2C200.903 224.268 200.883 224.343 200.88 224.42Z" fill="#F5F6F8"></path>
+<path d="M305.36 197.78C319.68 197.74 329.62 208.06 331.45 221.77C331.63 223.117 331.723 225.793 331.73 229.8C331.743 233.813 331.663 236.493 331.49 237.84C329.74 251.56 319.85 261.93 305.54 261.97C291.22 262.01 281.27 251.7 279.45 237.98C279.27 236.64 279.173 233.963 279.16 229.95C279.153 225.937 279.233 223.257 279.4 221.91C281.15 208.19 291.04 197.82 305.36 197.78ZM286.03 224.24C285.777 230.54 285.747 234.467 285.94 236.02C286.77 242.61 291.56 248.24 298.39 248.82C305.07 249.38 311.18 244.28 312.84 238.08C313.61 235.23 313.09 230.64 313.22 226.79C313.42 220.92 312.26 216.99 307.9 213.57C303.76 210.317 299.193 209.69 294.2 211.69C294.114 211.725 294.037 211.78 293.977 211.85C293.917 211.92 293.874 212.004 293.854 212.094C293.833 212.183 293.834 212.276 293.858 212.365C293.882 212.453 293.927 212.534 293.99 212.6C297.203 216.013 297.543 219.303 295.01 222.47C293.54 224.3 289.55 225.38 287.54 224.14C287.167 223.907 286.873 223.77 286.66 223.73C286.584 223.717 286.507 223.72 286.433 223.74C286.359 223.759 286.289 223.794 286.23 223.843C286.17 223.891 286.122 223.951 286.087 224.02C286.053 224.088 286.033 224.163 286.03 224.24Z" fill="#F5F6F8"></path>
+<path d="M286.66 223.73C286.873 223.77 287.167 223.907 287.54 224.14C289.55 225.38 293.54 224.3 295.01 222.47C297.543 219.303 297.203 216.013 293.99 212.6C293.927 212.534 293.882 212.453 293.858 212.365C293.834 212.276 293.833 212.183 293.853 212.094C293.874 212.004 293.917 211.92 293.977 211.85C294.037 211.78 294.114 211.725 294.2 211.69C299.193 209.69 303.76 210.317 307.9 213.57C312.26 216.99 313.42 220.92 313.22 226.79C313.09 230.64 313.61 235.23 312.84 238.08C311.18 244.28 305.07 249.38 298.39 248.82C291.56 248.24 286.77 242.61 285.94 236.02C285.747 234.467 285.777 230.54 286.03 224.24C286.033 224.163 286.053 224.088 286.087 224.02C286.121 223.951 286.17 223.891 286.23 223.843C286.289 223.794 286.359 223.759 286.433 223.74C286.507 223.721 286.584 223.717 286.66 223.73Z" fill="#D05D02"></path>
+<path d="M200.88 224.42C200.883 224.343 200.903 224.268 200.937 224.2C200.972 224.131 201.02 224.071 201.08 224.023C201.139 223.974 201.209 223.939 201.283 223.92C201.357 223.9 201.434 223.897 201.51 223.91C201.723 223.95 202.017 224.087 202.39 224.32C204.4 225.56 208.4 224.49 209.87 222.66C212.41 219.493 212.073 216.203 208.86 212.79C208.797 212.724 208.752 212.643 208.728 212.555C208.704 212.466 208.703 212.373 208.723 212.284C208.744 212.194 208.787 212.11 208.847 212.04C208.907 211.97 208.984 211.915 209.07 211.88C214.07 209.887 218.637 210.52 222.77 213.78C227.13 217.2 228.28 221.14 228.08 227.01C227.94 230.86 228.45 235.45 227.68 238.3C226.01 244.5 219.89 249.59 213.21 249.02C206.38 248.43 201.6 242.79 200.78 236.2C200.587 234.647 200.62 230.72 200.88 224.42Z" fill="#D05D02"></path>
+<path d="M419.16 260.1C400.44 270.813 381.517 281.32 362.39 291.62C361.39 292.16 360.407 292.973 359.44 294.06C359.175 294.358 358.956 294.692 358.79 295.05L355.39 302.52L345.56 318.92C345.165 319.578 344.926 320.313 344.86 321.07L339.33 387.53C337.663 392.003 334.807 395.507 330.76 398.04C326.93 400.45 321.18 400.38 316.96 399.29C315.633 398.95 313.433 397.737 310.36 395.65C305.313 392.217 300.467 388.937 295.82 385.81L285.81 378.61C285.26 371 286.2 363.62 291.75 357.98C291.829 357.9 291.88 357.796 291.894 357.684C291.908 357.573 291.884 357.46 291.827 357.362C291.77 357.265 291.683 357.19 291.578 357.148C291.474 357.106 291.358 357.1 291.25 357.13C284.7 358.89 278.44 360.97 271.52 361.94C268.84 362.313 266.14 362.713 263.42 363.14C259.94 362.42 256.173 362.23 252.12 362.57C251.824 362.596 251.539 362.696 251.29 362.86L245.32 366.79L246.91 363.1C246.944 363.023 246.958 362.939 246.953 362.855C246.948 362.771 246.923 362.689 246.88 362.617C246.837 362.545 246.777 362.484 246.706 362.439C246.635 362.394 246.554 362.367 246.47 362.36C241.56 361.94 236.55 361.27 231.95 359.78C229.063 358.84 225.867 357.853 222.36 356.82C222.287 356.8 222.208 356.804 222.137 356.83C222.065 356.856 222.003 356.904 221.961 356.967C221.919 357.029 221.898 357.103 221.901 357.177C221.904 357.251 221.932 357.322 221.98 357.38C226.553 363.153 229.113 369.9 229.66 377.62L218.92 385.08C213.527 388.76 208.14 392.51 202.76 396.33C199.7 398.5 197.85 399.03 194.41 399.63C185.65 401.16 179.26 396.53 175.34 388.93C174.627 386.997 174.22 385.46 174.12 384.32C173.927 382.173 173.55 376.733 172.99 368C172.63 362.313 172.21 356.883 171.73 351.71C170.743 341.15 169.957 331.373 169.37 322.38C169.25 320.57 168.51 318.47 167.34 316.86C162.313 309.98 158.383 302.853 155.55 295.48C155.104 294.317 154.261 293.35 153.17 292.75C134.497 282.537 116.313 272.413 98.62 262.38C97.7267 261.873 96.6033 261.077 95.25 259.99C99.06 260.47 103.45 262.17 106.06 262.79C116.86 265.363 127.73 268.65 138.67 272.65C141.68 273.76 145.25 274.46 149.24 275.17C150.137 275.33 150.934 275.833 151.46 276.57C153.32 279.163 155.65 282.77 158.45 287.39C161.53 292.47 166.69 298.29 169.92 302.21C174.487 307.73 181.227 313.473 190.14 319.44C200.307 326.247 210.473 331.187 220.64 334.26C250.66 343.353 279.357 341.733 306.73 329.4C314.737 325.793 323.067 320.653 331.72 313.98C343.24 305.11 352.32 292.95 360.03 280.56C361.92 277.52 365.32 275.65 369.3 274.44C374.467 272.867 381.363 270.583 389.99 267.59C397.24 265.07 406.64 263.01 413.98 260.76C415.9 260.167 417.627 259.947 419.16 260.1Z" fill="#EF7214"></path>
+<path d="M256.74 267.93C261.87 268.1 267.47 265.74 271.25 265.32C274.177 264.987 275.937 266.127 276.53 268.74C276.604 269.057 276.621 269.382 276.58 269.7C275.25 279.24 264.3 282.12 256.27 281.85C248.25 281.58 237.52 277.97 236.83 268.37C236.808 268.048 236.846 267.723 236.94 267.41C237.713 264.843 239.55 263.823 242.45 264.35C246.19 265.03 251.62 267.76 256.74 267.93ZM248.49 274.55L239.56 271.82C239.528 271.81 239.494 271.813 239.464 271.828C239.434 271.843 239.411 271.869 239.4 271.9L239.38 271.96C239.325 272.129 239.387 272.332 239.561 272.558C239.736 272.783 240.02 273.027 240.397 273.274C240.774 273.521 241.237 273.767 241.76 273.998C242.282 274.229 242.853 274.441 243.44 274.62L243.71 274.7C244.295 274.879 244.885 275.023 245.446 275.123C246.006 275.223 246.527 275.278 246.977 275.285C247.428 275.291 247.799 275.249 248.071 275.161C248.342 275.073 248.509 274.94 248.56 274.77L248.58 274.71C248.589 274.677 248.585 274.641 248.568 274.611C248.551 274.581 248.523 274.559 248.49 274.55Z" fill="#F5F6F8"></path>
+<path d="M248.49 274.55C248.523 274.559 248.551 274.581 248.568 274.611C248.585 274.641 248.589 274.677 248.58 274.71L248.56 274.77C248.509 274.94 248.342 275.073 248.071 275.161C247.799 275.249 247.428 275.291 246.977 275.285C246.527 275.278 246.007 275.223 245.446 275.123C244.885 275.023 244.295 274.879 243.71 274.7L243.44 274.62C242.853 274.441 242.282 274.229 241.76 273.998C241.237 273.767 240.774 273.521 240.397 273.274C240.02 273.027 239.736 272.783 239.561 272.558C239.387 272.332 239.325 272.129 239.38 271.96L239.4 271.9C239.411 271.869 239.434 271.843 239.464 271.828C239.494 271.813 239.528 271.81 239.56 271.82L248.49 274.55Z" fill="#B9C1CB"></path>
+<path d="M245.32 366.79L229.66 377.62C229.113 369.9 226.553 363.153 221.98 357.38C221.932 357.323 221.904 357.251 221.901 357.177C221.898 357.103 221.919 357.029 221.961 356.967C222.003 356.904 222.065 356.856 222.137 356.83C222.208 356.804 222.287 356.8 222.36 356.82C225.867 357.853 229.063 358.84 231.95 359.78C236.55 361.27 241.56 361.94 246.47 362.36C246.554 362.367 246.635 362.394 246.706 362.439C246.777 362.484 246.837 362.545 246.88 362.617C246.923 362.69 246.948 362.771 246.953 362.855C246.958 362.939 246.944 363.023 246.91 363.1L245.32 366.79Z" fill="#D05D02"></path>
+<path d="M285.81 378.61L263.42 363.14C266.14 362.713 268.84 362.313 271.52 361.94C278.44 360.97 284.7 358.89 291.25 357.13C291.358 357.1 291.474 357.106 291.578 357.148C291.683 357.19 291.77 357.265 291.827 357.363C291.884 357.46 291.908 357.573 291.894 357.684C291.88 357.796 291.829 357.9 291.75 357.98C286.2 363.62 285.26 371 285.81 378.61Z" fill="#D05D02"></path>
+</svg></div>
+      <h2>Ready when you are.<br/>Let's plan <em>something good</em>.</h2>
+      <p>Your first goal takes about a minute. Free to start, and Solly's here the whole way.</p>
+      <div class="hero-cta">
+        <a class="btn-primary btn-lg" href="#chat">Say hi to Solly</a>
+        <a class="btn-ghost" href="#how">How it works</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="foot-in">
+      <a class="logo" href="#top">GoalForge</a>
+      <div class="foot-links">
+        <a href="#chat">Chat</a>
+        <a href="#how">How it works</a>
+        <a href="#stages">Stages</a>
+        <a href="#cta">Get started</a>
+      </div>
+    </div>
+    <div class="foot-copy">© 2026 GoalForge · Big goals, one small step at a time — with Solly.</div>
+  </div>
+</footer>
+</div>
+
+<div class="switcher" hidden style="display:none">
+</div>
+
+<script>
+const root = document.documentElement;
+const TKEY = 'gf-landing-theme';
+const saved = localStorage.getItem(TKEY);
+if (saved) root.setAttribute('data-theme', saved);
+const sun = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+const moon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+const themeBtn = document.getElementById('themeBtn');
+function syncTheme(){ themeBtn.innerHTML = root.getAttribute('data-theme') === 'dark' ? moon : sun; }
+syncTheme();
+themeBtn.addEventListener('click', () => { const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; root.setAttribute('data-theme', next); localStorage.setItem(TKEY, next); syncTheme(); });
+
+/* mobile hamburger menu */
+(function(){
+  const burger = document.getElementById('navBurger');
+  const menu = document.getElementById('navMenu');
+  if(!burger || !menu) return;
+  let open = false, hideTimer = 0;
+  function setOpen(v){
+    open = v;
+    burger.classList.toggle('open', v);
+    burger.setAttribute('aria-expanded', v ? 'true' : 'false');
+    burger.setAttribute('aria-label', v ? 'Close menu' : 'Open menu');
+    clearTimeout(hideTimer);
+    if(v){ menu.classList.add('open'); requestAnimationFrame(() => menu.classList.add('show')); }
+    else { menu.classList.remove('show'); hideTimer = setTimeout(() => { if(!open) menu.classList.remove('open'); }, 260); }
+  }
+  burger.addEventListener('click', () => setOpen(!open));
+  menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => setOpen(false)));
+  document.addEventListener('click', (e) => { if(open && !menu.contains(e.target) && !burger.contains(e.target)) setOpen(false); });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && open) setOpen(false); });
+  addEventListener('resize', () => { if(innerWidth > 760 && open) setOpen(false); });
+})();
+
+const nav = document.getElementById('nav');
+addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 12));
+
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ===== Solly: build wave + blink groups, interactions ===== */
+const NS = 'http://www.w3.org/2000/svg';
+function setupSolly(svg){
+  if(!svg) return;
+  const body = document.createElementNS(NS, 'g'); body.setAttribute('class', 's-body');
+  while (svg.firstChild) body.appendChild(svg.firstChild);
+  svg.appendChild(body);
+  const paths = [...body.querySelectorAll('path')];
+  function wrap(cls, starts){
+    const sel = paths.filter(p => { const d = p.getAttribute('d') || ''; return starts.some(s => d.startsWith(s)); });
+    if(!sel.length) return;
+    const g = document.createElementNS(NS, 'g'); g.setAttribute('class', cls);
+    body.insertBefore(g, sel[0]);
+    sel.forEach(p => g.appendChild(p));
+  }
+  wrap('s-eye s-eye-l', ['M234.83', 'M200.88 224.42']);
+  wrap('s-eye s-eye-r', ['M305.36', 'M286.66 223.73']);
+}
+document.querySelectorAll('.solly-svg').forEach(setupSolly);
+
+function waveAll(){ document.querySelectorAll('.s-body').forEach(b => { b.classList.remove('waving'); void b.offsetWidth; b.classList.add('waving'); }); }
+function blinkAll(){ document.querySelectorAll('.s-eye').forEach(e => { e.classList.remove('blink'); void e.offsetWidth; e.classList.add('blink'); }); }
+document.querySelectorAll('.s-body').forEach(b => b.addEventListener('animationend', () => b.classList.remove('waving')));
+document.querySelectorAll('.s-eye').forEach(e => e.addEventListener('animationend', () => e.classList.remove('blink')));
+
+const SPEECH = ['Let\'s do <b>one small thing</b> today ✨','You\'ve got a goal in you 💪','I\'ll keep your <b>streak</b> alive 🔥','Tiny steps, big glow ⭐','Ready when you are! 👋'];
+let si = 0;
+const speech = document.getElementById('speech');
+function setupHero(id){
+  const wrap = document.getElementById(id); if(!wrap) return;
+  const isCanvas = !!wrap.querySelector('.solly-clip');
+  wrap.addEventListener('mouseenter', () => { if(isCanvas) greet(); else waveAll(); });
+  wrap.addEventListener('click', () => {
+    if(isCanvas){ greet(); }
+    else { waveAll(); blinkAll(); wrap.classList.remove('hop'); void wrap.offsetWidth; wrap.classList.add('hop'); }
+    if(speech){ si = (si + 1) % SPEECH.length; speech.innerHTML = SPEECH[si]; speech.classList.remove('bump'); void speech.offsetWidth; speech.classList.add('bump'); setTimeout(() => speech.classList.remove('bump'), 280); }
+  });
+  wrap.addEventListener('animationend', e => { if(e.animationName === 'sollyHop') wrap.classList.remove('hop'); });
+}
+setupHero('sollyHero');
+
+/* ===== play a transparent webm clip in place of the static Solly ===== */
+function makeKeyer(videoId, _canvasId, START, END, onEnd){
+  const video = document.getElementById(videoId);
+  if(!video) return { play(){}, stop(){} };
+  const wrap = video.closest('.solly-hero-wrap');
+  let playing = false, raf = 0, ready = video.readyState >= 2;
+  function monitor(){ if(!playing) return; if(video.currentTime >= END || video.ended){ stop(true); } else { raf = requestAnimationFrame(monitor); } }
+  function begin(){ if(wrap) wrap.classList.add('greeting'); const pr = video.play(); if(pr && pr.catch) pr.catch(()=>{}); raf = requestAnimationFrame(monitor); }
+  function play(){
+    if(playing) return; playing = true;
+    const go = () => {
+      if(Math.abs(video.currentTime - START) < 0.06){ begin(); }
+      else { const onSeek = () => { video.removeEventListener('seeked', onSeek); begin(); }; video.addEventListener('seeked', onSeek); try { video.currentTime = START; } catch(e){ begin(); } }
+    };
+    if(ready) go(); else video.addEventListener('loadeddata', () => { ready = true; go(); }, { once: true });
+  }
+  function stop(fromEnd){ playing = false; cancelAnimationFrame(raf); video.pause(); if(wrap) wrap.classList.remove('greeting'); if(fromEnd && onEnd) onEnd(); }
+  video.addEventListener('loadeddata', () => { ready = true; });
+  return { play, stop: function(){ stop(false); } };
+}
+function greet(){ if(window.__sollyGreet) window.__sollyGreet(); }
+
+/* hero greeting (upscaled clip) */
+(function(){
+  const heroKeyer = makeKeyer('sollyVideo', null, 0.04, 4.0);
+  window.__sollyGreet = heroKeyer.play;
+  const v = document.getElementById('sollyVideo');
+  if(v && !matchMedia('(prefers-reduced-motion: reduce)').matches){
+    const kick = () => setTimeout(heroKeyer.play, 850);
+    if(v.readyState >= 2) kick(); else v.addEventListener('loadeddata', kick, { once: true });
+  }
+})();
+
+/* CTA Solly: jump on click; after idle, idle-clip plays (no clicks during); no hover shake */
+(function(){
+  const wrap = document.getElementById('sollyCta');
+  if(!wrap) return;
+  const reduceM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let idlePlaying = false, idleTimer = 0, inView = false;
+  const keyer = makeKeyer('sollyIdleVideo', null, 0.04, 99, function(){ idlePlaying = false; schedule(); });
+  function schedule(){ clearTimeout(idleTimer); if(reduceM || !inView) return; idleTimer = setTimeout(playIdle, 5200); }
+  function playIdle(){ if(idlePlaying || !inView) return; idlePlaying = true; keyer.play(); }
+  wrap.addEventListener('click', function(){
+    if(idlePlaying) return;
+    wrap.classList.remove('hop'); void wrap.offsetWidth; wrap.classList.add('hop');
+    schedule();
+  });
+  wrap.addEventListener('animationend', function(e){ if(e.animationName === 'sollyHop') wrap.classList.remove('hop'); });
+  const io2 = new IntersectionObserver(function(es){ es.forEach(function(e){ inView = e.isIntersecting; if(inView){ schedule(); } else { clearTimeout(idleTimer); } }); }, { threshold: 0.4 });
+  io2.observe(wrap);
+})();
+
+/* ===== Meet Solly: wink + scroll-driven half-circle ===== */
+(function(){
+  const el = document.getElementById('meetSolly');
+  const section = document.getElementById('solly');
+  if(!el || !section) return;
+  const reduceM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* idle wink now handled by the static winking SVG */
+  let ticking = false;
+  function update(){
+    ticking = false;
+    if(innerWidth <= 820 || reduceM){ el.style.transform = ''; el.style.opacity = ''; return; }
+    const rect = section.getBoundingClientRect();
+    let p = (innerHeight - rect.top) / (innerHeight + rect.height);
+    p = Math.max(0, Math.min(1, p));
+    const theta = (p - 0.5) * Math.PI;
+    const R = 132;
+    const dx = Math.cos(theta) * R;
+    const dy = -Math.sin(theta) * R;
+    const rot = (p - 0.5) * 22;
+    el.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${rot.toFixed(1)}deg)`;
+    el.style.opacity = Math.sin(p * Math.PI).toFixed(3);
+  }
+  addEventListener('scroll', () => { if(!ticking){ ticking = true; requestAnimationFrame(update); } }, { passive: true });
+  addEventListener('resize', update);
+  update();
+})();
+
+/* ===== animated background — smooth scroll parallax ===== */
+(function(){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const blobs = Array.prototype.slice.call(document.querySelectorAll('.bg-warm span'));
+  if(!blobs.length) return;
+  const F = [0.14, -0.09, 0.20, -0.16, 0.07];
+  const cur = blobs.map(function(){ return 0; });
+  function frame(){
+    const sy = window.scrollY || window.pageYOffset || 0;
+    for(let i=0;i<blobs.length;i++){
+      const target = sy * (F[i] || 0.1);
+      cur[i] += (target - cur[i]) * 0.08;
+      blobs[i].style.translate = '0px ' + cur[i].toFixed(1) + 'px';
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ===== Meet Solly: cross-fading face carousel ===== */
+(function(){
+  const car = document.getElementById('sollyFaces');
+  if(!car) return;
+  const faces = Array.prototype.slice.call(car.querySelectorAll('.face'));
+  if(faces.length < 2 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let i = 0;
+  setInterval(function(){
+    faces[i].classList.remove('on');
+    i = (i + 1) % faces.length;
+    faces[i].classList.add('on');
+  }, 2600);
+})();
+
+/* ===== marquee ===== */
+const phrases = ['Run a half-marathon','Learn Spanish','Read 12 books','Launch the side project','Meditate daily','Get back into running','Write every morning','Save 3 months runway','Play guitar','Hold a 5-min convo'];
+const set = phrases.map(p => `<span>${p}</span>`).join('');
+document.getElementById('mq').innerHTML = set + set;
+
+/* ===== reveal ===== */
+const io = new IntersectionObserver((es) => es.forEach(e => { if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach((el,i) => { el.style.transitionDelay = (i%3)*70 + 'ms'; io.observe(el); });
+
+/* ===== stages ===== */
+const STAGES = [
+  { name:'Speck', pts:0, c:'#9b8d7e', sz:24, lvl:0.12, desc:'A tiny spark' },
+  { name:'Ember', pts:30, c:'#f0617a', sz:30, lvl:0.32, desc:'Warming up' },
+  { name:'Flare', pts:80, c:'#ff6a3d', sz:38, lvl:0.55, desc:'Momentum builds' },
+  { name:'Luminary', pts:175, c:'#e0992a', sz:46, lvl:0.74, desc:'Radiating' },
+  { name:'Nova', pts:350, c:'#f6b73c', sz:54, lvl:0.9, desc:'Brilliant burst' },
+  { name:'Celestial', pts:600, c:'#6d6ae6', sz:62, lvl:1, desc:'Transcendent' },
+];
+const STAR_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1.7l2.72 6.13 6.66.6-5.02 4.44 1.5 6.53L12 16.55 6.14 19.9l1.5-6.53L2.62 8.43l6.66-.6z"/></svg>';
+document.getElementById('journey').innerHTML = STAGES.map(s => `<div class="stage" style="--c:${s.c};--sz:${s.sz}px;--lvl:${s.lvl}"><div class="stage-star">${STAR_SVG}</div><div class="stage-name">${s.name}</div><div class="stage-pts">${s.pts} pts</div><div class="stage-desc">${s.desc}</div></div>`).join('');
+
+/* ===== count-up stats ===== */
+function fmt(n){ return n >= 1000 ? n.toLocaleString() : n; }
+const sio = new IntersectionObserver((es) => es.forEach(e => {
+  if(!e.isIntersecting) return; sio.unobserve(e.target);
+  e.target.querySelectorAll('.n').forEach(el => {
+    const to = +el.dataset.to, suf = el.dataset.suf || ''; const dur = 1400, t0 = performance.now();
+    function tick(t){ const p = Math.min(1, (t-t0)/dur); const e2 = 1 - Math.pow(1-p, 3); el.textContent = fmt(Math.round(to*e2)) + suf; if(p < 1) requestAnimationFrame(tick); }
+    requestAnimationFrame(tick);
+  });
+}), { threshold: 0.4 });
+const statsEl = document.querySelector('.stats'); if(statsEl) sio.observe(statsEl);
+
+/* ===== chat ===== */
+const body = document.getElementById('chatBody'), input = document.getElementById('chatInput'), send = document.getElementById('chatSend');
+function add(text, who){ const d = document.createElement('div'); d.className = 'msg ' + who; d.textContent = text; body.appendChild(d); body.scrollTop = body.scrollHeight; return d; }
+function typing(){ const d = document.createElement('div'); d.className = 'msg them typing'; d.innerHTML = '<i></i><i></i><i></i>'; body.appendChild(d); body.scrollTop = body.scrollHeight; return d; }
+const REPLIES = [
+  { k:['fit','gym','weight','run','exercise','workout','health'], r:"Love it. 💪 Let's keep it tiny to start — what if today was just a 15-minute walk? I'll build a plan that grows from there." },
+  { k:['guitar','music','piano','draw','paint','art','learn','language','spanish','code'], r:"Ooh, fun one! 🎸 Ten focused minutes a day beats a big Sunday cram. Want me to map out week one so it never feels overwhelming?" },
+  { k:['procrastin','lazy','stuck','can\'t','cant','hard','overwhelm','tired','quit'], r:"Totally normal — and not a character flaw. 🙂 Let's shrink it. What's the smallest version of the next step? We'll start there, today." },
+  { k:['book','read','write','study','school'], r:"Nice. 📚 Twenty pages a day adds up fast. I'll track your streak so you can see the momentum building." },
+  { k:['business','project','launch','startup','side','money','save'], r:"Big one — I'm in. 🚀 Let's lock the scope and pick one move you can make this week. Small, shipped, repeat." },
+];
+function replyFor(text){ const lt = text.toLowerCase(); for(const x of REPLIES){ if(x.k.some(k => lt.includes(k))) return x.r; } return "I hear you. 🌟 Let's turn that into a real plan — I'll break it into small daily steps and keep your streak going. Want to start now?"; }
+let busy = false;
+function sendMsg(text){
+  const v = (text || input.value).trim(); if(!v || busy) return;
+  busy = true; add(v, 'you'); input.value = '';
+  const t = typing();
+  setTimeout(() => { t.remove(); add(replyFor(v), 'them'); busy = false; }, 1050);
+}
+send.addEventListener('click', () => sendMsg());
+input.addEventListener('keydown', e => { if(e.key === 'Enter') sendMsg(); });
+document.querySelectorAll('#suggest span').forEach(s => s.addEventListener('click', () => sendMsg(s.textContent)));
+
+/* ===== how-it-works shuffle deck ===== */
+(function(){
+  const stage = document.getElementById('deck');
+  if(!stage) return;
+  const cards = Array.prototype.slice.call(stage.querySelectorAll('.deck-card'));
+  const dotsWrap = document.getElementById('deckDots');
+  const nextBtn = document.getElementById('deckNext');
+  const POS = [
+    { t:'translateY(0px) scale(1)', o:1 },
+    { t:'translateY(24px) scale(0.945)', o:0.9 },
+    { t:'translateY(48px) scale(0.89)', o:0.78 }
+  ];
+  let order = cards.slice();
+  let busy = false, auto = 0, dx = 0, dragging = false, startX = 0, front = null;
+  cards.forEach(function(c, i){ const d = document.createElement('i'); d.addEventListener('click', function(){ goToStep(i); }); dotsWrap.appendChild(d); });
+  const dots = Array.prototype.slice.call(dotsWrap.children);
+  function layout(){
+    order.forEach(function(card, pos){
+      const p = POS[Math.min(pos, POS.length - 1)];
+      card.style.zIndex = String(cards.length - pos);
+      card.style.transform = p.t;
+      card.style.opacity = String(p.o);
+      card.style.pointerEvents = pos === 0 ? 'auto' : 'none';
+    });
+    const fs = +order[0].dataset.step;
+    dots.forEach(function(d, i){ d.classList.toggle('on', i === fs); });
+  }
+  function shuffle(dir){
+    if(busy) return; busy = true; dir = dir || -1;
+    const f = order[0];
+    f.classList.add('flying');
+    f.style.transform = 'translateX(' + (dir*135) + '%) rotate(' + (dir*10) + 'deg) scale(1)';
+    f.style.opacity = '0';
+    setTimeout(function(){
+      order.push(order.shift());
+      f.classList.remove('flying');
+      f.style.transition = 'none';
+      const b = POS[POS.length - 1];
+      f.style.transform = b.t; f.style.opacity = '0'; f.style.zIndex = '1';
+      void f.offsetWidth;
+      f.style.transition = '';
+      layout();
+      busy = false;
+    }, 470);
+  }
+  function goToStep(step){
+    if(busy) return; let g = 0;
+    while(+order[0].dataset.step !== step && g++ < cards.length){ order.push(order.shift()); }
+    layout();
+  }
+  function startAuto(){ stopAuto(); if(matchMedia('(prefers-reduced-motion: reduce)').matches) return; auto = setInterval(function(){ shuffle(-1); }, 4000); }
+  function stopAuto(){ clearInterval(auto); }
+  stage.addEventListener('mouseenter', stopAuto);
+  stage.addEventListener('mouseleave', startAuto);
+  nextBtn.addEventListener('click', function(e){ e.stopPropagation(); shuffle(-1); });
+  stage.addEventListener('pointerdown', function(e){
+    if(busy) return;
+    front = order[0]; dragging = true; startX = e.clientX; dx = 0;
+    front.classList.add('dragging'); stopAuto();
+    try { stage.setPointerCapture(e.pointerId); } catch(err){}
+  });
+  stage.addEventListener('pointermove', function(e){
+    if(!dragging) return;
+    dx = e.clientX - startX;
+    front.style.transform = 'translateX(' + dx + 'px) rotate(' + (dx*0.04) + 'deg) scale(1)';
+  });
+  function endDrag(){
+    if(!dragging) return;
+    dragging = false; front.classList.remove('dragging');
+    if(Math.abs(dx) > 90){ shuffle(dx < 0 ? -1 : 1); } else { layout(); }
+    startAuto();
+  }
+  stage.addEventListener('pointerup', endDrag);
+  stage.addEventListener('pointercancel', endDrag);
+  stage.addEventListener('click', function(e){ if(e.target.closest('.deck-next')) return; if(Math.abs(dx) < 6 && !busy) shuffle(-1); });
+  layout();
+  startAuto();
+})();
+</script>
+</body>
+</html>

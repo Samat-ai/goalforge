@@ -1,4 +1,3 @@
-import { T } from '../lib/theme'
 import { Heatmap } from './GamificationSvgs'
 
 interface GoalHeatmapProps {
@@ -8,7 +7,7 @@ interface GoalHeatmapProps {
 export default function GoalHeatmap({ completedDays }: GoalHeatmapProps) {
   return (
     <div>
-      <div style={{ fontSize: 10, color: T.muted, letterSpacing: '0.1em', fontFamily: T.mono, marginBottom: 9 }}>
+      <div style={{ fontSize: 10, color: 'var(--text-mute)', letterSpacing: '0.1em', fontFamily: 'var(--font-mono)', marginBottom: 9 }}>
         COMPLETION HISTORY — {completedDays.length} days
       </div>
       <Heatmap days={completedDays} />
