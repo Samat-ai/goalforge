@@ -135,12 +135,12 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
             {tab === 'today' && (
               <div className="gf-tabpane">
                 {isGenerating ? (
-                  <div className="gf-ov-sub" style={{ textAlign: 'center', padding: '12px 0' }}>✦ AI is generating your milestones and tasks — this takes a few seconds.</div>
+                  <div className="gf-ov-sub is-center">✦ AI is generating your milestones and tasks — this takes a few seconds.</div>
                 ) : isRescueMode && !dismissed ? (
                   <div>
                     <div className="gf-nudge-kicker">✦ Easy mode</div>
-                    <h4 className="gf-nudge-title" style={{ marginBottom: 6 }}>Let's make today easy.</h4>
-                    <p className="gf-ov-sub" style={{ fontSize: 13, marginBottom: 14 }}>We paused your schedule and set up two quick wins for today — no pressure, no catching up.</p>
+                    <h4 className="gf-nudge-title" style={{ marginBottom: 6 }}>Let&apos;s make today easy.</h4>
+                    <p className="gf-ov-sub is-rescue">We paused your schedule and set up two quick wins for today — no pressure, no catching up.</p>
                     <div className="gf-gc-actions">
                       <button className="gf-btn-pill is-sprint" onClick={() => { void handleStartEasyMode() }} disabled={mutations.isTriggeringRescue}>
                         {mutations.isTriggeringRescue ? 'Starting…' : 'Start Easy Mode (2 min)'}
@@ -211,7 +211,7 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
                   <div className="gf-ov-sub">{goal.milestones_completed} of {goal.milestones_total} sprints completed</div>
                 </div>
                 <div>
-                  <div className="gf-cap2" style={{ marginBottom: 10 }}>Milestones</div>
+                  <div className="gf-cap2 mb-10">Milestones</div>
                   <div className="gf-ms-list">
                     {goal.milestones.map(m => {
                       const st = msStatusClass(m)
@@ -220,7 +220,7 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
                           <span className={cx('gf-ms-dot', st.dot)}>{m.is_completed ? <Icon name="check" size={11} stroke={3} /> : m.sprint_status === 'failed' ? '×' : m.position}</span>
                           <span className={cx('gf-ms-title', st.dot)}>{m.title}</span>
                           {m.sprint_status === 'failed'
-                            ? <button className="gf-btn-pill is-danger" style={{ height: 26 }} disabled={mutations.isRetryingSprintGeneration} onClick={() => mutations.retrySprintGeneration(goal.id, m.id)}>{mutations.isRetryingSprintGeneration ? '···' : 'Retry'}</button>
+                            ? <button className="gf-btn-pill is-danger is-sm" disabled={mutations.isRetryingSprintGeneration} onClick={() => mutations.retrySprintGeneration(goal.id, m.id)}>{mutations.isRetryingSprintGeneration ? '···' : 'Retry'}</button>
                             : st.label && <span className={cx('gf-ms-tag', st.tag)}>{st.label}</span>}
                         </div>
                       )
@@ -250,7 +250,7 @@ export default function GoalCard({ goal, onJackpot }: GoalCardProps) {
                   {histView === 'calendar' ? <MiniCalendar days={goal.completed_days} /> : <StreakBars days={goal.completed_days} />}
                 </div>
                 <div className="gf-about">
-                  <div className="gf-cap2" style={{ marginBottom: 7 }}>About this goal</div>
+                  <div className="gf-cap2 mb-7">About this goal</div>
                   <p className="gf-about-d">{goal.smart_description}</p>
                   <p className="gf-about-q">"{goal.raw_input}"</p>
                 </div>

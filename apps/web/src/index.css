@@ -624,10 +624,15 @@ body {
 .gf-btn-pill.is-warn.is-armed { color: var(--gold); border-color: color-mix(in oklab, var(--gold) 55%, transparent); background: color-mix(in oklab, var(--gold) 12%, transparent); }
 .gf-btn-pill.is-danger { color: var(--rose); border-color: color-mix(in oklab, var(--rose) 25%, transparent); }
 .gf-btn-pill.is-danger.is-armed { background: color-mix(in oklab, var(--rose) 16%, transparent); border-color: color-mix(in oklab, var(--rose) 50%, transparent); }
+.gf-btn-pill.is-sm { height: 26px; }
 .gf-ov-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
 .gf-cap2 { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-mute); }
 .gf-ov-pct { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); }
 .gf-ov-sub { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); margin-top: 6px; }
+.gf-ov-sub.is-center { text-align: center; padding: 12px 0; margin-top: 0; }
+.gf-ov-sub.is-rescue { font-size: 13px; margin-top: 0; margin-bottom: 14px; }
+.gf-cap2.mb-10 { margin-bottom: 10px; }
+.gf-cap2.mb-7 { margin-bottom: 7px; }
 .gf-ms-list { display: flex; flex-direction: column; gap: 8px; }
 .gf-ms { display: flex; align-items: center; gap: 10px; }
 .gf-ms-dot { width: 21px; height: 21px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; font-family: var(--font-mono); font-size: 9.5px; border: 1.5px solid var(--border-hi); color: var(--text-mute); background: color-mix(in oklab, var(--text) 5%, transparent); }
