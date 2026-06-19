@@ -2,10 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { useUser } from '@clerk/react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
-import AppHeader from '../components/AppHeader'
 import { T } from '../lib/theme'
 import { CoachPanelSkeleton } from '../components/ui/Skeleton'
-import { useCoachSessionQuery, useProfileQuery, useSendCoachMessageMutation, useStartCoachSessionMutation } from '../hooks'
+import { useCoachSessionQuery, useSendCoachMessageMutation, useStartCoachSessionMutation } from '../hooks'
 
 const TOTAL_INTAKE_QUESTIONS = 5
 
@@ -13,7 +12,6 @@ export default function Coach() {
   const { user } = useUser()
   const userId = user?.id
 
-  const { pts } = useProfileQuery(userId)
   const { session, isLoading } = useCoachSessionQuery(userId)
   const { start, isStarting } = useStartCoachSessionMutation(userId ?? '')
   const { send, isSending, result } = useSendCoachMessageMutation(userId ?? '')
@@ -64,8 +62,6 @@ export default function Coach() {
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: ${T.dim}; border-radius: 2px; }
       `}</style>
-
-      <AppHeader pts={pts} />
 
       <main id="main-content" style={{ maxWidth: 1120, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
         <section style={{

@@ -1,36 +1,37 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --font-sans: 'Hanken Grotesk', sans-serif;
+  --font-display: 'Space Grotesk', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
 /* ── Color scheme custom properties ── */
 
 :root {
-  --bg-primary: #ffffff;
-  --bg-surface: #f8fafc;
-  --bg-card: #f1f5f9;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
-  --border-color: #e2e8f0;
-  --border-hi: #cbd5e1;
-  --accent-primary: #6366f1;
-  --accent-orange: #f97316;
+  --bg-primary: #edeff3;
+  --bg-surface: #f8f9fc;
+  --bg-card: #f8f9fc;
+  --text-primary: #14141d;
+  --text-secondary: #565869;
+  --text-muted: #6b6c84;
+  --border-color: rgba(18,20,32,.07);
+  --border-hi: rgba(18,20,32,.13);
+  --accent-primary: #818cf8;
+  --accent-orange: #ff6a3d;
 }
 
 .dark {
-  --bg-primary: #020617;
-  --bg-surface: #0e0e1a;
-  --bg-card: #12121f;
-  --text-primary: #f8fafc;
-  --text-secondary: #a0a0b8;
-  --text-muted: #71717a;
-  --border-color: #1c1c30;
-  --border-hi: #2e2e50;
+  --bg-primary: #08080f;
+  --bg-surface: #121220;
+  --bg-card: #121220;
+  --text-primary: #f1f1f7;
+  --text-secondary: #abacc4;
+  --text-muted: #6b6c84;
+  --border-color: rgba(255,255,255,.07);
+  --border-hi: rgba(255,255,255,.13);
   --accent-primary: #818cf8;
-  --accent-orange: #f97316;
+  --accent-orange: #ff6a3d;
 }
 
 /* ── Dark mode strategy: class-based (Tailwind CSS 4) ── */
@@ -83,7 +84,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 /* ── Global ── */
 
 body {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Hanken Grotesk', sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;

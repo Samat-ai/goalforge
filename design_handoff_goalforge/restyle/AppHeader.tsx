@@ -13,6 +13,7 @@ const THEME_KEY_TO_CLASS: Record<string, string> = {
 }
 
 const NAV = ['dashboard', 'analytics', 'stars', 'coach', 'settings'] as const
+// `coach` is labeled "Chat" in the UI — keep the route id, change the display only.
 const LABEL: Record<(typeof NAV)[number], string> = {
   dashboard: 'Dashboard', analytics: 'Analytics', stars: 'Logs', coach: 'Chat', settings: 'Settings',
 }
@@ -76,6 +77,7 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
           Goal<span style={{ color: T.orange }}>Forge</span>
         </span>
 
+        {/* nav: relative container + one absolutely-positioned pill behind the links */}
         <nav
           ref={navRef}
           style={{

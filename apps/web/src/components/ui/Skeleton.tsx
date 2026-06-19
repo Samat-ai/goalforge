@@ -17,7 +17,7 @@ export default function Skeleton({ className = '', style }: SkeletonProps) {
     <div
       className={`animate-pulse ${className}`}
       style={{
-        background: T.borderHi,
+        background: T.card2,
         borderRadius: 6,
         ...style,
       }}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Show } from '@clerk/react'
 import { Toaster } from 'sonner'
+import Layout from './Layout'
 import LandingPage from './pages/LandingPage'
 import Dashboard from './pages/Dashboard'
 import Analytics from './pages/Analytics'
@@ -64,57 +65,14 @@ export default function App() {
               </AuthGuard>
             }
           />
-          {/* Authenticated + onboarding-complete routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <AuthGuard>
-                <OnboardingGuard>
-                  <Dashboard />
-                </OnboardingGuard>
-              </AuthGuard>
-            }
-          />
-          <Route
-            path="/analytics"
-            element={
-              <AuthGuard>
-                <OnboardingGuard>
-                  <Analytics />
-                </OnboardingGuard>
-              </AuthGuard>
-            }
-          />
-          <Route
-            path="/stars"
-            element={
-              <AuthGuard>
-                <OnboardingGuard>
-                  <Stars />
-                </OnboardingGuard>
-              </AuthGuard>
-            }
-          />
-          <Route
-            path="/coach"
-            element={
-              <AuthGuard>
-                <OnboardingGuard>
-                  <Coach />
-                </OnboardingGuard>
-              </AuthGuard>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <AuthGuard>
-                <OnboardingGuard>
-                  <Settings />
-                </OnboardingGuard>
-              </AuthGuard>
-            }
-          />
+          {/* Authenticated + onboarding-complete routes — persistent Layout owns AppHeader */}
+          <Route element={<AuthGuard><OnboardingGuard><Layout /></OnboardingGuard></AuthGuard>}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/stars"     element={<Stars />} />
+            <Route path="/coach"     element={<Coach />} />
+            <Route path="/settings"  element={<Settings />} />
+          </Route>
           <Route path="*" element={<div className="p-8 text-center">404 - Page Not Found</div>} />
         </Routes>
       </ErrorBoundary>

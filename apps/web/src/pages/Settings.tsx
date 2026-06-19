@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/react'
 import { toast } from 'sonner'
-import AppHeader from '../components/AppHeader'
 import { T } from '../lib/theme'
 import api from '../lib/api'
 import {
@@ -11,7 +10,6 @@ import {
   usePushSubscriptionsQuery,
   useSettingsQuery,
   useSaveSettingsMutation,
-  useProfileQuery,
 } from '../hooks'
 import type { UserSettings } from '../lib/types'
 
@@ -427,8 +425,6 @@ export default function Settings() {
   const userId = user?.id
 
   const { settings, isLoading: loading, isError } = useSettingsQuery(userId)
-  const { pts } = useProfileQuery(userId)
-
   useEffect(() => { document.title = 'Settings — GoalForge' }, [])
 
   const error = isError ? 'Failed to load settings.' : null
@@ -442,8 +438,6 @@ export default function Settings() {
         select option { background: ${T.surface}; color: ${T.text}; }
         button:focus-visible, a:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; border-radius: 4px; }
       `}</style>
-
-      <AppHeader pts={pts} />
 
       <main id="main-content" style={{ maxWidth: 640, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
 

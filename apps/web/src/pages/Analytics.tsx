@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useUser } from '@clerk/react'
-import AppHeader from '../components/AppHeader'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { getStage, streak, bestStreak, todayStr, daysAgo } from '../lib/gamification'
 import { T } from '../lib/theme'
@@ -152,8 +151,6 @@ export default function Analytics() {
 
   return (
     <div className="min-h-dvh mesh-bg" style={{ color: T.text, fontFamily: T.mono }}>
-      <AppHeader pts={pts} />
-
       <main id="main-content" style={{ maxWidth: 1100, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
 
         {/* Page heading */}

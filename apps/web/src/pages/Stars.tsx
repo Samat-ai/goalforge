@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { useUser } from '@clerk/react'
-import AppHeader from '../components/AppHeader'
 import StarShop from '../components/StarShop'
 import { T } from '../lib/theme'
 import { useProfileQuery, useShopRewardsQuery, useShopRewardMutations, useStarLogQuery } from '../hooks'
@@ -21,7 +20,6 @@ export default function Stars() {
 
   return (
     <div className="mesh-bg" style={{ minHeight: '100dvh', background: T.bg, color: T.text, fontFamily: T.mono }}>
-      <AppHeader pts={pts} />
       <main id="main-content" style={{ maxWidth: 1100, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
         <div style={{ marginBottom: 24 }}>
           <h1 style={{ fontFamily: T.serif, fontWeight: 400, color: T.text, marginBottom: 3 }} className="text-[26px] sm:text-[32px] lg:text-[38px]">

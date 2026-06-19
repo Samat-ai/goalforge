@@ -2,14 +2,12 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
 import { T } from '../lib/theme'
-import AppHeader from '../components/AppHeader'
 import { Creature } from '../components/GamificationSvgs'
 import TodayBar from '../components/TodayBar'
 import AddGoal from '../components/AddGoal'
 import GoalCard from '../components/GoalCard'
 import FocusOverlay from '../components/FocusOverlay'
 import RewardModal from '../components/RewardModal'
-import CollectionModal from '../components/CollectionModal'
 import EnergyModal from '../components/EnergyModal'
 import CompanionWidget from '../components/CompanionWidget'
 import { useBadgesQuery, useGoalsQuery, useProfileQuery, useGoalMutations } from '../hooks'
@@ -287,8 +285,7 @@ export default function Dashboard() {
   const [addGoalText, setAddGoalText] = useState('')
   const [focusOpen, setFocusOpen] = useState(false)
   const [activeRewardDrop, setActiveRewardDrop] = useState<RewardDrop | null>(null)
-  const [showCollection, setShowCollection] = useState(false)
-  const [showEnergyModal, setShowEnergyModal] = useState(() => {
+const [showEnergyModal, setShowEnergyModal] = useState(() => {
     const triggered = sessionStorage.getItem('energy') === 'low'
     if (triggered) sessionStorage.removeItem('energy')
     return triggered
@@ -342,8 +339,6 @@ export default function Dashboard() {
         .filter-tabs::-webkit-scrollbar { display: none; }
         button:focus-visible, a:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; border-radius: 4px; }
       `}</style>
-
-      <AppHeader pts={pts} onOpenCollection={() => setShowCollection(true)} />
 
       <main id="main-content" style={{ maxWidth: 1100, margin: '0 auto' }} className="px-4 py-5 sm:px-8 sm:py-7">
 
@@ -460,15 +455,8 @@ export default function Dashboard() {
         )
       })()}
 
-      {showCollection && (
-        <CollectionModal
-          rewards={rewards}
-          onEquip={(rewardId) => equipMutation.mutate(rewardId)}
-          onClose={() => setShowCollection(false)}
-        />
-      )}
 
-      {showEnergyModal && (
+{showEnergyModal && (
         <EnergyModal
           isLoading={energyResizeMutation.isPending}
           onConfirm={() => {

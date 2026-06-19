@@ -8,9 +8,13 @@ export interface BadgeProps {
 export default function Badge({ children, color = T.orange }: BadgeProps) {
   return (
     <span style={{
-      fontSize: 10, padding: '2px 8px', borderRadius: 20,
-      fontFamily: T.mono, textTransform: 'uppercase', letterSpacing: '0.07em',
-      border: `1px solid ${color}50`, background: `${color}15`, color,
+      display: 'inline-flex', alignItems: 'center',
+      height: 26, padding: '0 11px', borderRadius: 99,
+      fontFamily: T.mono, fontSize: 11,
+      textTransform: 'uppercase', letterSpacing: '0.07em',
+      border: `1px solid color-mix(in oklab, ${color} 38%, transparent)`,
+      background: `color-mix(in oklab, ${color} 12%, transparent)`,
+      color,
     }}>
       {children}
     </span>
