@@ -65,6 +65,10 @@ function TaskRow({
     transition,
     opacity: isDragging ? 0.5 : 1,
     display: 'flex', alignItems: 'flex-start', gap: 10,
+    borderRadius: 9,
+    border: task.is_completed ? '1px solid rgba(16,185,129,0.22)' : `1px solid ${T.border}`,
+    background: task.is_completed ? 'rgba(16,185,129,0.07)' : 'transparent',
+    padding: '4px 8px',
   }
   const isRegen = regeneratingId === task.id
   const isRestoring = restoringId === task.id

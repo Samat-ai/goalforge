@@ -61,6 +61,15 @@
   to { transform: rotate(360deg); }
 }
 
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.add-goal-cursor {
+  animation: blink 0.9s step-end infinite;
+  margin-left: 1px;
+}
+
 /* ── Mobile / PWA improvements ── */
 
 /* Prevent iOS bounce scroll while allowing inner scrolling */

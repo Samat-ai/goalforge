@@ -58,7 +58,7 @@ export default function SprintRail({
           const isFailed = m.sprint_status === 'failed'
           const dot = (
             <div key={m.id} style={{
-              width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+              width: 20, height: 20, borderRadius: 10, flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 9, fontFamily: T.mono,
               background: m.is_completed
