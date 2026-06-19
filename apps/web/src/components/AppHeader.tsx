@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/react'
 import { getStage } from '../lib/gamification'
-import { T } from '../lib/theme'
 import { useRewardsQuery } from '../hooks/useRewards'
 
 const THEME_KEY_TO_CLASS: Record<string, string> = {
@@ -66,14 +65,14 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
       <a href="#main-content" className="skip-link">Skip to content</a>
       <div style={{
         position: 'sticky', top: 0, zIndex: 100,
-        background: `color-mix(in oklab, ${T.bg} 72%, transparent)`,
+        background: 'color-mix(in oklab, var(--bg) 72%, transparent)',
         backdropFilter: 'blur(16px) saturate(1.4)',
-        borderBottom: `1px solid ${T.border}`,
+        borderBottom: '1px solid var(--border)',
         height: 62, padding: '0 20px',
         display: 'flex', alignItems: 'center', gap: 18,
       }}>
-        <span style={{ fontFamily: T.serif, fontSize: 21, fontWeight: 600, color: T.text, letterSpacing: '-0.02em' }}>
-          Goal<span style={{ color: T.orange }}>Forge</span>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+          Goal<span style={{ color: 'var(--accent)' }}>Forge</span>
         </span>
 
         <nav
@@ -81,8 +80,8 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
           style={{
             position: 'relative', display: 'flex', alignItems: 'center', gap: 2,
             padding: 4, borderRadius: 99,
-            background: `color-mix(in oklab, ${T.text} 5%, transparent)`,
-            border: `1px solid ${T.border}`,
+            background: 'color-mix(in oklab, var(--text) 5%, transparent)',
+            border: '1px solid var(--border)',
           }}
         >
           <div
@@ -90,7 +89,7 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
             style={{
               position: 'absolute', top: 4, bottom: 4, left: 0,
               transform: `translateX(${pill.left}px)`, width: pill.width,
-              borderRadius: 99, background: T.cardHi,
+              borderRadius: 99, background: 'var(--card-hi)',
               boxShadow: '0 1px 2px rgba(0,0,0,.4), 0 14px 40px -22px rgba(0,0,0,.7)',
               opacity: pill.ready ? 1 : 0, willChange: 'transform, width',
               transition: 'transform .44s cubic-bezier(.4,0,.2,1), width .44s cubic-bezier(.4,0,.2,1), opacity .25s ease',
@@ -107,8 +106,8 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
                   position: 'relative', zIndex: 1,
                   display: 'flex', alignItems: 'center',
                   height: 36, padding: '0 14px', borderRadius: 99,
-                  fontFamily: T.serif, fontSize: 13.5, fontWeight: 500,
-                  color: on ? T.text : T.textMute,
+                  fontFamily: 'var(--font-display)', fontSize: 13.5, fontWeight: 500,
+                  color: on ? 'var(--text)' : 'var(--text-mute)',
                   textDecoration: 'none', transition: 'color .2s',
                 }}
               >
@@ -125,8 +124,9 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
             style={{
               display: 'flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px',
               borderRadius: 99, cursor: 'pointer',
-              background: `${stage.color}18`, border: `1px solid ${stage.color}40`,
-              fontFamily: T.mono, fontSize: 12, fontWeight: 500, color: stage.color,
+              background: `color-mix(in oklab, ${stage.color} 12%, transparent)`,
+              border: `1px solid color-mix(in oklab, ${stage.color} 40%, transparent)`,
+              fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 500, color: stage.color,
             }}
             className="hidden sm:flex"
           >
@@ -135,8 +135,9 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
 
           {equippedTitle && (
             <span style={{
-              fontFamily: T.mono, fontSize: 10, color: T.amber,
-              background: `${T.amber}15`, border: `1px solid ${T.amber}40`,
+              fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gold)',
+              background: 'color-mix(in oklab, var(--gold) 12%, transparent)',
+              border: '1px solid color-mix(in oklab, var(--gold) 40%, transparent)',
               padding: '2px 8px', borderRadius: 99,
             }} className="hidden sm:inline">
               {equippedTitle.display_name}
@@ -149,7 +150,7 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
               aria-label={`${relicCount} collected relics. Open Trophy Room.`}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                fontFamily: T.mono, fontSize: 11, color: T.indigo,
+                fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--indigo)',
                 padding: '4px 8px', minHeight: 44,
               }}
               className="hidden sm:flex items-center"
@@ -159,7 +160,7 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
           )}
 
           {user?.firstName && (
-            <span style={{ fontSize: 11, color: T.muted, fontFamily: T.mono }} className="hidden sm:inline">
+            <span style={{ fontSize: 11, color: 'var(--text-mute)', fontFamily: 'var(--font-mono)' }} className="hidden sm:inline">
               {user.firstName}
             </span>
           )}

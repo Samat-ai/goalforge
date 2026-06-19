@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { T } from '../lib/theme'
 
 const EXAMPLES = [
   'run a 5k in 8 weeks',
@@ -115,7 +114,7 @@ export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoa
       <p style={{
         position: 'relative', textAlign: 'center',
         fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase',
-        color: T.muted, marginBottom: 16, fontFamily: T.mono,
+        color: 'var(--text-mute)', marginBottom: 16, fontFamily: 'var(--font-mono)',
       }}>
         What&apos;s your next goal?
       </p>
@@ -137,7 +136,7 @@ export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoa
           background: '#0a0a16',
         }}>
           <span style={{
-            color: T.orange, fontSize: 15, flexShrink: 0, lineHeight: 1,
+            color: 'var(--accent)', fontSize: 15, flexShrink: 0, lineHeight: 1,
             opacity: focused ? 1 : 0.6, transition: 'opacity 0.2s', userSelect: 'none',
           }}>✦</span>
 
@@ -153,14 +152,14 @@ export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoa
               style={{
                 width: '100%', background: 'transparent',
                 border: 'none', outline: 'none',
-                fontSize: 15, color: T.text, fontFamily: T.serif,
+                fontSize: 15, color: 'var(--text)', fontFamily: 'var(--font-display)',
               }}
             />
             {!value && (
               <div style={{
                 position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
                 pointerEvents: 'none', overflow: 'hidden', whiteSpace: 'nowrap',
-                fontSize: 15, fontFamily: T.serif, color: 'rgba(232,232,240,0.28)',
+                fontSize: 15, fontFamily: 'var(--font-display)', color: 'rgba(232,232,240,0.28)',
               }}>
                 {focused
                   ? <span style={{ color: 'rgba(232,232,240,0.18)' }}>Describe a goal...</span>
@@ -177,7 +176,7 @@ export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoa
               disabled={loading}
               style={{
                 flexShrink: 0, width: 40, height: 40, borderRadius: '50%',
-                background: loading ? `${T.orange}80` : T.orange,
+                background: loading ? 'color-mix(in oklab, var(--accent) 50%, transparent)' : 'var(--accent)',
                 border: 'none', cursor: loading ? 'default' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 boxShadow: '0 0 16px rgba(249,115,22,0.5)',
@@ -185,7 +184,7 @@ export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoa
               }}
             >
               {loading
-                ? <span style={{ fontSize: 14, color: 'white', fontFamily: T.mono }}>···</span>
+                ? <span style={{ fontSize: 14, color: 'white', fontFamily: 'var(--font-mono)' }}>···</span>
                 : (
                   <svg width="15" height="15" fill="none" viewBox="0 0 16 16">
                     <path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -218,7 +217,7 @@ export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoa
             onClick={() => onChange(chip.prompt)}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              fontFamily: T.mono, fontSize: 11, padding: '4px 0',
+              fontFamily: 'var(--font-mono)', fontSize: 11, padding: '4px 0',
               color: 'rgba(232,232,240,0.3)', transition: 'color 0.15s',
             }}
             onMouseEnter={e => { e.currentTarget.style.color = 'rgba(232,232,240,0.6)' }}
@@ -230,9 +229,9 @@ export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoa
       </div>
 
       {/* Status feedback */}
-      {status === 'thinking' && <p style={{ position: 'relative', marginTop: 10, fontSize: 12, color: T.orange, fontFamily: T.mono, textAlign: 'center' }}>◉ AI is forging your plan···</p>}
-      {status === 'done'     && <p style={{ position: 'relative', marginTop: 10, fontSize: 12, color: T.emerald, fontFamily: T.mono, textAlign: 'center' }}>✓ Goal added!</p>}
-      {status === 'error'    && <p style={{ position: 'relative', marginTop: 10, fontSize: 12, color: T.rose, fontFamily: T.mono, textAlign: 'center' }}>✕ Could not create goal — check your connection and try again.</p>}
+      {status === 'thinking' && <p style={{ position: 'relative', marginTop: 10, fontSize: 12, color: 'var(--accent)', fontFamily: 'var(--font-mono)', textAlign: 'center' }}>◉ AI is forging your plan···</p>}
+      {status === 'done'     && <p style={{ position: 'relative', marginTop: 10, fontSize: 12, color: 'var(--ring-2)', fontFamily: 'var(--font-mono)', textAlign: 'center' }}>✓ Goal added!</p>}
+      {status === 'error'    && <p style={{ position: 'relative', marginTop: 10, fontSize: 12, color: 'var(--rose)', fontFamily: 'var(--font-mono)', textAlign: 'center' }}>✕ Could not create goal — check your connection and try again.</p>}
     </div>
   )
 }

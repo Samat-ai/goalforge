@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect, useId } from 'react'
 import { motion } from 'motion/react'
-import { T } from '../lib/theme'
 import { todayStr, streak, starBrightness, lastStreakLength } from '../lib/gamification'
 import Icon from './ui/Icon'
-import Btn from './ui/Btn'
 import SprintRail from './SprintRail'
 import DailyTaskList from './DailyTaskList'
 import { useGoalMutations } from '../hooks'
@@ -116,20 +114,20 @@ function StreakBars({ completedDays }: { completedDays: string[] }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', gap: 16 }}>
         {[
-          { label: 'Current', value: currentLen, color: T.orange },
-          { label: 'Longest', value: longest, color: T.text },
-          { label: 'Total', value: totalDone, color: T.text },
+          { label: 'Current', value: currentLen, color: 'var(--accent)' },
+          { label: 'Longest', value: longest, color: 'var(--text)' },
+          { label: 'Total', value: totalDone, color: 'var(--text)' },
         ].map(({ label, value, color }) => (
           <div key={label}>
-            <div style={{ fontSize: 9, color: T.dim, fontFamily: T.mono, letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
-            <div style={{ fontSize: 18, color, fontFamily: T.serif, lineHeight: 1 }}>
-              {value}<span style={{ fontSize: 11, color: T.muted, fontFamily: T.mono, marginLeft: 4 }}>days</span>
+            <div style={{ fontSize: 9, color: 'var(--text-mute)', fontFamily: 'var(--font-mono)', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
+            <div style={{ fontSize: 18, color, fontFamily: 'var(--font-display)', lineHeight: 1 }}>
+              {value}<span style={{ fontSize: 11, color: 'var(--text-mute)', fontFamily: 'var(--font-mono)', marginLeft: 4 }}>days</span>
             </div>
           </div>
         ))}
       </div>
       <div style={{ position: 'relative', height: 48 }}>
-        <div style={{ position: 'absolute', top: 19, left: 0, right: 0, height: 3, background: T.dim, borderRadius: 99 }} />
+        <div style={{ position: 'absolute', top: 19, left: 0, right: 0, height: 3, background: 'var(--text-mute)', borderRadius: 99 }} />
         {streaks.map((s, idx) => {
           const left = (s.start / totalDays) * 100
           const width = Math.max((s.length / totalDays) * 100, 0.5)
@@ -156,7 +154,7 @@ function StreakBars({ completedDays }: { completedDays: string[] }) {
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: -4 }}>
         {['Day 1', `Day ${Math.round(totalDays / 2)}`, `Day ${totalDays}`].map((l, idx) => (
-          <span key={idx} style={{ fontSize: 9, color: T.dim, fontFamily: T.mono }}>{l}</span>
+          <span key={idx} style={{ fontSize: 9, color: 'var(--text-mute)', fontFamily: 'var(--font-mono)' }}>{l}</span>
         ))}
       </div>
     </div>
@@ -423,9 +421,9 @@ export default function GoalCard({ goal, onJackpot, index = 0 }: GoalCardProps) 
                     <div style={{ fontSize: 13, color: 'var(--text-mute)', lineHeight: 1.6, marginBottom: 18 }}>
                       It looks like you&apos;ve been busy. We paused your schedule and set up two quick wins for today — no pressure, no catching up.
                     </div>
-                    <Btn variant="primary" style={{ width: '100%', marginBottom: 10 }} onClick={handleStartEasyMode} disabled={mutations.isTriggeringRescue}>
+                    <button className="gf-btn-pill is-sprint" style={{ width: '100%', marginBottom: 10 }} onClick={handleStartEasyMode} disabled={mutations.isTriggeringRescue}>
                       {mutations.isTriggeringRescue ? 'Starting easy mode…' : 'Start Easy Mode (2 min)'}
-                    </Btn>
+                    </button>
                     <button onClick={handleDismiss} style={{ display: 'block', width: '100%', textAlign: 'center', fontSize: 12, color: 'var(--text-mute)', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 4, minHeight: 44 }}>
                       I&apos;m feeling good — show my full plan
                     </button>
@@ -439,7 +437,7 @@ export default function GoalCard({ goal, onJackpot, index = 0 }: GoalCardProps) 
                       <div className="gf-nudge-kicker">Abandoned</div>
                       <div className="gf-nudge-title">Star faded — goal abandoned.</div>
                     </div>
-                    <Btn onClick={() => mutations.changeStatus(goal.id, 'active')} variant="ghost" small>Revive goal</Btn>
+                    <button className="gf-btn-pill" onClick={() => mutations.changeStatus(goal.id, 'active')}>Revive goal</button>
                   </div>
                 )}
 
@@ -523,7 +521,7 @@ export default function GoalCard({ goal, onJackpot, index = 0 }: GoalCardProps) 
                 {/* Abandoned/Achieved terminal actions */}
                 {(isAbandoned || isAchieved) && (
                   <div className="gf-gc-actions">
-                    {isAbandoned && <Btn onClick={() => mutations.changeStatus(goal.id, 'active')} variant="ghost" small>▶ Revive</Btn>}
+                    {isAbandoned && <button className="gf-btn-pill" onClick={() => mutations.changeStatus(goal.id, 'active')}>▶ Revive</button>}
                     <button
                       onClick={handleDeleteClick}
                       aria-label={confirmDelete ? 'Confirm delete goal' : 'Delete goal'}
