@@ -90,10 +90,10 @@ export default function Coach() {
   }
 
   return (
-    <div className="mesh-bg" style={{ minHeight: '100dvh', color: 'var(--text)' }}>
+    <div className="min-h-dvh mesh-bg">
       <AppHeader pts={pts} />
 
-      <main id="main-content" style={{ maxWidth: 900, margin: '0 auto' }} className="px-4 sm:px-8">
+      <main id="main-content" className="gf-main gf-coach">
         {isLoading ? (
           <div className="py-6"><CoachPanelSkeleton /></div>
         ) : (

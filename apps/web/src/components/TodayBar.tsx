@@ -31,21 +31,20 @@ export default function TodayBar({ goals, onFocusOpen, onEnergyOpen }: TodayBarP
     <div
       role="status"
       className="gf-today"
-      style={{ marginBottom: 14 }}
       aria-label={
         hasToday
           ? `Today's progress: ${doneCnt} of ${todayAll.length} tasks done${overdueCnt > 0 ? `, ${overdueCnt} to catch up` : ''}`
           : `${overdueCnt} tasks to catch up on`
       }
     >
-      <div style={{ flexShrink: 0 }}>
+      <div className="gf-today-info">
         <div className="gf-today-label">Today</div>
         <div className="gf-today-stat">
           {hasToday ? (
             <>
               {doneCnt} / {todayAll.length}
               {overdueCnt > 0 && <span>+{overdueCnt} overdue</span>}
-              {allDone && <span style={{ color: 'var(--emerald)' }}>· All done ✦</span>}
+              {allDone && <span className="is-done">· All done ✦</span>}
             </>
           ) : (
             <>– / –<span>{overdueCnt} to catch up</span></>
