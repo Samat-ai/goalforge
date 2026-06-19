@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { GripVertical, Pencil, Plus, RefreshCw, ChevronDown, Undo2 } from 'lucide-react'
 import Icon from './ui/Icon'
 import {
   DndContext,
@@ -78,7 +77,7 @@ function TaskRow({
           aria-label="Drag to reorder"
           style={{ flexShrink: 0, background: 'none', border: 'none', padding: 0, cursor: 'grab', display: 'flex', alignItems: 'center', touchAction: 'none', minHeight: 44, minWidth: 22, justifyContent: 'center' }}
         >
-          <GripVertical size={14} color="var(--text-mute)" />
+          <Icon name="grip" size={14} style={{ color: 'var(--text-mute)' }} />
         </button>
       ) : (
         <div style={{ width: 10, flexShrink: 0 }} />
@@ -159,7 +158,7 @@ function TaskRow({
               className="text-[#7c3aed] hover:text-violet-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
               style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isRestoring ? 0.4 : 1 }}
             >
-              <Undo2 size={13} style={isRestoring ? { animation: 'spin 1s linear infinite' } : undefined} />
+              <Icon name="undo" size={13} style={isRestoring ? { animation: 'spin 1s linear infinite' } : undefined} />
             </button>
           )}
           <button
@@ -170,7 +169,7 @@ function TaskRow({
             className="text-[#3f3f5c] hover:text-indigo-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
             style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            <RefreshCw size={13} style={isRegen ? { animation: 'spin 1s linear infinite' } : undefined} />
+            <Icon name="refresh" size={13} style={isRegen ? { animation: 'spin 1s linear infinite' } : undefined} />
           </button>
           <button
             onMouseDown={e => e.preventDefault()}
@@ -179,7 +178,7 @@ function TaskRow({
             className="text-[#3f3f5c] hover:text-indigo-400 transition-colors rounded bg-transparent border-0 cursor-pointer"
             style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            <Pencil size={13} />
+            <Icon name="pencil" size={13} />
           </button>
         </div>
       )}
@@ -306,7 +305,7 @@ export default function DailyTaskList({
             onClick={() => setShowCatchUp(o => !o)}
             style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, width: '100%', background: 'color-mix(in oklab, var(--gold) 8%, transparent)', border: '1px solid color-mix(in oklab, var(--gold) 25%, transparent)', borderRadius: 8, padding: '7px 10px', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gold)', letterSpacing: '0.08em' }}
           >
-            <ChevronDown size={12} style={{ transform: showCatchUp ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+            <Icon name="chevronDown" size={12} style={{ transform: showCatchUp ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
             CATCH UP — {overdueTasks.length} task{overdueTasks.length !== 1 ? 's' : ''} from earlier
           </button>
 
@@ -374,7 +373,7 @@ export default function DailyTaskList({
           onClick={() => setShowAddTask(true)}
           style={{ marginTop: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', padding: '3px 2px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-mute)' }}
         >
-          <Plus size={13} /> Add Task
+          <Icon name="plus" size={13} /> Add Task
         </button>
       )}
     </div>
