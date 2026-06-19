@@ -86,7 +86,7 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
         {activeSection === 'lore' && (
           <div className="gf-coll-list">
             {loreFragments.map(r => (
-              <div key={r.id} className="gf-coll-card" style={{ padding: '14px 16px' }}>
+              <div key={r.id} className="gf-coll-card is-lore">
                 <div className="gf-coll-lore-row">
                   <div>
                     <div className="gf-coll-cap">LORE FRAGMENT</div>
@@ -105,7 +105,7 @@ export default function CollectionModal({ rewards, onEquip, onClose }: Collectio
               </div>
             ))}
             {Array.from({ length: Math.max(0, REGISTRY_COUNTS.lore - loreFragments.length) }).map((_, i) => (
-              <div key={`locked-lore-${i}`} className="gf-coll-locked" style={{ padding: '14px 16px' }}>
+              <div key={`locked-lore-${i}`} className="gf-coll-locked is-lore">
                 <div className="gf-coll-cap">LORE FRAGMENT</div>
                 <div className="gf-coll-name-mute">??? Locked</div>
               </div>

@@ -38,31 +38,19 @@ export default function CompanionWidget({ pts }: CompanionWidgetProps) {
           padding: 0,
         }}
       >
-        <div style={{ marginTop: -2 }}>
+        <div className="gf-cw-fab-inner">
           <Creature pts={pts} size={36} />
         </div>
       </button>
 
-      <div
-        className="companion-fab-bar"
-        style={{
-          position: 'fixed', bottom: 8, right: 20, zIndex: 90,
-          borderRadius: 2, overflow: 'hidden',
-          background: 'var(--text-mute)', pointerEvents: 'none',
-        }}
-      >
+      <div className="gf-cw-bar-track" style={{ width: 48, height: 3 }}>
         <div style={{ height: '100%', borderRadius: 2, background: stage.color, width: `${pct * 100}%` }} />
       </div>
 
       {open && (
         <div
           onClick={() => setOpen(false)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 200,
-            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 16,
-          }}
+          className="gf-overlay"
           role="dialog" aria-modal="true" aria-label="Your companion"
         >
           <div
@@ -74,20 +62,20 @@ export default function CompanionWidget({ pts }: CompanionWidgetProps) {
               maxWidth: 300, textAlign: 'center',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+            <div className="gf-cw-creature">
               <Creature pts={pts} size={120} />
             </div>
 
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, color: stage.color, marginBottom: 4 }}>
               {stage.name}
             </div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-mute)', fontStyle: 'italic', marginBottom: 18, lineHeight: 1.5 }}>
+            <div className="gf-cw-desc">
               &quot;{stage.desc}&quot;
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, marginBottom: 14, flexWrap: 'wrap' }}>
+            <div className="gf-cw-stages">
               {STAGES.map((s, i) => (
-                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <div key={s.id} className="gf-cw-stage-item">
                   <div
                     title={`${s.name} — ${s.pts} pts`}
                     style={{
@@ -108,7 +96,7 @@ export default function CompanionWidget({ pts }: CompanionWidgetProps) {
               ))}
             </div>
 
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-mute)', marginBottom: 16 }}>
+            <div className="gf-cw-next">
               {next ? `${next.pts - pts} pts to ${next.name}` : '✦ Maximum evolution reached'}
             </div>
 
@@ -130,10 +118,8 @@ export default function CompanionWidget({ pts }: CompanionWidgetProps) {
 
       <style>{`
         .companion-fab { width: 56px; height: 56px; }
-        .companion-fab-bar { width: 48px; height: 3px; }
         @media (max-width: 639px) {
           .companion-fab { width: 48px; height: 48px; }
-          .companion-fab-bar { width: 40px; height: 3px; }
         }
       `}</style>
     </>

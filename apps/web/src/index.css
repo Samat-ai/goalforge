@@ -874,6 +874,7 @@ body {
 .gf-coll-list { display: flex; flex-direction: column; gap: 12px; }
 .gf-coll-card { background: var(--card); border-radius: 10px; padding: 12px 14px; border: 1px solid var(--border); }
 .gf-coll-card.is-equipped { border-color: var(--accent); }
+.gf-coll-card.is-lore, .gf-coll-locked.is-lore { padding: 14px 16px; }
 .gf-coll-locked { background: var(--card-hi); border: 1px dashed var(--border); border-radius: 10px; padding: 12px 14px; opacity: 0.4; }
 .gf-coll-cap { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; color: var(--text-mute); margin-bottom: 4px; text-transform: uppercase; }
 .gf-coll-name { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
@@ -884,6 +885,15 @@ body {
 .gf-coll-read { background: color-mix(in oklab, var(--indigo) 20%, transparent); border: 1px solid color-mix(in oklab, var(--indigo) 40%, transparent); color: var(--indigo); border-radius: 5px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; padding: 4px 10px; cursor: pointer; min-height: 44px; }
 .gf-coll-equip { background: var(--accent); color: #0a0a14; border: none; border-radius: 5px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; padding: 4px 10px; cursor: pointer; min-height: 44px; }
 .gf-coll-equipped { font-family: var(--font-mono); font-size: 9px; background: color-mix(in oklab, var(--accent) 20%, transparent); color: var(--accent); padding: 2px 6px; border-radius: 3px; }
+
+/* ════════════════════ CompanionWidget ══════════════════ */
+.gf-cw-bar-track { position: fixed; bottom: 8px; right: 20px; z-index: 90; border-radius: 2px; overflow: hidden; background: var(--text-mute); pointer-events: none; }
+.gf-cw-fab-inner { margin-top: -2px; }
+.gf-cw-creature { display: flex; justify-content: center; margin-bottom: 12px; }
+.gf-cw-desc { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); font-style: italic; margin-bottom: 18px; line-height: 1.5; }
+.gf-cw-stages { display: flex; align-items: center; justify-content: center; gap: 3px; margin-bottom: 14px; flex-wrap: wrap; }
+.gf-cw-stage-item { display: flex; align-items: center; gap: 3px; }
+.gf-cw-next { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); margin-bottom: 16px; }
 
 /* ════════════════════ Settings page ════════════════════ */
 .gf-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 44px; padding: 0 18px; border-radius: 13px; font-weight: 600; font-size: 14px; border: none; cursor: pointer; transition: transform .16s cubic-bezier(.34,1.5,.5,1), box-shadow .2s, opacity .2s; }
