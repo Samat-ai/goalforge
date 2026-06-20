@@ -10,14 +10,14 @@ import GoalCard from '../components/GoalCard'
 import FocusOverlay from '../components/FocusOverlay'
 import RewardModal from '../components/RewardModal'
 import EnergyModal from '../components/EnergyModal'
-import CompanionWidget from '../components/CompanionWidget'
-import { useBadgesQuery, useGoalsQuery, useProfileQuery, useGoalMutations } from '../hooks'
+import { useBadgesQuery, useGoalsQuery, useGoalMutations } from '../hooks'
 import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
 import { useEnergyResizeMutation } from '../hooks/useEnergyMutations'
 import { dayDiff, todayStr } from '../lib/gamification'
 import type { Goal, RewardDrop } from '../lib/types'
 import { useConfetti } from '../components/ConfettiContext'
 import { GoalCardSkeleton } from '../components/ui/Skeleton'
+import Icon from '../components/ui/Icon'
 
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
 const e2eUserId = import.meta.env.VITE_E2E_USER_ID ?? 'user_e2e'
@@ -55,13 +55,7 @@ function WelcomeBackCard({ goals, onFocus }: { goals: Goal[]; onFocus: () => voi
   }
 
   return (
-    <div className="gf-nudge animate-slide-up" style={{
-      '--accent': 'var(--indigo)',
-      '--accent-soft': 'color-mix(in oklab, var(--indigo) 10%, transparent)',
-      '--accent-line': 'color-mix(in oklab, var(--indigo) 35%, transparent)',
-      '--accent-ink': 'var(--indigo)',
-      marginBottom: 14,
-    } as React.CSSProperties}>
+    <div className="gf-nudge is-indigo mb-14 animate-slide-up">
       <div className="gf-nudge-dot" />
       <div className="gf-nudge-body">
         <div className="gf-nudge-kicker">Welcome back</div>
@@ -152,35 +146,15 @@ function DoThisNow({ goals }: DoThisNowProps) {
     : `"${blocker.milestoneTitle}" is done. Advance to the next sprint.`
   const btnLabel = isOverdue ? 'Catch Up ↓' : completing ? 'Unlocking…' : 'Complete Sprint ✦'
 
-  // amber for overdue, emerald for sprint-complete — override accent vars inline
-  const accentColor = isOverdue ? 'var(--gold)' : 'var(--emerald)'
-  const accentSoft = isOverdue
-    ? 'color-mix(in oklab, var(--gold) 10%, transparent)'
-    : 'color-mix(in oklab, var(--emerald) 10%, transparent)'
-  const accentLine = isOverdue
-    ? 'color-mix(in oklab, var(--gold) 32%, transparent)'
-    : 'color-mix(in oklab, var(--emerald) 32%, transparent)'
-
   return (
-    <div className="gf-nudge animate-slide-up" style={{
-      '--accent': accentColor,
-      '--accent-soft': accentSoft,
-      '--accent-line': accentLine,
-      '--accent-ink': accentColor,
-      marginBottom: 14,
-    } as React.CSSProperties}>
+    <div className={`gf-nudge ${isOverdue ? 'is-gold' : 'is-emerald'} mb-14 animate-slide-up`}>
       <div className="gf-nudge-dot" />
       <div className="gf-nudge-body">
         <div className="gf-nudge-kicker">Do this now</div>
         <div className="gf-nudge-title">{label}</div>
         <div className="gf-nudge-sub">{sub}</div>
       </div>
-      <button
-        onClick={handleAction}
-        disabled={completing}
-        className="gf-btn-ghost-accent"
-        style={{ opacity: completing ? 0.6 : 1, cursor: completing ? 'wait' : 'pointer' }}
-      >
+      <button onClick={handleAction} disabled={completing} className="gf-btn-ghost-accent">
         {btnLabel}
       </button>
     </div>
@@ -197,7 +171,7 @@ const EXAMPLE_GOALS = [
 function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
   return (
     <div className="gf-empty-page">
-      <div style={{ marginBottom: 20, opacity: 0.85 }}>
+      <div className="gf-creature-wrap">
         <Creature pts={0} size={96} />
       </div>
       <h2>Your journey starts here ✦</h2>
@@ -210,8 +184,7 @@ function EmptyState({ onSelect }: { onSelect: (text: string) => void }) {
           <button
             key={text}
             onClick={() => onSelect(text)}
-            className="gf-btn-ghost-indigo"
-            style={{ lineHeight: 1.4, textAlign: 'left', height: 'auto' }}
+            className="gf-btn-ghost-indigo is-text"
           >
             {text}
           </button>
@@ -230,7 +203,6 @@ export default function Dashboard() {
   const { fireBadgeConfetti } = useConfetti()
 
   const { goals, isLoading: loading, isError, refetch } = useGoalsQuery(userId)
-  const { pts } = useProfileQuery(userId)
   const { badges, isLoading: badgesLoading } = useBadgesQuery(userId)
   const unlockedBadgeKeysRef = useRef<Set<string>>(new Set())
   const didInitBadgesRef = useRef(false)
@@ -296,12 +268,7 @@ export default function Dashboard() {
 
         {/* Error */}
         {!loading && error && (
-          <div className="gf-nudge" style={{
-            '--accent': 'var(--rose)',
-            '--accent-soft': 'color-mix(in oklab, var(--rose) 10%, transparent)',
-            '--accent-line': 'color-mix(in oklab, var(--rose) 32%, transparent)',
-            '--accent-ink': 'var(--rose)',
-          } as React.CSSProperties}>
+          <div className="gf-nudge is-rose">
             <div className="gf-nudge-body">
               <div className="gf-nudge-kicker">Load error</div>
               <div className="gf-nudge-title">{error}</div>
@@ -338,7 +305,7 @@ export default function Dashboard() {
                 <div aria-live="polite" aria-label="Goal list" className="gf-goallist">
                   {filtered.length === 0 && (
                     <div className="gf-empty">
-                      <div className="gf-empty-ic">✦</div>
+                      <div className="gf-empty-ic"><Icon name="trophy" size={26} /></div>
                       <div className="gf-empty-t">No {filter} goals yet.</div>
                     </div>
                   )}
@@ -390,7 +357,6 @@ export default function Dashboard() {
         />
       )}
 
-      <CompanionWidget pts={pts} />
     </div>
   )
 }

@@ -363,6 +363,7 @@ body {
 .gf-create-go.is-on { color: #fff; background: var(--accent); box-shadow: 0 4px 14px -3px var(--accent); }
 .gf-create-go.is-on:hover { transform: scale(1.08); }
 .gf-create-go:active { transform: scale(0.92); }
+.gf-create-dots { font-family: var(--font-mono); font-size: 13px; }
 .gf-create-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px 8px; margin-top: 14px; }
 .gf-create-chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 12px; color: color-mix(in oklab, var(--text) 52%, transparent); padding: 6px 12px; border-radius: 99px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); cursor: pointer; transition: color .18s, transform .18s, background .18s, border-color .18s; }
 [data-theme="light"] .gf-create-chip { background: rgba(255,255,255,0.5); border-color: rgba(18,20,32,0.08); }

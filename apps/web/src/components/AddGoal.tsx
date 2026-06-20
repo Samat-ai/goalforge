@@ -12,11 +12,11 @@ const EXAMPLES = [
 ]
 
 const CATEGORY_CHIPS = [
-  { emoji: '🏋️', label: 'Get fit',          prompt: 'Build a consistent workout habit and lose 10 pounds over the next 3 months' },
-  { emoji: '📚', label: 'Learn something',   prompt: 'Learn Spanish from scratch and hold a basic conversation in 6 months' },
-  { emoji: '💰', label: 'Financial goal',    prompt: 'Save $5,000 in an emergency fund over the next 6 months' },
-  { emoji: '✍️', label: 'Creative project',  prompt: 'Write the first draft of a short novel in 90 days' },
-  { emoji: '🧘', label: 'Wellness',          prompt: 'Meditate for at least 10 minutes every day for 30 days' },
+  { ic: 'run',   label: 'Get fit',          prompt: 'Build a consistent workout habit and lose 10 pounds over the next 3 months' },
+  { ic: 'book',  label: 'Learn something',  prompt: 'Learn Spanish from scratch and hold a basic conversation in 6 months' },
+  { ic: 'bolt',  label: 'Financial goal',   prompt: 'Save $5,000 in an emergency fund over the next 6 months' },
+  { ic: 'spark', label: 'Creative project', prompt: 'Write the first draft of a short novel in 90 days' },
+  { ic: 'heart', label: 'Wellness',         prompt: 'Meditate for at least 10 minutes every day for 30 days' },
 ]
 
 interface AddGoalProps {
@@ -128,7 +128,7 @@ export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoa
                 aria-label="Create goal"
               >
                 {loading
-                  ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14 }}>···</span>
+                  ? <span className="gf-create-dots">···</span>
                   : <Icon name="arrowUp" size={18} stroke={2.4} />
                 }
               </button>
@@ -142,13 +142,13 @@ export default function AddGoal({ onAdd, value, onChange, defaultValue }: AddGoa
                 className="gf-create-chip"
                 onClick={() => onChange(chip.prompt)}
               >
-                {chip.emoji} {chip.label}
+                <Icon name={chip.ic} size={13} /> {chip.label}
               </button>
             ))}
           </div>
 
           {status === 'thinking' && <div className="gf-create-status think">◉ AI is forging your plan…</div>}
-          {status === 'done'     && <div className="gf-create-status done">✓ Goal added!</div>}
+          {status === 'done'     && <div className="gf-create-status done"><Icon name="check" size={12} stroke={3} /> Goal added!</div>}
           {status === 'error'    && <div className="gf-create-status error">✕ Could not create goal — try again.</div>}
         </div>
       </div>
