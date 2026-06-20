@@ -16,52 +16,46 @@ export default function SprintRail({
   const displayMilestone = activeMilestone ?? failedMilestone
 
   return (
-    <div style={{ padding: '10px 14px', background: 'color-mix(in oklab, var(--indigo) 8%, transparent)', borderRadius: 10, border: '1px solid color-mix(in oklab, var(--indigo) 20%, transparent)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 9, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 10, color: 'var(--indigo)', fontFamily: 'var(--font-mono)', letterSpacing: '0.1em', flexShrink: 0 }}>
+    <div className="gf-sr">
+      <div className="gf-sr-head">
+        <span className="gf-sr-label">
           SPRINT {displayMilestone?.position ?? '—'} OF {milestonesTotal}
         </span>
         {failedMilestone ? (
           <>
-            <span style={{ fontSize: 10, color: 'var(--rose)', fontFamily: 'var(--font-mono)', flex: 1, minWidth: 0 }}>
-              Sprint generation failed
-            </span>
+            <span className="gf-sr-err">Sprint generation failed</span>
             <button
               onClick={() => onRetryGeneration(failedMilestone.id)}
               disabled={isRetrying}
-              className="gf-btn-pill is-danger"
-              style={{ opacity: isRetrying ? 0.6 : 1, cursor: isRetrying ? 'default' : 'pointer' }}
+              className="gf-sr-retry"
             >
               {isRetrying ? '···' : 'Retry'}
             </button>
           </>
         ) : activeMilestone?.sprint_status === 'generating' ? (
-          <span style={{ fontSize: 10, color: 'var(--text-mute)', fontFamily: 'var(--font-mono)', animation: 'pulse 1.5s ease-in-out infinite' }}>
-            AI forging next sprint
-          </span>
+          <span className="gf-sr-gen">AI forging next sprint</span>
         ) : activeMilestone ? (
-          <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
-            — {activeMilestone.title}
-          </span>
+          <span className="gf-sr-title">— {activeMilestone.title}</span>
         ) : null}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center' }}>
+      <div className="gf-sr-dots">
         {milestones.flatMap((m, i) => {
           const isActive = m.sprint_status === 'active' || m.sprint_status === 'generating'
           const isFailed = m.sprint_status === 'failed'
           const dot = (
-            <div key={m.id} className={`gf-ms-dot${m.is_completed ? ' is-done' : isActive ? ' is-active' : isFailed ? ' is-fail' : ''}`}
-              style={{ width: 20, height: 20 }}>
+            <div key={m.id} className={`gf-sr-dot${m.is_completed ? ' is-done' : isActive ? ' is-active' : isFailed ? ' is-fail' : ''}`}>
               {m.is_completed ? '✓' : isFailed ? '✕' : m.position}
             </div>
           )
           if (i === 0) return [dot]
+          const isDoneLine = m.is_completed
+          const isActiveLine = i <= (displayMilestone?.position ?? 1) - 1
           const line = (
-            <div key={`line-${i}`} style={{
-              flex: 1, height: 1, minWidth: 8, opacity: 0.35,
-              background: m.is_completed ? 'var(--ring-2)' : i <= (displayMilestone?.position ?? 1) - 1 ? 'var(--indigo)' : 'var(--text-mute)',
-            }} />
+            <div
+              key={`line-${i}`}
+              className={`gf-sr-line${isDoneLine ? ' is-done' : isActiveLine ? ' is-active' : ''}`}
+            />
           )
           return [line, dot]
         })}
