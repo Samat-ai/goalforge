@@ -4,6 +4,7 @@
   --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Hanken Grotesk', sans-serif;
   --font-sans: 'Hanken Grotesk', sans-serif;
+  --font-serif: 'Instrument Serif', serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
@@ -20,19 +21,22 @@
   --text-dim: #abacc4;
   --text-mute: #6b6c84;
   --accent: #ff6a3d;
-  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
-  --accent-line: color-mix(in srgb, var(--accent) 36%, transparent);
+  --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
+  --accent-line: color-mix(in oklab, var(--accent) 36%, transparent);
   --accent-ink: var(--accent);
   --ring-track: rgba(255,255,255,0.07);
   --ring-2: #34d399;
   --gold: #fbbf24;
   --rose: #fb7185;
   --emerald: #34d399;
-  --ring-3: #818cf8;
+  --ring-3: #fbbf24;
   --indigo: #818cf8;
+  /* mesh gradient stops */
+  --bg-grad-1: color-mix(in oklab, var(--accent) 13%, transparent);
+  --bg-grad-2: color-mix(in oklab, var(--ring-2) 9%, transparent);
   /* shape / depth / rhythm */
   --radius: 20px;
-  --r-sm: 10px;
+  --r-sm: calc(var(--radius) * 0.5);
   --pad: 22px;
   --gap: 14px;
   --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 40px -22px rgba(0,0,0,.7);
@@ -50,14 +54,21 @@
   --text-dim: #565869;
   --text-mute: #8a8c9b;
   --accent: #ff6a3d;
+  --accent-soft: color-mix(in oklab, var(--accent) 12%, white);
+  --accent-line: color-mix(in oklab, var(--accent) 30%, transparent);
   --accent-ink: color-mix(in oklab, var(--accent) 82%, black);
   --ring-track: rgba(18,20,32,0.07);
   --ring-2: #0a9d68;
-  --gold: #b8860b;
-  --rose: #e11d6b;
+  --gold: #bd8a16;
+  --rose: #e24862;
   --emerald: #0a9d68;
-  --ring-3: #5b5bd6;
-  --indigo: #5b5bd6;
+  --ring-3: #bd8a16;
+  --indigo: #5d5fe0;
+  /* mesh gradient stops */
+  --bg-grad-1: color-mix(in oklab, var(--accent) 6%, transparent);
+  --bg-grad-2: color-mix(in oklab, var(--ring-2) 5%, transparent);
+  --shadow: 0 1px 2px rgba(20,22,40,0.04), 0 8px 22px -12px rgba(20,22,40,0.13);
+  --shadow-hi: 0 1px 3px rgba(20,22,40,0.05), 0 18px 44px -16px rgba(20,22,40,0.18);
 }
 
 /* ── Dark mode strategy: class-based (Tailwind CSS 4) ── */
@@ -70,23 +81,23 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes companion-pulse {
-  0%, 100% {
-    box-shadow:
-      0 0 0 0   rgba(249, 115, 22, 0.45),
-      0 0 22px  rgba(249, 115, 22, 0.28);
-  }
-  50% {
-    box-shadow:
-      0 0 0 10px rgba(249, 115, 22, 0),
-      0 0 38px   rgba(249, 115, 22, 0.50);
-  }
-}
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+@keyframes gfSpin { to { transform: rotate(360deg); } }
+@keyframes glowy { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
+@keyframes twinkle { 0%,100% { opacity: 0.4; transform: scale(0.85) rotate(0deg); } 50% { opacity: 1; transform: scale(1.1) rotate(20deg); } }
+@keyframes confetto { 0% { transform: translate(0,0) rotate(0); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; } }
+@keyframes thinkWave { 0%, 100% { transform: translateY(0); opacity: 0.3; } 40% { transform: translateY(-3px); opacity: 0.95; } }
+
+/* Utility classes for decorative animations (gated behind no-preference) */
+@media (prefers-reduced-motion: no-preference) {
+  .gf-glow { animation: glowy 3s ease-in-out infinite; }
+  .gf-twinkle { animation: twinkle 2.4s ease-in-out infinite; }
+  .gf-confetto { position: absolute; will-change: transform, opacity; animation: confetto 1s cubic-bezier(.2,.7,.3,1) forwards; }
+}
 
 /* ── Mobile / PWA improvements ── */
 
@@ -121,8 +132,8 @@ body {
 
 .mesh-bg {
   background:
-    radial-gradient(ellipse 55% 38% at 8%  8%,  color-mix(in srgb, var(--accent) 8%, transparent) 0%, transparent 58%),
-    radial-gradient(ellipse 45% 42% at 92% 82%, color-mix(in srgb, var(--ring-2) 10%, transparent) 0%, transparent 58%),
+    radial-gradient(ellipse 60% 42% at 6% 0%, var(--bg-grad-1) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 46% at 96% 100%, var(--bg-grad-2) 0%, transparent 62%),
     var(--bg);
   background-attachment: fixed;
 }
@@ -133,9 +144,6 @@ body {
   animation: slide-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.animate-companion-pulse {
-  animation: companion-pulse 2.8s ease-in-out infinite;
-}
 
 /* ── Skip-to-content link ── */
 
@@ -564,7 +572,7 @@ body {
 .gf-btn-ghost-accent:hover { transform: translateY(-1px); background: color-mix(in oklab, var(--accent) 24%, transparent); }
 .gf-nudge { display: flex; align-items: center; gap: 16px; padding: 16px 18px; border-radius: var(--radius); background: linear-gradient(120deg, var(--accent-soft), transparent 80%), var(--card); border: 1px solid var(--accent-line); position: relative; overflow: hidden; }
 .gf-nudge-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); animation: nudgePulse 2s infinite; flex-shrink: 0; }
-@keyframes nudgePulse { 0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 60%, transparent); } 70% { box-shadow: 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+@keyframes nudgePulse { 0%,100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 55%, transparent); } 50% { box-shadow: 0 0 0 7px transparent; } }
 .gf-nudge-kicker { font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-ink); margin-bottom: 3px; }
 .gf-nudge-title { font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: -0.01em; color: var(--text); }
 .gf-nudge-sub { font-size: 13px; color: var(--text-dim); margin-top: 3px; }
@@ -572,6 +580,14 @@ body {
 .gf-nudge-x { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; color: var(--text-mute); flex-shrink: 0; background: none; border: none; cursor: pointer; transition: color .2s, background .2s; }
 .gf-nudge-x:hover { color: var(--text); background: var(--border); }
 .gf-nudge.gf-nudge-muted { --accent: var(--text-mute); --accent-soft: color-mix(in oklab, var(--text) 5%, transparent); --accent-line: color-mix(in oklab, var(--text) 10%, transparent); --accent-ink: var(--text-mute); }
+.gf-nudge.is-indigo  { --accent: var(--indigo); --accent-soft: color-mix(in oklab, var(--indigo) 10%, transparent); --accent-line: color-mix(in oklab, var(--indigo) 35%, transparent); --accent-ink: var(--indigo); }
+.gf-nudge.is-gold    { --accent: var(--gold); --accent-soft: color-mix(in oklab, var(--gold) 10%, transparent); --accent-line: color-mix(in oklab, var(--gold) 32%, transparent); --accent-ink: var(--gold); }
+.gf-nudge.is-emerald { --accent: var(--ring-2); --accent-soft: color-mix(in oklab, var(--ring-2) 10%, transparent); --accent-line: color-mix(in oklab, var(--ring-2) 32%, transparent); --accent-ink: var(--ring-2); }
+.gf-nudge.is-rose    { --accent: var(--rose); --accent-soft: color-mix(in oklab, var(--rose) 10%, transparent); --accent-line: color-mix(in oklab, var(--rose) 32%, transparent); --accent-ink: var(--rose); }
+.gf-nudge.mb-14 { margin-bottom: 14px; }
+.gf-btn-ghost-accent:disabled { opacity: 0.6; cursor: wait; }
+.gf-btn-ghost-indigo.is-text { height: auto; line-height: 1.4; text-align: left; padding: 10px 14px; }
+.gf-creature-wrap { margin-bottom: 20px; opacity: 0.85; }
 .gf-empty-page { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 40px 16px 32px; animation: gfReveal 0.5s ease both; }
 .gf-empty-page h2 { font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 10px; line-height: 1.3; }
 .gf-empty-page p { font-size: 13px; color: var(--text-dim); font-family: var(--font-mono); max-width: 380px; line-height: 1.7; margin-bottom: 28px; }

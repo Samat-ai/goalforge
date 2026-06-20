@@ -15,7 +15,7 @@ export default function Layout() {
   const equipMutation = useEquipRewardMutation(userId)
 
   return (
-    <>
+    <div className="mesh-bg" style={{ minHeight: '100dvh' }}>
       <AppHeader pts={pts} onOpenCollection={() => setCollectionOpen(true)} />
       <main id="main-content">
         <Outlet />
@@ -27,6 +27,6 @@ export default function Layout() {
           onClose={() => setCollectionOpen(false)}
         />
       )}
-    </>
+    </div>
   )
 }
