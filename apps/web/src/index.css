@@ -849,26 +849,27 @@ body {
 .gf-input:focus-visible { outline: none; border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
 .gf-input-readonly { color: var(--text-dim); pointer-events: none; }
 /* star log */
-.gf-starlog { position: relative; display: grid; grid-template-columns: minmax(220px, 0.82fr) minmax(0, 1.25fr); gap: clamp(28px, 4vw, 56px); align-items: center; border-color: color-mix(in oklab, var(--gold) 28%, transparent); padding: clamp(22px, 3.5vw, 44px) clamp(22px, 3.5vw, 42px) clamp(22px, 3.5vw, 44px) clamp(24px, 3vw, 38px); }
-.gf-starlog-rail { position: absolute; left: 0; top: 16px; bottom: 16px; width: 3px; border-radius: 99px; background: linear-gradient(180deg, var(--gold), color-mix(in oklab, var(--gold) 20%, transparent)); }
+.gf-starlog { position: relative; display: grid; grid-template-columns: minmax(220px, 0.82fr) minmax(0, 1.25fr); gap: clamp(28px, 4vw, 56px); align-items: center; border-color: color-mix(in oklab, var(--gold) 28%, transparent); padding: clamp(28px, 3.5vw, 46px) clamp(28px, 3.5vw, 44px) clamp(28px, 3.5vw, 46px) clamp(30px, 3vw, 40px); }
+.gf-starlog-rail { position: absolute; left: 0; top: 18px; bottom: 18px; width: 3px; border-radius: 99px; background: linear-gradient(180deg, var(--gold), color-mix(in oklab, var(--gold) 20%, transparent)); }
 .gf-starlog-aside { min-width: 0; }
-.gf-starlog-main { min-width: 0; padding-left: clamp(22px, 4vw, 50px); border-left: 1px solid var(--border); }
-.gf-starlog-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; }
-.gf-starlog-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(22px, 2.8vw, 32px); line-height: 1.1; color: var(--text); letter-spacing: -0.025em; margin: 0 0 18px; }
-.gf-starlog-body { font-size: clamp(14px, 1.4vw, 17px); line-height: 1.8; color: var(--text-dim); margin: 0; }
-.gf-starlog-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.gf-starlog-main { min-width: 0; padding-left: clamp(28px, 4vw, 56px); border-left: 1px solid var(--border); }
+.gf-starlog-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); margin-bottom: 16px; }
+.gf-starlog-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(26px, 3vw, 36px); line-height: 1.08; color: var(--text); letter-spacing: -0.028em; margin: 0 0 22px; text-wrap: balance; }
+.gf-starlog-body { font-size: clamp(16px, 1.5vw, 18.5px); line-height: 1.8; color: var(--text-dim); margin: 0; text-wrap: pretty; }
+.gf-starlog-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
 .gf-starlog-tag { font-family: var(--font-mono); font-size: 11px; padding: 5px 11px; border-radius: 99px; color: var(--gold); border: 1px solid color-mix(in oklab, var(--gold) 35%, transparent); background: color-mix(in oklab, var(--gold) 10%, transparent); }
-.gf-starlog-foot { display: flex; gap: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.gf-starlog-foot { display: flex; gap: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
 .gf-starlog-foot span { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11.5px; color: var(--ring-2); }
 @media (max-width: 720px) {
   .gf-starlog { grid-template-columns: 1fr; gap: 0; }
-  .gf-starlog-main { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: 20px; margin-top: 4px; }
+  .gf-starlog-main { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: 24px; margin-top: 4px; }
 }
 /* shop */
 .gf-shop-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .gf-shop-title { font-family: var(--font-display); font-weight: 600; font-size: 19px; letter-spacing: -0.02em; }
 .gf-shop-bal { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 99px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--gold); background: color-mix(in oklab, var(--gold) 12%, transparent); border: 1px solid color-mix(in oklab, var(--gold) 32%, transparent); }
 .gf-shop-addrow { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.gf-shop-addbtn { min-height: 44px; padding: 0 20px; }
 .gf-shop-title-in { flex: 1; min-width: 200px; }
 .gf-shop-costwrap { display: flex; align-items: center; gap: 6px; padding-left: 12px; border-radius: 11px; border: 1px solid var(--border); background: var(--bg); color: var(--gold); width: 96px; }
 .gf-shop-star { font-size: 13px; }

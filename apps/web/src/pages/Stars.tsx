@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useUser } from '@clerk/react'
 import StarShop from '../components/StarShop'
+import Icon from '../components/ui/Icon'
 import { useProfileQuery, useShopRewardsQuery, useShopRewardMutations, useStarLogQuery } from '../hooks'
 
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
@@ -13,9 +14,9 @@ export default function Stars() {
   const { pts } = useProfileQuery(userId)
   const { rewards: shopRewards } = useShopRewardsQuery(userId)
   const shopMutations = useShopRewardMutations(userId ?? '')
-  const { data: starLog } = useStarLogQuery(userId, 7)
+  const { data: starLog, isLoading: starLogLoading } = useStarLogQuery(userId, 7)
 
-  useEffect(() => { document.title = 'Stars — GoalForge' }, [])
+  useEffect(() => { document.title = 'Logs — GoalForge' }, [])
 
   return (
     <div className="min-h-dvh mesh-bg">
@@ -26,11 +27,24 @@ export default function Stars() {
           </div>
 
           {/* ── Star Log ── */}
-          {starLog && (
+          {starLogLoading && (
             <div className="gf-card gf-starlog">
               <div className="gf-starlog-rail" />
               <div className="gf-starlog-aside">
-                <div className="gf-starlog-eyebrow">✦ This week&apos;s chapter</div>
+                <div className="gf-starlog-eyebrow"><Icon name="spark" size={12} /> This week&apos;s chapter</div>
+                <div className="gf-starlog-title" style={{ opacity: 0.35 }}>Loading your chapter…</div>
+              </div>
+              <div className="gf-starlog-main">
+                <p className="gf-starlog-body" style={{ opacity: 0.35 }}>Gathering your story from this week.</p>
+              </div>
+            </div>
+          )}
+
+          {!starLogLoading && starLog && (
+            <div className="gf-card gf-starlog">
+              <div className="gf-starlog-rail" />
+              <div className="gf-starlog-aside">
+                <div className="gf-starlog-eyebrow"><Icon name="spark" size={12} /> This week&apos;s chapter</div>
                 <h2 className="gf-starlog-title">{starLog.chapter_title}</h2>
                 {starLog.highlights.length > 0 && (
                   <div className="gf-starlog-tags">
@@ -40,8 +54,8 @@ export default function Stars() {
                   </div>
                 )}
                 <div className="gf-starlog-foot">
-                  <span>✓ {starLog.completed_tasks} tasks</span>
-                  <span>◈ {starLog.completed_days} active days</span>
+                  <span><Icon name="check" size={12} stroke={3} /> {starLog.completed_tasks} tasks</span>
+                  <span><Icon name="flame" size={12} /> {starLog.completed_days} active days</span>
                 </div>
               </div>
               <div className="gf-starlog-main">

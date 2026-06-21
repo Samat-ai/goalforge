@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ShopReward } from '../lib/types'
+import Icon from './ui/Icon'
 
 interface StarShopProps {
   pts: number
@@ -23,27 +24,27 @@ export default function StarShop({ pts, rewards, onAdd, onRedeem, isCreating, is
   }
 
   return (
-    <div className="gf-card">
+    <div className="gf-card gf-shop">
       <div className="gf-shop-head">
         <div>
-          <div className="gf-card-cap mb-4">Star Shop</div>
-          <div className="gf-shop-title">Redeem your momentum</div>
+          <div className="gf-card-cap" style={{ marginBottom: 4 }}>Star Shop</div>
+          <h3 className="gf-shop-title">Redeem your momentum</h3>
         </div>
-        <span className="gf-shop-bal">★ {pts} balance</span>
+        <span className="gf-shop-bal"><Icon name="spark" size={12} /> {pts} balance</span>
       </div>
 
       {/* Add custom reward */}
       <div className="gf-shop-addrow">
         <input
           className="gf-input gf-shop-title-in"
-          placeholder="Custom reward (e.g. Coffee break)"
+          placeholder="Custom reward (e.g. coffee break)"
           maxLength={120}
           value={title}
           onChange={e => setTitle(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') handleAdd() }}
         />
         <div className="gf-shop-costwrap">
-          <span className="gf-shop-star">★</span>
+          <Icon name="spark" size={12} />
           <input
             className="gf-shop-cost-in"
             placeholder="50"
@@ -56,11 +57,8 @@ export default function StarShop({ pts, rewards, onAdd, onRedeem, isCreating, is
         <button
           onClick={handleAdd}
           disabled={isCreating || !title.trim()}
-          className="gf-btn gf-btn-accent"
-          style={{
-            cursor: isCreating ? 'wait' : 'pointer',
-            opacity: !title.trim() ? 0.5 : 1,
-          }}
+          className={['gf-btn gf-btn-accent gf-shop-addbtn', !title.trim() ? 'is-disabled' : ''].filter(Boolean).join(' ')}
+          style={{ cursor: isCreating ? 'wait' : 'pointer' }}
         >
           Add
         </button>
@@ -79,16 +77,16 @@ export default function StarShop({ pts, rewards, onAdd, onRedeem, isCreating, is
           const pct = Math.min(1, pts / reward.cost)
           return (
             <div key={reward.id} className="gf-reward" style={{ animationDelay: `${i * 50}ms` }}>
-              <div className="gf-reward-ic">★</div>
+              <div className="gf-reward-ic" aria-hidden="true"><Icon name="spark" size={15} /></div>
               <div className="gf-reward-mid">
                 <div className="gf-reward-title">{reward.title}</div>
                 <div className="gf-reward-meta">
-                  <span className="gf-reward-cost">★ {reward.cost}</span>
+                  <span className="gf-reward-cost"><Icon name="spark" size={11} /> {reward.cost}</span>
                   {reward.redemption_count > 0 && (
                     <span className="gf-reward-redeemed">redeemed {reward.redemption_count}×</span>
                   )}
                   {!canRedeem && shortfall > 0 && (
-                    <span className="gf-reward-need">{shortfall} more needed</span>
+                    <span className="gf-reward-need">{shortfall} more</span>
                   )}
                 </div>
                 {!canRedeem && (
@@ -100,7 +98,7 @@ export default function StarShop({ pts, rewards, onAdd, onRedeem, isCreating, is
               <button
                 onClick={() => canRedeem && !isRedeeming && onRedeem(reward.id)}
                 disabled={!canRedeem || isRedeeming}
-                className={['gf-reward-btn', canRedeem && 'is-on'].filter(Boolean).join(' ')}
+                className={['gf-reward-btn', canRedeem ? 'is-on' : ''].filter(Boolean).join(' ')}
               >
                 {canRedeem ? 'Redeem' : 'Locked'}
               </button>
