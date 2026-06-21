@@ -853,6 +853,11 @@ body {
 .gf-hof-title { font-family: var(--font-display); font-weight: 600; font-size: 17px; color: var(--gold); margin-top: 2px; letter-spacing: -0.015em; }
 .gf-hof-desc { font-size: 13px; color: var(--text-dim); margin-top: 4px; line-height: 1.5; }
 .gf-chip-gold { color: var(--gold); border-color: color-mix(in oklab, var(--gold) 35%, transparent); background: color-mix(in oklab, var(--gold) 10%, transparent); }
+.gf-chip-gold-soft { color: var(--ring-2); border-color: color-mix(in oklab, var(--ring-2) 38%, transparent); background: color-mix(in oklab, var(--ring-2) 11%, transparent); }
+/* AI coach recommendation card (handoff .gf-coach card; renamed to avoid clash with Coach-page .gf-coach wrapper) */
+.gf-coach-card { margin-top: 4px; border-radius: 12px; border: 1px solid color-mix(in oklab, var(--ring-2) 35%, transparent); background: color-mix(in oklab, var(--ring-2) 9%, transparent); padding: 12px 14px; }
+.gf-coach-cap { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ring-2); margin-bottom: 5px; }
+.gf-coach-body { font-size: 13px; line-height: 1.6; color: var(--text); }
 /* responsive */
 @media (max-width: 980px) { .gf-grid-2 { grid-template-columns: 1fr; } .gf-statgrid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 560px) { .gf-statgrid { grid-template-columns: 1fr 1fr; } }

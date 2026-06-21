@@ -645,7 +645,7 @@ export default function Analytics() {
                     </button>
                   </div>
                   {reflection && (
-                    <div className="gf-coach">
+                    <div className="gf-coach-card">
                       <div className="gf-coach-cap">
                         <Icon name="spark" size={11} /> AI coach recommendation
                       </div>
