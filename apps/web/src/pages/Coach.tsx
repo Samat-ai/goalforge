@@ -38,6 +38,7 @@ export default function Coach() {
 
   const [draft, setDraft] = useState('')
   const [streamId, setStreamId] = useState<string | null>(null)
+  const [isStartingWithPrompt, setIsStartingWithPrompt] = useState(false)
   const feedRef = useRef<HTMLDivElement | null>(null)
   const taRef = useRef<HTMLTextAreaElement | null>(null)
   const prevLenRef = useRef(0)
@@ -67,6 +68,19 @@ export default function Coach() {
   async function handleStart() {
     if (!userId || isStarting) return
     try { await start() } catch { toast.error('Could not start coach session. Please try again.') }
+  }
+
+  async function handleStartWithPrompt(prompt: string) {
+    if (!userId || isStarting || isStartingWithPrompt) return
+    setIsStartingWithPrompt(true)
+    try {
+      const session = await start()
+      await send({ sessionId: session.id, content: prompt })
+    } catch {
+      toast.error('Could not start coach session. Please try again.')
+    } finally {
+      setIsStartingWithPrompt(false)
+    }
   }
 
   async function handleSend() {
@@ -122,13 +136,25 @@ export default function Coach() {
               {!session ? (
                 <div className="gf-co-empty">
                   <div className="gf-co-empty-av"><SollyIdle className="gf-co-solly-lg" /></div>
-                  <h2 className="gf-co-empty-title">Let's forge your next goal</h2>
+                  <h2 className="gf-co-empty-title">{"Let's forge your next goal"}</h2>
                   <p className="gf-co-empty-sub">
                     Answer five quick questions and I'll turn your real constraints and motivation into a
                     personalized SMART goal — with sprint milestones and your first week of tasks. Not a motivational speech.
                   </p>
-                  <button className="gf-btn gf-btn-accent gf-co-startbtn" onClick={() => { void handleStart() }} disabled={isStarting}>
-                    {isStarting ? 'Starting…' : 'Start coaching session'} <Icon name="arrowUp" size={15} style={{ transform: 'rotate(90deg)' }} />
+                  <div className="gf-co-starters">
+                    {['I want to get fit', 'Help me finish my side project', 'Build a daily reading habit', 'I keep procrastinating'].map(s => (
+                      <button
+                        key={s}
+                        className="gf-co-starter"
+                        onClick={() => { void handleStartWithPrompt(s) }}
+                        disabled={isStarting || isStartingWithPrompt}
+                      >
+                        <Icon name="spark" size={14} /> {s}
+                      </button>
+                    ))}
+                  </div>
+                  <button className="gf-btn gf-btn-accent gf-co-startbtn" onClick={() => { void handleStart() }} disabled={isStarting || isStartingWithPrompt}>
+                    {isStarting || isStartingWithPrompt ? 'Starting…' : 'Start coaching session'} <Icon name="arrowUp" size={15} style={{ transform: 'rotate(90deg)' }} />
                   </button>
                 </div>
               ) : (

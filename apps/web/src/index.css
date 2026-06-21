@@ -475,6 +475,10 @@ body {
 .gf-co-empty-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(26px, 3.4vw, 33px); letter-spacing: -0.025em; margin-bottom: 10px; color: var(--text); }
 .gf-co-empty-sub { font-size: 16px; line-height: 1.6; color: var(--text-dim); margin-bottom: 20px; max-width: 480px; }
 .gf-co-startbtn { width: 100%; white-space: nowrap; font-size: 15.5px; padding-top: 14px; padding-bottom: 14px; }
+.gf-co-starters { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; width: 100%; margin-bottom: 14px; }
+.gf-co-starter { display: flex; align-items: center; gap: 9px; text-align: left; padding: 15px 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); font-size: 15px; transition: all .18s ease; }
+.gf-co-starter:hover { border-color: var(--accent-line); color: var(--text); transform: translateY(-1px); background: var(--card-hi); }
+.gf-co-starter svg { color: var(--accent); flex-shrink: 0; }
 
 .gf-co-composer { padding-top: 12px; }
 .gf-co-inputbar { display: flex; align-items: flex-end; gap: 9px; padding: 9px 9px 9px 16px; border-radius: 22px; border: 1px solid var(--border-hi); background: var(--card); box-shadow: var(--shadow); transition: border-color .2s ease, box-shadow .2s ease; }
