@@ -1,6 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useUser } from '@clerk/react'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { getStage, streak, bestStreak, todayStr, daysAgo } from '../lib/gamification'
 import {
   useAllGoalsQuery,
@@ -9,6 +8,46 @@ import {
   useLatestWeeklyReflectionQuery,
   useProfileQuery,
 } from '../hooks'
+import Icon from '../components/ui/Icon'
+
+// ── Count-up hook (IntersectionObserver, fires once, reduced-motion safe) ──────
+function useCountUp(target: number, { duration = 1400 }: { duration?: number } = {}) {
+  const [val, setVal] = useState(0)
+  const ref = useRef<number>(0)
+  const started = useRef(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (prefersReduced) { setVal(target); return }
+    if (started.current) return
+    const node = containerRef.current
+    if (!node) return
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting || started.current) return
+        started.current = true
+        obs.disconnect()
+        const start = performance.now()
+        const tick = (now: number) => {
+          const t = Math.min(1, (now - start) / duration)
+          const eased = 1 - Math.pow(1 - t, 3) // ease-out cubic
+          setVal(Math.round(eased * target))
+          if (t < 1) ref.current = requestAnimationFrame(tick)
+        }
+        ref.current = requestAnimationFrame(tick)
+      },
+      { threshold: 0.1 }
+    )
+    obs.observe(node)
+    return () => {
+      obs.disconnect()
+      cancelAnimationFrame(ref.current)
+    }
+  }, [target, duration])
+
+  return { val, containerRef }
+}
 
 // ── SVG Ring (nested activity rings) ─────────────────────────────────────────
 function Ring({ value, size, stroke, color }: { value: number; size: number; stroke: number; color: string }) {
@@ -19,7 +58,8 @@ function Ring({ value, size, stroke, color }: { value: number; size: number; str
   }, [])
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
-  const filled = c * Math.min(1, Math.max(0, drawn ? value : value * 0.15))
+  const displayValue = drawn ? value : value * 0.8
+  const filled = c * Math.min(1, Math.max(0, displayValue))
   return (
     <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', overflow: 'visible' }}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--ring-track)" strokeWidth={stroke} />
@@ -33,11 +73,52 @@ function Ring({ value, size, stroke, color }: { value: number; size: number; str
   )
 }
 
-// ── Velocity bars (CSS, no Recharts) ─────────────────────────────────────────
+// ── Stat tile with count-up ───────────────────────────────────────────────────
+function StatTile({
+  label, value, suffix, accent, trend, progress, progFill,
+}: {
+  label: string
+  value: number
+  suffix?: string
+  accent: string
+  trend?: { dir: 'up' | 'down'; text: string } | null
+  progress?: { value: number; label: string } | null
+  progFill?: string
+}) {
+  const { val, containerRef } = useCountUp(value)
+  return (
+    <div className="gf-stat" ref={containerRef}>
+      <div className="gf-stat-label">{label}</div>
+      <div className="gf-stat-val" style={{ color: accent }}>
+        {val}{suffix && <span className="gf-stat-suf">{suffix}</span>}
+      </div>
+      {trend && (
+        <div className={`gf-stat-trend ${trend.dir}`}>
+          <Icon name={trend.dir === 'up' ? 'arrowUp' : 'arrowDown'} size={12} /> {trend.text}
+        </div>
+      )}
+      {progress && (
+        <div className="gf-stat-prog">
+          <div className="gf-stat-prog-track">
+            <div
+              className="gf-stat-prog-fill"
+              style={{ width: `${Math.round(Math.min(1, progress.value) * 100)}%`, background: progFill || accent }}
+            />
+          </div>
+          <div className="gf-stat-prog-cap">{progress.label}</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Velocity bars (animated, motion-gated) ───────────────────────────────────
 function VelocityBars({ velocityDays }: { velocityDays: { label: string; count: number }[] }) {
   const [grow, setGrow] = useState(false)
   useEffect(() => {
-    const id = setTimeout(() => setGrow(true), 200)
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (prefersReduced) { setGrow(true); return }
+    const id = setTimeout(() => setGrow(true), 240)
     return () => clearTimeout(id)
   }, [])
   const max = Math.max(...velocityDays.map(d => d.count), 1)
@@ -45,12 +126,13 @@ function VelocityBars({ velocityDays }: { velocityDays: { label: string; count: 
     <div className="gf-bars">
       {velocityDays.map((d, i) => {
         const isToday = i === velocityDays.length - 1
+        const heightPct = (d.count / max) * 100 * (grow ? 1 : 0.72)
         return (
           <div key={i} className="gf-bar-col">
             <div className="gf-bar-track">
               <div
                 className="gf-bar-grow"
-                style={{ height: `${(d.count / max) * 100 * (grow ? 1 : 0)}%`, transitionDelay: `${i * 55}ms` }}
+                style={{ height: `${heightPct}%`, transitionDelay: `${i * 55}ms` }}
               >
                 <span className="gf-bar-val">{d.count}</span>
               </div>
@@ -59,6 +141,75 @@ function VelocityBars({ velocityDays }: { velocityDays: { label: string; count: 
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// ── SVG Donut (time-of-day) ───────────────────────────────────────────────────
+const DONUT_COLORS = ['var(--accent)', 'var(--ring-2)', 'var(--ring-3)', 'var(--text-mute)']
+
+function TimeDonut({ timeOfDay }: { timeOfDay: { name: string; value: number }[] }) {
+  const [draw, setDraw] = useState(false)
+  const [active, setActive] = useState(-1)
+  useEffect(() => {
+    const id = setTimeout(() => setDraw(true), 260)
+    return () => clearTimeout(id)
+  }, [])
+
+  const total = timeOfDay.reduce((s, d) => s + d.value, 0)
+  const r = 52
+  const c = 2 * Math.PI * r
+  let acc = 0
+
+  return (
+    <div className="gf-donut-wrap">
+      <svg
+        className={['gf-donut-svg', active >= 0 && 'is-dim'].filter(Boolean).join(' ')}
+        width="132" height="132" viewBox="0 0 132 132"
+        style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}
+      >
+        {timeOfDay.map((d, i) => {
+          const frac = d.value / total
+          const ratio = draw ? 1 : 0.82
+          const len = c * frac * ratio
+          const seg = (
+            <circle
+              key={i}
+              className={['gf-donut-seg', active === i && 'is-on'].filter(Boolean).join(' ')}
+              cx="66" cy="66" r={r}
+              fill="none"
+              stroke={DONUT_COLORS[i % DONUT_COLORS.length]}
+              strokeWidth={active === i ? 17 : 14}
+              strokeDasharray={`${len} ${c}`}
+              strokeDashoffset={-acc}
+              strokeLinecap="butt"
+              onMouseEnter={() => setActive(i)}
+              onMouseLeave={() => setActive(-1)}
+              style={{
+                transition: `stroke-dasharray .8s cubic-bezier(.22,.61,.36,1) ${i * 70}ms, stroke-width .18s ease, opacity .18s ease`,
+              }}
+            />
+          )
+          acc += c * frac
+          return seg
+        })}
+      </svg>
+      <div className="gf-donut-legend">
+        {timeOfDay.map((d, i) => (
+          <div
+            key={d.name}
+            className={['gf-legrow gf-legrow-int', active === i && 'is-active'].filter(Boolean).join(' ')}
+            onMouseEnter={() => setActive(i)}
+            onMouseLeave={() => setActive(-1)}
+          >
+            <span className="gf-legdot" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+            <div className="gf-leg-label" style={{ fontSize: 13 }}>{d.name}</div>
+            <div className="gf-leg-pct" style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+              {Math.round((d.value / total) * 100)}%
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -80,13 +231,20 @@ function Heatmap({ heatmapWeeks, heatmapMonthLabels }: {
   return (
     <div className="gf-card gf-heat">
       <div className="gf-card-cap">
-        Completion heatmap <span style={{ color: 'var(--text-mute)', textTransform: 'none', letterSpacing: 0, fontSize: 10 }}>last 3 months</span>
+        Completion heatmap{' '}
+        <span style={{ color: 'var(--text-mute)', textTransform: 'none', letterSpacing: 0, fontSize: 10 }}>
+          last 3 months
+        </span>
       </div>
       <div className="hm-months">
         {heatmapMonthLabels.map((m, i) => {
           const prev = heatmapMonthLabels[i - 1]
           const marginLeft = i === 0 ? 0 : (m.col - (prev?.col ?? 0)) * 17 - 17
-          return <span key={m.label + i} style={{ marginLeft: i === 0 ? 0 : marginLeft }}>{m.label}</span>
+          return (
+            <span key={m.label + i} style={{ marginLeft: i === 0 ? 0 : marginLeft }}>
+              {m.label}
+            </span>
+          )
         })}
       </div>
       <div className="hm-wrap">
@@ -251,8 +409,6 @@ export default function Analytics() {
     return null
   })()
 
-  const DONUT_COLORS = ['var(--gold)', 'var(--accent)', 'var(--indigo)', 'var(--ring-2)']
-
   return (
     <div className="min-h-dvh mesh-bg" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
 
@@ -260,13 +416,16 @@ export default function Analytics() {
 
         {/* Error */}
         {isError && (
-          <div className="gf-nudge" style={{
-            '--accent': 'var(--rose)',
-            '--accent-soft': 'color-mix(in oklab, var(--rose) 10%, transparent)',
-            '--accent-line': 'color-mix(in oklab, var(--rose) 32%, transparent)',
-            '--accent-ink': 'var(--rose)',
-            marginBottom: 20,
-          } as React.CSSProperties}>
+          <div
+            className="gf-nudge"
+            style={{
+              '--accent': 'var(--rose)',
+              '--accent-soft': 'color-mix(in oklab, var(--rose) 10%, transparent)',
+              '--accent-line': 'color-mix(in oklab, var(--rose) 32%, transparent)',
+              '--accent-ink': 'var(--rose)',
+              marginBottom: 20,
+            } as React.CSSProperties}
+          >
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="gf-nudge-kicker">Load error</div>
               <div className="gf-nudge-title">Failed to load analytics data.</div>
@@ -294,59 +453,38 @@ export default function Analytics() {
 
             {/* ── Stat tiles ── */}
             <div className="gf-statgrid">
-              <div className="gf-stat">
-                <div className="gf-stat-label">Current streak</div>
-                <div className="gf-stat-val" style={{ color: 'var(--accent)' }}>
-                  {analytics.currentStreak}<span className="gf-stat-suf">d</span>
-                </div>
-                {trendInfo && (
-                  <div className={`gf-stat-trend ${trendInfo.dir}`}>
-                    {trendInfo.dir === 'up' ? '↑' : '↓'} {trendInfo.text}
-                  </div>
-                )}
-              </div>
-
-              <div className="gf-stat">
-                <div className="gf-stat-label">Tasks completed</div>
-                <div className="gf-stat-val" style={{ color: 'var(--ring-2)' }}>
-                  {analytics.completedTasksTotal}
-                </div>
-                <div className="gf-stat-trend up">
-                  {analytics.thisWeekCount} this week
-                </div>
-              </div>
-
-              <div className="gf-stat">
-                <div className="gf-stat-label">Star points</div>
-                <div className="gf-stat-val" style={{ color: stage.color }}>
-                  {pts}
-                </div>
-                <div className="gf-stat-trend up" style={{ color: stage.color }}>
-                  {stage.name}
-                </div>
-              </div>
-
-              <div className="gf-stat">
-                <div className="gf-stat-label">Personal best</div>
-                <div className="gf-stat-val" style={{ color: 'var(--text)' }}>
-                  {analytics.personalBest}<span className="gf-stat-suf">d</span>
-                </div>
-                {analytics.personalBest > 0 && (
-                  <div className="gf-stat-prog">
-                    <div className="gf-stat-prog-track">
-                      <div
-                        className="gf-stat-prog-fill"
-                        style={{ width: `${Math.min(100, Math.round((analytics.currentStreak / analytics.personalBest) * 100))}%`, background: 'var(--accent)' }}
-                      />
-                    </div>
-                    <div className="gf-stat-prog-cap">
-                      {analytics.personalBest - analytics.currentStreak > 0
-                        ? `${analytics.personalBest - analytics.currentStreak}d to a new best`
-                        : 'Current best streak!'}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <StatTile
+                label="Current streak"
+                value={analytics.currentStreak}
+                suffix="d"
+                accent="var(--accent)"
+                trend={trendInfo}
+              />
+              <StatTile
+                label="Tasks completed"
+                value={analytics.completedTasksTotal}
+                accent="var(--ring-2)"
+                trend={{ dir: 'up', text: `${analytics.thisWeekCount} this week` }}
+              />
+              <StatTile
+                label="Star points"
+                value={pts}
+                accent={stage.color}
+                trend={{ dir: 'up', text: stage.name }}
+              />
+              <StatTile
+                label="Personal best"
+                value={analytics.personalBest}
+                suffix="d"
+                accent="var(--text)"
+                progFill="var(--accent)"
+                progress={analytics.personalBest > 0 ? {
+                  value: analytics.currentStreak / analytics.personalBest,
+                  label: analytics.personalBest - analytics.currentStreak > 0
+                    ? `${analytics.personalBest - analytics.currentStreak}d to a new best`
+                    : 'Current best streak!',
+                } : null}
+              />
             </div>
 
             {/* ── Activity rings + Velocity ── */}
@@ -400,37 +538,7 @@ export default function Analytics() {
               <div className="gf-card">
                 <div className="gf-card-cap">Time of day</div>
                 {analytics.timeOfDay.length > 0 ? (
-                  <div className="gf-donut-wrap">
-                    <ResponsiveContainer width={132} height={132}>
-                      <PieChart>
-                        <Pie
-                          data={analytics.timeOfDay}
-                          cx="50%" cy="50%"
-                          innerRadius={38} outerRadius={55}
-                          paddingAngle={3} dataKey="value"
-                          startAngle={90} endAngle={-270}
-                        >
-                          {analytics.timeOfDay.map((entry, i) => (
-                            <Cell key={entry.name} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontFamily: 'var(--font-mono)', fontSize: 11 }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="gf-donut-legend">
-                      {analytics.timeOfDay.map((entry, i) => (
-                        <div key={entry.name} className="gf-legrow gf-legrow-int">
-                          <span className="gf-legdot" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
-                          <div className="gf-leg-label" style={{ fontSize: 13 }}>{entry.name}</div>
-                          <div className="gf-leg-pct" style={{ fontSize: 13, color: 'var(--text-dim)' }}>
-                            {Math.round((entry.value / analytics.timeOfDay.reduce((s, d) => s + d.value, 0)) * 100)}%
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <TimeDonut timeOfDay={analytics.timeOfDay} />
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 140, color: 'var(--text-mute)', fontSize: 12 }}>
                     Complete tasks to see your pattern
@@ -468,7 +576,9 @@ export default function Analytics() {
                           className={['gf-star', n <= weekRating && 'is-on'].filter(Boolean).join(' ')}
                           onClick={() => setWeekRating(n)}
                           aria-label={`${n} star${n !== 1 ? 's' : ''}`}
-                        >★</button>
+                        >
+                          <Icon name="spark" size={16} />
+                        </button>
                       ))}
                     </div>
                     <button
@@ -479,25 +589,18 @@ export default function Analytics() {
                         setBlockers('')
                       }}
                       disabled={isSaving}
-                      className="gf-btn-ghost-accent"
-                      style={{ marginLeft: 'auto', opacity: isSaving ? 0.6 : 1 }}
+                      className="gf-btn gf-btn-accent"
+                      style={{ marginLeft: 'auto', opacity: isSaving ? 0.6 : 1, height: 40, fontSize: 13, padding: '0 15px' }}
                     >
                       Save
                     </button>
                   </div>
                   {reflection && (
-                    <div className="gf-nudge" style={{
-                      '--accent': 'var(--ring-2)',
-                      '--accent-soft': 'color-mix(in oklab, var(--ring-2) 10%, transparent)',
-                      '--accent-line': 'color-mix(in oklab, var(--ring-2) 30%, transparent)',
-                      '--accent-ink': 'var(--ring-2)',
-                    } as React.CSSProperties}>
-                      <div>
-                        <div className="gf-nudge-kicker">AI coach recommendation</div>
-                        <div className="gf-nudge-sub" style={{ marginTop: 4, fontSize: 12.5, lineHeight: 1.6, color: 'var(--text)' }}>
-                          {reflection.coach_recommendation}
-                        </div>
+                    <div className="gf-coach">
+                      <div className="gf-coach-cap">
+                        <Icon name="spark" size={11} /> AI coach recommendation
                       </div>
+                      <div className="gf-coach-body">{reflection.coach_recommendation}</div>
                     </div>
                   )}
                 </div>
@@ -510,7 +613,9 @@ export default function Analytics() {
                   <div className="gf-badges">
                     {badges.map(badge => (
                       <div key={badge.key} className={['gf-badge', badge.unlocked && 'is-on'].filter(Boolean).join(' ')}>
-                        <div className="gf-badge-ic">{badge.unlocked ? '🏆' : '🎯'}</div>
+                        <div className="gf-badge-ic">
+                          <Icon name={badge.unlocked ? 'trophy' : 'target'} size={16} />
+                        </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div className="gf-badge-title">{badge.title}</div>
                           <div className="gf-badge-desc">{badge.description}</div>
@@ -527,23 +632,25 @@ export default function Analytics() {
             {achieved.length > 0 && (
               <div>
                 <div className="gf-section-cap">Hall of fame · {achieved.length} achieved</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div className="gf-goallist">
                   {achieved.map(g => {
                     const s = streak(g.completed_days)
                     return (
                       <div key={g.id} className="gf-card gf-hof">
-                        <div className="gf-hof-ic">🏆</div>
+                        <div className="gf-hof-ic">
+                          <Icon name="trophy" size={20} />
+                        </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div className="gf-goal-meta" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                          <div className="gf-goal-meta">
                             <span className="gf-chip gf-chip-gold">{g.goal_type}</span>
-                            {s > 0 && <span className="gf-chip gf-chip-gold">{s}d streak</span>}
+                            {s > 0 && <span className="gf-chip gf-chip-gold-soft">{s}d streak</span>}
                             <span className="gf-chip gf-chip-gold">{g.completed_days.length} days completed</span>
                           </div>
-                          <div className="gf-hof-title">{g.smart_title}</div>
-                          <div className="gf-hof-desc">{g.smart_description}</div>
+                          <h3 className="gf-hof-title">{g.smart_title}</h3>
+                          <p className="gf-hof-desc">{g.smart_description}</p>
                           {g.raw_input && (
                             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-mute)', marginTop: 6 }}>
-                              "{g.raw_input}"
+                              &ldquo;{g.raw_input}&rdquo;
                             </div>
                           )}
                           <div className="gf-bar gf-bar-gold" style={{ marginTop: 10 }}>
