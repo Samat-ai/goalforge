@@ -772,6 +772,7 @@ body {
 .gf-stat-prog-track { height: 6px; border-radius: 99px; background: var(--ring-track); overflow: hidden; }
 .gf-stat-prog-fill { height: 100%; border-radius: 99px; transition: width .9s cubic-bezier(.22,.61,.36,1); }
 .gf-stat-prog-cap { margin-top: 9px; font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); }
+.gf-stat-spark { margin-top: 12px; }
 /* activity rings */
 .gf-rings-stack { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
 .gf-rings-nest { position: relative; width: 150px; height: 150px; flex-shrink: 0; }

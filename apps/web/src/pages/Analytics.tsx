@@ -73,14 +73,49 @@ function Ring({ value, size, stroke, color }: { value: number; size: number; str
   )
 }
 
+// ── Sparkline (inline SVG, normalized path + gradient fill) ─────────────────
+function Sparkline({ data, color = 'var(--accent)', w = 110, h = 30 }: {
+  data: number[]
+  color?: string
+  w?: number
+  h?: number
+}) {
+  const id = useMemo(() => 'sp' + Math.random().toString(36).slice(2, 7), [])
+  if (data.length < 2) return null
+  const max = Math.max(...data, 1)
+  const min = Math.min(...data, 0)
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w
+    const y = h - 4 - ((v - min) / (max - min || 1)) * (h - 8)
+    return [x, y] as [number, number]
+  })
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ')
+  const area = `${line} L${w} ${h} L0 ${h} Z`
+  const last = pts[pts.length - 1]
+  return (
+    <svg width={w} height={h} style={{ display: 'block', overflow: 'visible' }}>
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${id})`} />
+      <path d={line} fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={last[0]} cy={last[1]} r="3" fill={color} />
+    </svg>
+  )
+}
+
 // ── Stat tile with count-up ───────────────────────────────────────────────────
 function StatTile({
-  label, value, suffix, accent, trend, progress, progFill,
+  label, value, suffix, accent, spark, trend, progress, progFill,
 }: {
   label: string
   value: number
   suffix?: string
   accent: string
+  spark?: number[]
   trend?: { dir: 'up' | 'down'; text: string } | null
   progress?: { value: number; label: string } | null
   progFill?: string
@@ -92,6 +127,11 @@ function StatTile({
       <div className="gf-stat-val" style={{ color: accent }}>
         {val}{suffix && <span className="gf-stat-suf">{suffix}</span>}
       </div>
+      {spark && spark.length >= 2 && (
+        <div className="gf-stat-spark">
+          <Sparkline data={spark} color={accent} w={110} h={30} />
+        </div>
+      )}
       {trend && (
         <div className={`gf-stat-trend ${trend.dir}`}>
           <Icon name={trend.dir === 'up' ? 'arrowUp' : 'arrowDown'} size={12} /> {trend.text}
@@ -204,7 +244,7 @@ function TimeDonut({ timeOfDay }: { timeOfDay: { name: string; value: number }[]
           >
             <span className="gf-legdot" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
             <div className="gf-leg-label" style={{ fontSize: 13 }}>{d.name}</div>
-            <div className="gf-leg-pct" style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+            <div className="gf-leg-pct">
               {Math.round((d.value / total) * 100)}%
             </div>
           </div>
@@ -233,7 +273,7 @@ function Heatmap({ heatmapWeeks, heatmapMonthLabels }: {
       <div className="gf-card-cap">
         Completion heatmap{' '}
         <span style={{ color: 'var(--text-mute)', textTransform: 'none', letterSpacing: 0, fontSize: 10 }}>
-          last 3 months
+          last 13 weeks
         </span>
       </div>
       <div className="hm-months">
@@ -385,12 +425,20 @@ export default function Analytics() {
     const activeDaysIn30 = allCompletedDays.filter(d => d >= thirtyDaysAgo && d <= today).length
     const consistency30 = activeDaysIn30 / 30
 
+    // 10-day sparkline for "Current streak" tile: daily completed task counts
+    const streakSpark: number[] = []
+    for (let i = 9; i >= 0; i--) {
+      const d = daysAgo(today, i)
+      streakSpark.push(tasksByDate.get(d) ?? 0)
+    }
+
     return {
       allCompletedDays, currentStreak, personalBest,
       thisWeekCount, lastWeekCount, completedTasksTotal: completedTasks.length,
       heatmapWeeks, heatmapMonthLabels, velocityDays, timeOfDay,
       todayRatio, todayDone, todayTotal: todayTasks.length,
       thisWeekDays, consistency30,
+      streakSpark,
     }
   }, [goals])
 
@@ -458,6 +506,7 @@ export default function Analytics() {
                 value={analytics.currentStreak}
                 suffix="d"
                 accent="var(--accent)"
+                spark={analytics.streakSpark}
                 trend={trendInfo}
               />
               <StatTile
