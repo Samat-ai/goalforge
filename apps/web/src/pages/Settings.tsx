@@ -4,8 +4,6 @@ import { toast } from 'sonner'
 import { useThemeMode, type ThemeMode } from '../lib/ThemeContext'
 import api from '../lib/api'
 import {
-  useAccountabilityMutations,
-  useAccountabilityQuery,
   useEnablePushMutation,
   usePushSubscriptionsQuery,
   useSettingsQuery,
@@ -123,16 +121,10 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
   const { save: saveSettings, isSaving: saving } = useSaveSettingsMutation(userId)
   const { subscriptions } = usePushSubscriptionsQuery(userId)
   const { enablePush, isEnabling } = useEnablePushMutation(userId)
-  const { data: accountability } = useAccountabilityQuery(userId)
-  const {
-    sendInvite, acceptInvite, declineInvite,
-    isSendingInvite, isAcceptingInvite, isDecliningInvite,
-  } = useAccountabilityMutations(userId)
 
   const [displayName, setDisplayName] = useState(settings.display_name ?? '')
   const [reminderEnabled, setReminderEnabled] = useState(settings.reminder_enabled)
   const [reminderHour, setReminderHour] = useState(settings.reminder_hour)
-  const [inviteEmail, setInviteEmail] = useState('')
   const [saved, setSaved] = useState(false)
 
   function save() {
@@ -224,82 +216,6 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
         </button>
         {saved && <span className="gf-save-note">Your preferences are up to date.</span>}
       </div>
-
-      {/* Accountability partners */}
-      <SetSection icon="🤝" title="Accountability partners" subtitle="Invite someone to keep each other on track">
-        <div className="gf-field">
-          <label className="gf-field-label">Invite by email</label>
-          <div className="gf-field-row">
-            <input
-              type="email"
-              value={inviteEmail}
-              onChange={e => setInviteEmail(e.target.value)}
-              placeholder="friend@example.com"
-              className="gf-input"
-            />
-            <button
-              onClick={() => {
-                const normalized = inviteEmail.trim()
-                if (!normalized || isSendingInvite) return
-                sendInvite(normalized)
-                setInviteEmail('')
-              }}
-              disabled={isSendingInvite}
-              className="gf-btn-ghost-indigo"
-            >
-              {isSendingInvite ? 'Sending…' : 'Send invite'}
-            </button>
-          </div>
-        </div>
-
-        {(accountability?.incoming.length ?? 0) > 0 && (
-          <div className="gf-field">
-            <label className="gf-field-label">Incoming invites</label>
-            <div className="gf-acct-list">
-              {accountability?.incoming.map(invite => (
-                <div key={invite.id} className="gf-acct-card">
-                  <div>
-                    <div className="gf-acct-name">
-                      {invite.inviter_display_name ?? invite.inviter_email ?? invite.inviter_user_id}
-                    </div>
-                    <div className="gf-acct-meta">Pending invite</div>
-                  </div>
-                  <div className="gf-acct-actions">
-                    <button onClick={() => acceptInvite(invite.id)} disabled={isAcceptingInvite || isDecliningInvite}
-                      className="gf-reward-btn is-on is-compact">
-                      {isAcceptingInvite ? '…' : 'Accept'}
-                    </button>
-                    <button onClick={() => declineInvite(invite.id)} disabled={isAcceptingInvite || isDecliningInvite}
-                      className="gf-btn-pill is-danger is-md">
-                      {isDecliningInvite ? '…' : 'Decline'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {(accountability?.partners.length ?? 0) > 0 && (
-          <div className="gf-field">
-            <label className="gf-field-label">Active partners</label>
-            <div className="gf-acct-list">
-              {accountability?.partners.map(partner => (
-                <div key={partner.id} className="gf-acct-card is-partner">
-                  <div className="gf-acct-name">{partner.partner_display_name ?? partner.partner_email}</div>
-                  <div className="gf-acct-meta">{partner.partner_email}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {(accountability?.outgoing.length ?? 0) > 0 && (
-          <div className="gf-field-hint">
-            Outgoing pending invites: {accountability?.outgoing.length}
-          </div>
-        )}
-      </SetSection>
 
       <DataControls userId={userId} />
     </div>
