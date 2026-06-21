@@ -736,6 +736,7 @@ body {
 .gf-main { max-width: 1180px; margin: 0 auto; padding: 26px 20px 80px; }
 .gf-settings { max-width: 680px; margin: 0 auto; width: 100%; }
 .gf-coach { max-width: 900px; margin: 0 auto; width: 100%; }
+.gf-h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(26px, 4vw, 40px); line-height: 1.04; letter-spacing: -0.025em; }
 .gf-h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(19px, 2.4vw, 24px); letter-spacing: -0.02em; }
 .gf-listhead { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .gf-goallist { display: flex; flex-direction: column; gap: var(--gap); }
@@ -830,13 +831,13 @@ body {
 /* reflection */
 .gf-refl { display: flex; flex-direction: column; gap: 10px; }
 .gf-textarea { width: 100%; resize: vertical; min-height: 48px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); padding: 11px 13px; font-size: 13.5px; font-family: var(--font-body); outline: none; transition: border-color .2s, box-shadow .2s; }
-.gf-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 18%, transparent); }
+.gf-textarea:focus { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
 .gf-textarea::placeholder { color: var(--text-mute); }
 .gf-refl-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .gf-refl-lbl { font-size: 13px; color: var(--text-dim); }
-.gf-stars { display: flex; gap: 4px; }
-.gf-star { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--border); background: none; cursor: pointer; color: var(--text-mute); transition: color .15s, border-color .15s, background .15s; }
-.gf-star.is-on { color: var(--gold); border-color: color-mix(in oklab, var(--gold) 40%, transparent); background: color-mix(in oklab, var(--gold) 10%, transparent); }
+.gf-stars { display: flex; gap: 3px; }
+.gf-star { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; background: none; cursor: pointer; color: var(--text-mute); transition: color .15s, background .15s; }
+.gf-star.is-on { color: var(--gold); background: color-mix(in oklab, var(--gold) 10%, transparent); }
 /* badges */
 .gf-badges { display: grid; grid-template-columns: 1fr; gap: 8px; }
 .gf-badge { display: flex; align-items: center; gap: 12px; padding: 11px 13px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); opacity: 0.62; transition: all .3s; }

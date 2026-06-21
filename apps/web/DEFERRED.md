@@ -42,6 +42,18 @@ useAccountability files, remove backend accountability routes/model + the `GET /
 `invitee_user_id`/`target_email` match, and run an Alembic migration dropping the accountability
 table. See Task 8 in the plan.
 
+## Header chrome — hidden pending post-redesign re-integration (2026-06-21)
+
+The following header elements are hidden in the new `gf-header` shell (phase 2 shell rebuild) but remain fully wired in the codebase. No code was deleted — just not rendered.
+
+| Element | Where | Notes |
+|---|---|---|
+| Trophy Room / relic-count button | `AppHeader.tsx` (was `relicCount > 0 && onOpenCollection`) | `CollectionModal` still mounted in `Layout.tsx`; `onOpenCollection` prop still on `AppHeaderProps` |
+| Equipped-title badge | `AppHeader.tsx` (was `equippedTitle` chip) | `useRewardsQuery` still runs for the theme effect |
+| First-name text | `AppHeader.tsx` (was `user.firstName` span) | Clerk `user` object still available |
+
+Re-introduce when post-redesign header chrome pass is scheduled.
+
 ## Out of scope (separate later redesign passes)
 
 - **Onboarding** (`src/pages/Onboarding.tsx`) — handoff `app/GoalForge Onboarding.html`.

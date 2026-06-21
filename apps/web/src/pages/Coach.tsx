@@ -102,9 +102,7 @@ export default function Coach() {
   }
 
   return (
-    <div className="min-h-dvh mesh-bg">
-
-      <main id="main-content" className="gf-main gf-coach">
+    <div className="gf-coach">
         {isLoading ? (
           <div className="py-6"><CoachPanelSkeleton /></div>
         ) : (
@@ -247,7 +245,6 @@ export default function Coach() {
             )}
           </div>
         )}
-      </main>
     </div>
   )
 }

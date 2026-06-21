@@ -253,10 +253,7 @@ export default function Dashboard() {
 
   // ── Render ──
   return (
-    <div className="min-h-dvh mesh-bg">
-
-
-      <main id="main-content" className="gf-main">
+    <>
 
         {/* Loading skeletons */}
         {loading && (
@@ -319,7 +316,6 @@ export default function Dashboard() {
             )}
           </div>
         )}
-      </main>
 
       <FocusOverlay
         key={focusOpen ? 'open' : 'closed'}
@@ -357,6 +353,6 @@ export default function Dashboard() {
         />
       )}
 
-    </div>
+    </>
   )
 }

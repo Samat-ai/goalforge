@@ -17,7 +17,7 @@ export default function Layout() {
   return (
     <div className="mesh-bg" style={{ minHeight: '100dvh' }}>
       <AppHeader pts={pts} onOpenCollection={() => setCollectionOpen(true)} />
-      <main id="main-content">
+      <main id="main-content" className="gf-main">
         <Outlet />
       </main>
       {collectionOpen && (

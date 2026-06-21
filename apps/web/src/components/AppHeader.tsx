@@ -21,17 +21,16 @@ interface AppHeaderProps {
   onOpenCollection?: () => void
 }
 
-export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
+export default function AppHeader({ pts }: AppHeaderProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useUser()
   const stage = getStage(pts)
 
   const { data: rewards = [] } = useRewardsQuery(user?.id ?? '')
-  const equippedTitle = rewards.find(r => r.reward_type === 'title' && r.is_equipped)
   const equippedTheme = rewards.find(r => r.reward_type === 'theme' && r.is_equipped)
-  const relicCount = rewards.length
 
+  // Apply equipped theme class to body
   useEffect(() => {
     Object.values(THEME_KEY_TO_CLASS).forEach(cls => document.body.classList.remove(cls))
     if (equippedTheme) {
@@ -60,113 +59,85 @@ export default function AppHeader({ pts, onOpenCollection }: AppHeaderProps) {
     return () => window.removeEventListener('resize', onResize)
   }, [active])
 
+  // ── mobile burger ──────────────────────────────────────────────────
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    const onResize = () => { if (window.innerWidth > 700) setMenuOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false) }
+    window.addEventListener('resize', onResize)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [])
+
+  const pickNav = (v: string) => {
+    navigate(`/${v}`)
+    setMenuOpen(false)
+  }
+
   return (
     <>
       <a href="#main-content" className="skip-link">Skip to content</a>
-      <div style={{
-        position: 'sticky', top: 0, zIndex: 100,
-        background: 'color-mix(in oklab, var(--bg) 72%, transparent)',
-        backdropFilter: 'blur(16px) saturate(1.4)',
-        borderBottom: '1px solid var(--border)',
-        height: 62, padding: '0 20px',
-        display: 'flex', alignItems: 'center', gap: 18,
-      }}>
-        <span style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.02em' }}>
-          Goal<span style={{ color: 'var(--accent)' }}>Forge</span>
-        </span>
+      <header className="gf-header">
+        <div className="gf-header-in">
+          <span className="gf-logo">Goal<span>Forge</span></span>
 
-        <nav
-          ref={navRef}
-          style={{
-            position: 'relative', display: 'flex', alignItems: 'center', gap: 2,
-            padding: 4, borderRadius: 99,
-            background: 'color-mix(in oklab, var(--text) 5%, transparent)',
-            border: '1px solid var(--border)',
-          }}
-        >
-          <div
-            aria-hidden
-            style={{
-              position: 'absolute', top: 4, bottom: 4, left: 0,
-              transform: `translateX(${pill.left}px)`, width: pill.width,
-              borderRadius: 99, background: 'var(--card-hi)',
-              boxShadow: '0 1px 2px rgba(0,0,0,.4), 0 14px 40px -22px rgba(0,0,0,.7)',
-              opacity: pill.ready ? 1 : 0, willChange: 'transform, width',
-              transition: 'transform .44s cubic-bezier(.4,0,.2,1), width .44s cubic-bezier(.4,0,.2,1), opacity .25s ease',
-            }}
-          />
-          {NAV.map(v => {
-            const on = location.pathname === `/${v}`
-            return (
+          <nav className="gf-nav" ref={navRef}>
+            <div
+              className="gf-nav-pill"
+              style={{ transform: `translateX(${pill.left}px)`, width: pill.width, opacity: pill.ready ? 1 : 0 }}
+              aria-hidden
+            />
+            {NAV.map(v => (
               <Link
                 key={v}
                 to={`/${v}`}
                 data-nav={v}
-                style={{
-                  position: 'relative', zIndex: 1,
-                  display: 'flex', alignItems: 'center',
-                  height: 36, padding: '0 14px', borderRadius: 99,
-                  fontFamily: 'var(--font-display)', fontSize: 13.5, fontWeight: 500,
-                  color: on ? 'var(--text)' : 'var(--text-mute)',
-                  textDecoration: 'none', transition: 'color .2s',
-                }}
+                className={`gf-nav-btn${active === v ? ' is-active' : ''}`}
               >
                 {LABEL[v]}
               </Link>
-            )
-          })}
-        </nav>
+            ))}
+          </nav>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button
-            onClick={() => navigate('/analytics')}
-            aria-label={`${pts} star points, stage ${stage.name}. Go to analytics.`}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px',
-              borderRadius: 99, cursor: 'pointer',
-              background: `color-mix(in oklab, ${stage.color} 12%, transparent)`,
-              border: `1px solid color-mix(in oklab, ${stage.color} 40%, transparent)`,
-              fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 500, color: stage.color,
-            }}
-            className="hidden sm:flex"
-          >
-            ✦ {pts} · {stage.name}
-          </button>
-
-          {equippedTitle && (
-            <span style={{
-              fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--gold)',
-              background: 'color-mix(in oklab, var(--gold) 12%, transparent)',
-              border: '1px solid color-mix(in oklab, var(--gold) 40%, transparent)',
-              padding: '2px 8px', borderRadius: 99,
-            }} className="hidden sm:inline">
-              {equippedTitle.display_name}
-            </span>
-          )}
-
-          {relicCount > 0 && onOpenCollection && (
+          <div className="gf-header-right">
             <button
-              onClick={onOpenCollection}
-              aria-label={`${relicCount} collected relics. Open Trophy Room.`}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--indigo)',
-                padding: '4px 8px', minHeight: 44,
-              }}
-              className="hidden sm:flex items-center"
+              onClick={() => navigate('/analytics')}
+              aria-label={`${pts} star points, stage ${stage.name}. Go to analytics.`}
+              className="gf-pts"
             >
-              🏆 {relicCount} Rare {relicCount === 1 ? 'Relic' : 'Relics'}
+              ✦ {pts} · <span className="gf-pts-stage">{stage.name}</span>
             </button>
-          )}
 
-          {user?.firstName && (
-            <span style={{ fontSize: 11, color: 'var(--text-mute)', fontFamily: 'var(--font-mono)' }} className="hidden sm:inline">
-              {user.firstName}
-            </span>
-          )}
-          <UserButton />
+            <UserButton />
+
+            <button
+              className={`gf-burger${menuOpen ? ' is-open' : ''}`}
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(o => !o)}
+            >
+              <span></span><span></span><span></span>
+            </button>
+          </div>
         </div>
-      </div>
+
+        {menuOpen && <div className="gf-navmenu-scrim" onClick={() => setMenuOpen(false)} />}
+        <div className={`gf-navmenu${menuOpen ? ' is-open' : ''}`}>
+          {NAV.map(v => (
+            <button
+              key={v}
+              className={`gf-navmenu-btn${active === v ? ' is-active' : ''}`}
+              onClick={() => pickNav(v)}
+            >
+              <span>{LABEL[v]}</span>
+            </button>
+          ))}
+        </div>
+      </header>
     </>
   )
 }

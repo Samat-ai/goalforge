@@ -235,9 +235,7 @@ export default function Settings() {
   useEffect(() => { document.title = 'Settings — GoalForge' }, [])
 
   return (
-    <div className="min-h-dvh mesh-bg">
-
-      <main id="main-content" className="gf-main gf-settings">
+    <div className="gf-settings gf-page">
 
         {/* Eyebrow */}
         <div className="gf-eyebrow">Manage your preferences</div>
@@ -293,7 +291,6 @@ export default function Settings() {
         {!loading && !isError && settings && userId && (
           <SettingsForm settings={settings} userId={userId} />
         )}
-      </main>
     </div>
   )
 }

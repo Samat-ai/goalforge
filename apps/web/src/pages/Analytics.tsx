@@ -458,9 +458,7 @@ export default function Analytics() {
   })()
 
   return (
-    <div className="min-h-dvh mesh-bg" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
-
-      <main id="main-content" className="gf-main">
+    <div style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
 
         {/* Error */}
         {isError && (
@@ -724,7 +722,6 @@ export default function Analytics() {
             </div>
           </div>
         )}
-      </main>
     </div>
   )
 }

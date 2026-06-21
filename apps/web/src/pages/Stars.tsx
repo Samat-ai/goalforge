@@ -19,8 +19,6 @@ export default function Stars() {
   useEffect(() => { document.title = 'Logs — GoalForge' }, [])
 
   return (
-    <div className="min-h-dvh mesh-bg">
-      <main id="main-content" className="gf-main">
         <div className="gf-page">
           <div>
             <div className="gf-eyebrow">Your journey, in chapters</div>
@@ -74,7 +72,5 @@ export default function Stars() {
             isRedeeming={shopMutations.isRedeeming}
           />
         </div>
-      </main>
-    </div>
   )
 }
