@@ -370,6 +370,16 @@ body {
 .gf-create-chip:active { transform: scale(0.95); }
 .gf-create-chip:hover { background: rgba(255,255,255,0.16); color: var(--text); border-color: rgba(255,255,255,0.26); transform: translateY(-1px); }
 [data-theme="light"] .gf-create-chip:hover { background: rgba(255,255,255,0.72); border-color: rgba(255,255,255,0.95); }
+/* light-theme goal-creation hero overrides (handoff verbatim, non-token) */
+[data-theme="light"] .gf-create-bg { opacity: 0.55; }
+[data-theme="light"] .gf-create-blob.a { opacity: 0.5; }
+[data-theme="light"] .gf-create-blob.b { opacity: 0.42; }
+[data-theme="light"] .gf-create { border-color: color-mix(in oklab, var(--accent) 22%, transparent); }
+[data-theme="light"] .gf-create-pillwrap { box-shadow: 0 6px 22px -10px color-mix(in oklab, var(--accent) 32%, transparent); }
+[data-theme="light"] .gf-create.is-focus { border-color: color-mix(in oklab, var(--accent) 62%, transparent); }
+[data-theme="light"] .gf-create.is-focus .gf-create-bg { opacity: 0.9; }
+[data-theme="light"] .gf-create.is-focus .gf-create-pillwrap { box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 42%, transparent), 0 12px 34px -8px color-mix(in oklab, var(--accent) 58%, transparent); }
+[data-theme="light"] .gf-input { background: #fff; }
 .gf-create-status { text-align: center; font-family: var(--font-mono); font-size: 12px; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .gf-create-status.think { color: var(--accent-ink); }
 .gf-create-status.done { color: var(--ring-2); }
