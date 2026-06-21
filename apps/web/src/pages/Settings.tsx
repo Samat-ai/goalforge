@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/react'
 import { toast } from 'sonner'
 import { useThemeMode, type ThemeMode } from '../lib/ThemeContext'
+import Icon from '../components/ui/Icon'
 import api from '../lib/api'
 import {
   useEnablePushMutation,
@@ -189,6 +190,7 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
                 <option key={h} value={h}>{h.toString().padStart(2, '0')}:00</option>
               ))}
             </select>
+            <span className="gf-select-chev" aria-hidden="true"><Icon name="chevronDown" size={13} /></span>
           </div>
         </div>
         <div className="gf-row">
