@@ -863,7 +863,11 @@ body {
 @media (max-width: 720px) {
   .gf-starlog { grid-template-columns: 1fr; gap: 0; }
   .gf-starlog-main { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: 24px; margin-top: 4px; }
+  .gf-starlog-title { margin-bottom: 18px; }
 }
+/* light-theme class overrides (handoff: forced contrast, not token-driven) */
+[data-theme="light"] .gf-shop-costwrap { background: #fff; }
+[data-theme="light"] .gf-reward { background: var(--card-2); }
 /* shop */
 .gf-shop-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .gf-shop-title { font-family: var(--font-display); font-weight: 600; font-size: 19px; letter-spacing: -0.02em; }
@@ -872,7 +876,6 @@ body {
 .gf-shop-addbtn { min-height: 44px; padding: 0 20px; }
 .gf-shop-title-in { flex: 1; min-width: 200px; }
 .gf-shop-costwrap { display: flex; align-items: center; gap: 6px; padding-left: 12px; border-radius: 11px; border: 1px solid var(--border); background: var(--bg); color: var(--gold); width: 96px; }
-.gf-shop-star { font-size: 13px; }
 .gf-shop-cost-in { border: none; background: none; min-height: 42px; padding: 0 8px 0 0; width: 100%; color: var(--text); font-size: 14px; outline: none; }
 .gf-shop-list { display: flex; flex-direction: column; gap: 8px; }
 .gf-shop-empty { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-mute); padding: 14px 0; text-align: center; }
