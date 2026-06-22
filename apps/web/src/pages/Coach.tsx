@@ -11,6 +11,13 @@ import { useCoachSessionQuery, useSendCoachMessageMutation, useStartCoachSession
 const TOTAL_INTAKE_QUESTIONS = 5
 const cx = (...a: (string | false | undefined)[]) => a.filter(Boolean).join(' ')
 
+const SUGGESTION_CHIPS = [
+  'Get fit & run regularly',
+  'Launch a side project',
+  'Read more books',
+  'Learn a language',
+]
+
 // minimal *italic* -> <em> for non-streamed messages
 function renderItalics(text: string): ReactNode[] {
   return text.split(/(\*[^*]+\*)/g).filter(Boolean).map((seg, i) =>
@@ -219,6 +226,22 @@ export default function Coach() {
 
             {session && !isCompleted && (
               <div className="gf-co-composer">
+                {draft === '' && (
+                  <div className="gf-co-chips">
+                    {SUGGESTION_CHIPS.map(chip => (
+                      <button
+                        key={chip}
+                        className="gf-co-chip"
+                        onClick={() => {
+                          setDraft(chip)
+                          taRef.current?.focus()
+                        }}
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="gf-co-inputbar">
                   <textarea
                     ref={taRef}

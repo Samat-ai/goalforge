@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useUser } from '@clerk/react'
 import { toast } from 'sonner'
 import { useThemeMode, type ThemeMode } from '../lib/ThemeContext'
@@ -12,18 +13,129 @@ import {
 } from '../hooks'
 import type { UserSettings } from '../lib/types'
 
-const THEME_OPTS: { value: ThemeMode; label: string }[] = [
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-  { value: 'system', label: 'System' },
+const cx = (...a: (string | false | undefined)[]) => a.filter(Boolean).join(' ')
+
+const THEME_OPTS: { value: ThemeMode; ic: string; label: string }[] = [
+  { value: 'system', ic: 'monitor', label: 'System' },
+  { value: 'light',  ic: 'sun',     label: 'Light' },
+  { value: 'dark',   ic: 'moon',    label: 'Dark' },
 ]
 
+const DEL_WORD = 'DELETE'
+
+// ── Confirm Delete modal ───────────────────────────────────────────────────────
+function ConfirmDelete({
+  open,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean
+  onClose: () => void
+  onConfirm: () => Promise<void>
+}) {
+  const [text, setText] = useState('')
+  const [phase, setPhase] = useState<'idle' | 'working'>('idle')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const armed = text.trim().toUpperCase() === DEL_WORD
+
+  useEffect(() => {
+    if (!open) { setText(''); setPhase('idle'); return }
+    const t = setTimeout(() => inputRef.current?.focus(), 80)
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && phase === 'idle') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => { clearTimeout(t); window.removeEventListener('keydown', onKey) }
+  }, [open, phase, onClose])
+
+  if (!open) return null
+
+  async function run() {
+    if (!armed || phase !== 'idle') return
+    setPhase('working')
+    try {
+      await onConfirm()
+      // onConfirm handles redirect; if it throws we reset
+    } catch {
+      setPhase('idle')
+    }
+  }
+
+  return createPortal(
+    <div
+      className="gf-overlay gf-confirm-scrim"
+      onMouseDown={e => { if (e.target === e.currentTarget && phase === 'idle') onClose() }}
+    >
+      <div
+        className="gf-confirm"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="gf-cd-title"
+        aria-describedby="gf-cd-desc"
+      >
+        <button
+          className="gf-confirm-x"
+          onClick={onClose}
+          disabled={phase !== 'idle'}
+          aria-label="Close"
+        >
+          <Icon name="x" size={16} stroke={2.2} />
+        </button>
+        <div className="gf-confirm-head">
+          <span className="gf-confirm-ic"><Icon name="alert" size={22} /></span>
+          <div>
+            <h3 className="gf-confirm-title" id="gf-cd-title">Delete account data?</h3>
+            <p className="gf-confirm-body" id="gf-cd-desc">
+              This permanently erases your account and <strong>everything in it</strong>. This action cannot be undone.
+            </p>
+          </div>
+        </div>
+        <ul className="gf-confirm-list">
+          {['All goals & milestones', 'Every task and its history', 'Streaks, rewards & XP', 'Your profile and preferences'].map(item => (
+            <li key={item}><Icon name="trash" size={13} /> {item}</li>
+          ))}
+        </ul>
+        <div className="gf-confirm-field">
+          <label htmlFor="gf-cd-input">
+            Type <span className="gf-confirm-word">{DEL_WORD}</span> to confirm
+          </label>
+          <input
+            id="gf-cd-input"
+            ref={inputRef}
+            className={cx('gf-confirm-input', armed && 'is-armed')}
+            value={text}
+            placeholder={DEL_WORD}
+            autoComplete="off"
+            spellCheck={false}
+            disabled={phase !== 'idle'}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && armed) { void run() } }}
+          />
+        </div>
+        <div className="gf-confirm-foot">
+          <button className="gf-btn gf-btn-soft" onClick={onClose} disabled={phase !== 'idle'}>
+            Cancel
+          </button>
+          <button
+            className="gf-btn gf-btn-danger gf-confirm-go"
+            disabled={!armed || phase !== 'idle'}
+            onClick={() => { void run() }}
+          >
+            {phase === 'working'
+              ? <><span className="gf-confirm-spin" /> Deleting…</>
+              : <><Icon name="trash" size={14} /> Delete everything</>}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
 // ── Section shell ─────────────────────────────────────────────────────────────
-function SetSection({ icon, title, subtitle, children }: {
-  icon: string; title: string; subtitle?: string; children: React.ReactNode
+function SetSection({ icon, title, subtitle, children, className }: {
+  icon: string; title: string; subtitle?: string; children: React.ReactNode; className?: string
 }) {
   return (
-    <div className="gf-card gf-set">
+    <div className={cx('gf-card gf-set', className)}>
       <div className="gf-set-head">
         <span className="gf-set-ic">{icon}</span>
         <div>
@@ -50,8 +162,8 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 // ── DataControls ──────────────────────────────────────────────────────────────
 function DataControls({ userId }: { userId: string }) {
   const [isExporting, setIsExporting] = useState<null | 'json' | 'csv'>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const busy = !!isExporting || isDeleting
+  const [delOpen, setDelOpen] = useState(false)
+  const busy = !!isExporting
 
   async function exportData(format: 'json' | 'csv') {
     if (busy) return
@@ -77,19 +189,13 @@ function DataControls({ userId }: { userId: string }) {
   }
 
   async function deleteAllData() {
-    if (busy) return
-    const confirmed = window.confirm(
-      'This permanently deletes your GoalForge data (goals, tasks, milestones, rewards). Continue?'
-    )
-    if (!confirmed) return
-    setIsDeleting(true)
     try {
       await api.delete(`/users/${userId}`)
       toast.success('Account data deleted')
       window.location.href = '/'
     } catch {
       toast.error('Could not delete account data. Please try again.')
-      setIsDeleting(false)
+      throw new Error('delete failed')
     }
   }
 
@@ -98,21 +204,26 @@ function DataControls({ userId }: { userId: string }) {
       <p className="gf-set-para">Download your full GoalForge data anytime, or permanently delete your account and everything in it.</p>
       <div className="gf-data-btns">
         <button onClick={() => { void exportData('json') }} disabled={busy} className="gf-btn gf-btn-soft">
-          {isExporting === 'json' ? 'Exporting…' : '↓ Export JSON'}
+          <Icon name="arrowDown" size={14} /> {isExporting === 'json' ? 'Exporting…' : 'Export JSON'}
         </button>
         <button onClick={() => { void exportData('csv') }} disabled={busy} className="gf-btn gf-btn-soft">
-          {isExporting === 'csv' ? 'Exporting…' : '↓ Export CSV'}
+          <Icon name="arrowDown" size={14} /> {isExporting === 'csv' ? 'Exporting…' : 'Export CSV'}
         </button>
       </div>
       <div className="gf-danger">
-        <div>
+        <div className="gf-danger-text">
           <div className="gf-danger-title">Delete account data</div>
-          <div className="gf-danger-sub">Removes all goals, tasks, milestones and rewards. Cannot be undone.</div>
+          <div className="gf-danger-sub">Removes all goals, tasks, milestones and rewards. This cannot be undone.</div>
         </div>
-        <button onClick={() => { void deleteAllData() }} disabled={busy} className="gf-btn gf-btn-danger">
-          {isDeleting ? 'Deleting…' : '🗑 Delete'}
+        <button onClick={() => setDelOpen(true)} disabled={busy} className="gf-btn gf-btn-danger">
+          <Icon name="trash" size={14} /> Delete
         </button>
       </div>
+      <ConfirmDelete
+        open={delOpen}
+        onClose={() => setDelOpen(false)}
+        onConfirm={deleteAllData}
+      />
     </SetSection>
   )
 }
@@ -229,10 +340,14 @@ export default function Settings() {
   const { user } = useUser()
   const userId = user?.id
   const { mode, setMode } = useThemeMode()
+  const [themeOpen, setThemeOpen] = useState(false)
 
   const { settings, isLoading: loading, isError } = useSettingsQuery(userId)
 
   useEffect(() => { document.title = 'Settings — GoalForge' }, [])
+
+  const curTheme = THEME_OPTS.find(o => o.value === mode) ?? THEME_OPTS[2]
+  const themeCaption = mode === 'system' ? 'Follows your device setting' : `Always ${mode}`
 
   return (
     <div className="gf-settings gf-page">
@@ -240,26 +355,55 @@ export default function Settings() {
         {/* Eyebrow */}
         <div className="gf-eyebrow">Manage your preferences</div>
 
-        {/* Appearance — always rendered (theme is a local pref) */}
-        <SetSection icon="☀️" title="Appearance" subtitle="Choose how GoalForge looks">
-          <div className="gf-row is-top">
+        {/* Appearance — dropdown variant */}
+        <SetSection
+          icon="☀️"
+          title="Appearance"
+          subtitle="Choose how GoalForge looks"
+          className="gf-set-overflow"
+        >
+          <div className="gf-row gf-row-select">
             <div>
               <div className="gf-row-title">Theme</div>
-              <div className="gf-row-sub">
-                {mode === 'system' ? 'Follows your device setting' : `Always ${mode}`}
-              </div>
+              <div className="gf-row-sub">{themeCaption}</div>
             </div>
-            <div className="gf-theme-btns">
-              {THEME_OPTS.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => setMode(opt.value)}
-                  aria-pressed={mode === opt.value}
-                  className={['gf-theme-btn', mode === opt.value && 'is-on'].filter(Boolean).join(' ')}
-                >
-                  {opt.label}
-                </button>
-              ))}
+            <div className="gf-dd">
+              <button
+                className={cx('gf-dd-trigger', themeOpen && 'is-open')}
+                onClick={() => setThemeOpen(o => !o)}
+                aria-haspopup="listbox"
+                aria-expanded={themeOpen}
+              >
+                <Icon name={curTheme.ic} size={15} />
+                <span>{curTheme.label}</span>
+                <Icon
+                  name="chevron"
+                  size={13}
+                  stroke={2.4}
+                  className="gf-dd-chev"
+                  style={{ transform: themeOpen ? 'rotate(-90deg)' : 'rotate(90deg)' }}
+                />
+              </button>
+              {themeOpen && (
+                <>
+                  <div className="gf-dd-scrim" onClick={() => setThemeOpen(false)} />
+                  <div className="gf-dd-menu" role="listbox">
+                    {THEME_OPTS.map(o => (
+                      <button
+                        key={o.value}
+                        role="option"
+                        aria-selected={mode === o.value}
+                        className={cx('gf-dd-item', mode === o.value && 'is-active')}
+                        onClick={() => { setMode(o.value); setThemeOpen(false) }}
+                      >
+                        <Icon name={o.ic} size={16} />
+                        <span>{o.label}</span>
+                        {mode === o.value && <Icon name="check" size={14} stroke={3} className="gf-dd-check" />}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </SetSection>

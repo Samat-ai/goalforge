@@ -106,10 +106,10 @@ export default function AppHeader({ pts }: AppHeaderProps) {
           <div className="gf-header-right">
             <button
               onClick={() => navigate('/analytics')}
-              aria-label={`${pts} star points, stage ${stage.name}. Go to analytics.`}
+              aria-label={`Stage ${stage.name}. Go to analytics.`}
               className="gf-pts"
             >
-              ✦ {pts} · <span className="gf-pts-stage">{stage.name}</span>
+              ✦ <span className="gf-pts-stage">{stage.name}</span>
             </button>
 
             <UserButton />
