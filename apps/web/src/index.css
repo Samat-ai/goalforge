@@ -305,6 +305,10 @@ body {
 .gf-navmenu-btn.is-active { color: var(--text); background: var(--card-hi); }
 .gf-navmenu-btn:hover { color: var(--text); background: var(--card); }
 
+@media (max-width: 820px) {
+  .gf-nav-label { display: none; }
+  .gf-nav-btn { padding: 0 11px; }
+}
 @media (max-width: 700px) {
   .gf-nav { display: none; }
   .gf-pts { display: none; }

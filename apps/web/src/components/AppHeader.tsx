@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/react'
 import { getStage } from '../lib/gamification'
 import { useRewardsQuery } from '../hooks/useRewards'
+import Icon from './ui/Icon'
 
 const THEME_KEY_TO_CLASS: Record<string, string> = {
   neon_cyberpunk: 'theme-neon-cyberpunk',
@@ -14,6 +15,9 @@ const THEME_KEY_TO_CLASS: Record<string, string> = {
 const NAV = ['dashboard', 'analytics', 'stars', 'coach', 'settings'] as const
 const LABEL: Record<(typeof NAV)[number], string> = {
   dashboard: 'Dashboard', analytics: 'Analytics', stars: 'Logs', coach: 'Chat', settings: 'Settings',
+}
+const NAV_ICON: Record<(typeof NAV)[number], string> = {
+  dashboard: 'grid', analytics: 'chart', stars: 'spark', coach: 'chat', settings: 'gear',
 }
 
 interface AppHeaderProps {
@@ -98,7 +102,8 @@ export default function AppHeader({ pts }: AppHeaderProps) {
                 data-nav={v}
                 className={`gf-nav-btn${active === v ? ' is-active' : ''}`}
               >
-                {LABEL[v]}
+                <Icon name={NAV_ICON[v]} size={16} />
+                <span className="gf-nav-label">{LABEL[v]}</span>
               </Link>
             ))}
           </nav>
@@ -133,6 +138,7 @@ export default function AppHeader({ pts }: AppHeaderProps) {
               className={`gf-navmenu-btn${active === v ? ' is-active' : ''}`}
               onClick={() => pickNav(v)}
             >
+              <Icon name={NAV_ICON[v]} size={16} />
               <span>{LABEL[v]}</span>
             </button>
           ))}
