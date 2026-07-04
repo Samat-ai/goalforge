@@ -49,11 +49,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const resolved = resolve(mode, sysDark)
 
-  // Apply to <html> and persist.
+  // Apply to <html> and persist. Prototype scoping: dark is the unmarked
+  // default (empty attribute), light is explicit `data-theme="light"` — see
+  // index.css's verbatim prototype block (`:root` = dark, `[data-theme="light"]`
+  // overrides). No more `.dark` class — that mechanism dies with theme.ts.
   useEffect(() => {
-    const root = document.documentElement
-    root.setAttribute('data-theme', resolved)
-    root.classList.toggle('dark', resolved === 'dark')
+    document.documentElement.dataset.theme = resolved === 'light' ? 'light' : ''
   }, [resolved])
 
   function setMode(m: ThemeMode) {

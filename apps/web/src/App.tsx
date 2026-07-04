@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Show } from '@clerk/react'
 import { Toaster } from 'sonner'
-import Layout from './Layout'
+import AppShell from './components/gf/AppShell'
 import LandingPage from './pages/LandingPage'
 import Dashboard from './pages/Dashboard'
 import Analytics from './pages/Analytics'
@@ -65,8 +65,8 @@ export default function App() {
               </AuthGuard>
             }
           />
-          {/* Authenticated + onboarding-complete routes — persistent Layout owns AppHeader */}
-          <Route element={<AuthGuard><OnboardingGuard><Layout /></OnboardingGuard></AuthGuard>}>
+          {/* Authenticated + onboarding-complete routes — persistent AppShell owns the header/nav */}
+          <Route element={<AuthGuard><OnboardingGuard><AppShell /></OnboardingGuard></AuthGuard>}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/stars"     element={<Stars />} />
