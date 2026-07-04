@@ -53,7 +53,7 @@ function jsonHeaders() {
 }
 
 function parseBalance(text: string): number {
-  const match = text.match(/Balance:\s*(\d+)\s*pts/i)
+  const match = text.match(/(\d+)\s*balance/i)
   if (!match) throw new Error(`Could not parse balance from: ${text}`)
   return Number(match[1])
 }
@@ -351,21 +351,21 @@ test('core loop: login, create goal, complete 3 tasks, and redeem shop reward', 
   await page.getByRole('link', { name: 'Logs' }).first().click()
   await expect(page).toHaveURL(/\/stars$/)
 
-  await expect(page.getByText('Balance: 150 pts')).toBeVisible()
-  const beforeRedeem = parseBalance(await page.getByText(/Balance:\s*\d+\s*pts/).first().innerText())
+  await expect(page.getByText('150 balance')).toBeVisible()
+  const beforeRedeem = parseBalance(await page.getByText(/\d+\s*balance/).first().innerText())
 
   await page.getByRole('button', { name: 'Redeem' }).click()
 
   await expect.poll(async () => {
-    const text = await page.getByText(/Balance:\s*\d+\s*pts/).first().innerText()
+    const text = await page.getByText(/\d+\s*balance/).first().innerText()
     return parseBalance(text)
   }).toBeLessThan(beforeRedeem)
 
-  await expect(page.getByText('Balance: 110 pts')).toBeVisible()
+  await expect(page.getByText('110 balance')).toBeVisible()
 
   // Verify the shop card's redemption counter incremented — confirms the server-side
   // deduction was acknowledged and the UI reflects the updated redemption_count.
-  await expect(page.getByText('redeemed 1x')).toBeVisible()
+  await expect(page.getByText('redeemed 1×')).toBeVisible()
 })
 
 test('offline banner appears when network is lost and disappears when restored', async ({ page, context }) => {

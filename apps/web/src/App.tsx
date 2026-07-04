@@ -4,7 +4,7 @@ import { Show } from '@clerk/react'
 import { Toaster } from 'sonner'
 import AppShell from './components/gf/AppShell'
 import LandingPage from './pages/LandingPage'
-import Dashboard from './pages/Dashboard'
+import DashboardPage from './pages/DashboardPage'
 import Analytics from './pages/Analytics'
 import Coach from './pages/Coach'
 import Stars from './pages/Stars'
@@ -67,7 +67,7 @@ export default function App() {
           />
           {/* Authenticated + onboarding-complete routes — persistent AppShell owns the header/nav */}
           <Route element={<AuthGuard><OnboardingGuard><AppShell /></OnboardingGuard></AuthGuard>}>
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/stars"     element={<Stars />} />
             <Route path="/coach"     element={<Coach />} />

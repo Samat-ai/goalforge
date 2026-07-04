@@ -9,6 +9,7 @@ import { UserButton, useUser } from '@clerk/react'
 import { cx, Icon } from './Ui'
 import { getStage } from '../../lib/gamification'
 import { useProfileQuery } from '../../hooks'
+import { useResolvedTheme } from '../../lib/ThemeContext'
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'grid' },
@@ -94,8 +95,16 @@ function Header() {
 }
 
 export default function AppShell() {
+  // The prototype root ships with these variant attributes baked in
+  // (data-theme + data-create/font/motion/density — see the .gf-root element in
+  // design_handoff_goalforge/app/GoalForge Redesign.html). The tweaks panel that
+  // toggled them was dropped, so the shipped defaults are hard-coded here.
+  // data-theme is mirrored from ThemeContext because index.css has compound
+  // selectors ([data-theme="dark"][data-create="glass"]) that require both
+  // attributes on the same element.
+  const resolved = useResolvedTheme()
   return (
-    <div className="gf-root">
+    <div className="gf-root" data-theme={resolved} data-create="glass" data-font="modern" data-motion="rich" data-density="cozy">
       <Header />
       <main className="gf-main">
         <Outlet />
