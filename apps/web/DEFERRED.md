@@ -54,6 +54,14 @@ The following header elements are hidden in the new `gf-header` shell (phase 2 s
 
 Re-introduce when post-redesign header chrome pass is scheduled.
 
+## 2026-07-04 full rebuild (plan `2026-07-04-full-redesign-rebuild.md`) — running additions
+
+| Feature | Decision | Code lives at | Keep/cut recommendation |
+|---|---|---|---|
+| Equipped reward themes (body class from purchased theme, e.g. `theme-neon-cyberpunk`) | HIDDEN — old `AppHeader.tsx` applied it; new `AppShell.tsx` (Task 0) does not; CSS kept in LEGACY block of `index.css`; `useRewardsQuery` intact | `src/hooks/useRewards.ts`, legacy theme classes in `src/index.css` | Cut — conflicts with the locked prototype look (accent/theme are fixed by design); revisit only if shop keeps cosmetic items |
+
+Note (Task 0): rows in earlier sections referencing `AppHeader.tsx`/`Layout.tsx` are stale — both files were deleted in the rebuild; ledger gets a full rewrite in Task 9.
+
 ## Out of scope (separate later redesign passes)
 
 - **Onboarding** (`src/pages/Onboarding.tsx`) — handoff `app/GoalForge Onboarding.html`.
