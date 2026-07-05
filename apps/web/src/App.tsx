@@ -7,7 +7,7 @@ import LandingPage from './pages/LandingPage'
 import DashboardPage from './pages/DashboardPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import Coach from './pages/Coach'
-import Stars from './pages/Stars'
+import LogsPage from './pages/LogsPage'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
 import Settings from './pages/Settings'
@@ -69,7 +69,7 @@ export default function App() {
           <Route element={<AuthGuard><OnboardingGuard><AppShell /></OnboardingGuard></AuthGuard>}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
-            <Route path="/stars"     element={<Stars />} />
+            <Route path="/stars"     element={<LogsPage />} />
             <Route path="/coach"     element={<Coach />} />
             <Route path="/settings"  element={<Settings />} />
           </Route>
