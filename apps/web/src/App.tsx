@@ -11,7 +11,7 @@ import LogsPage from './pages/LogsPage'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
 import SettingsPage from './pages/SettingsPage'
-import Onboarding from './pages/Onboarding'
+import OnboardingPage from './pages/OnboardingPage'
 import OnboardingGuard from './components/OnboardingGuard'
 import ErrorBoundary from './components/ErrorBoundary'
 import EnergyParamCapture from './components/EnergyParamCapture'
@@ -61,7 +61,7 @@ export default function App() {
             path="/onboarding"
             element={
               <AuthGuard>
-                <Onboarding />
+                <OnboardingPage />
               </AuthGuard>
             }
           />
