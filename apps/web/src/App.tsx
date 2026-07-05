@@ -6,7 +6,7 @@ import AppShell from './components/gf/AppShell'
 import LandingPage from './pages/LandingPage'
 import DashboardPage from './pages/DashboardPage'
 import AnalyticsPage from './pages/AnalyticsPage'
-import Coach from './pages/Coach'
+import ChatPage from './pages/ChatPage'
 import LogsPage from './pages/LogsPage'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
@@ -70,7 +70,7 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/stars"     element={<LogsPage />} />
-            <Route path="/coach"     element={<Coach />} />
+            <Route path="/coach"     element={<ChatPage />} />
             <Route path="/settings"  element={<Settings />} />
           </Route>
           <Route path="*" element={<div className="p-8 text-center">404 - Page Not Found</div>} />
