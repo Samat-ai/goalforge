@@ -271,12 +271,13 @@ function HowItWorksDeck() {
   const lastDx = useRef(0)
   const stageRef = useRef<HTMLDivElement>(null)
   const autoRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const shuffleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const shuffle = useCallback((dir: number) => {
     if (busy) return
     setBusy(true)
     setFlyDir(dir)
-    setTimeout(() => {
+    shuffleTimerRef.current = setTimeout(() => {
       setOrder((o) => {
         setSnapStep(o[0])
         return [...o.slice(1), o[0]]
@@ -296,7 +297,7 @@ function HowItWorksDeck() {
 
   useEffect(() => {
     startAuto()
-    return stopAuto
+    return () => { stopAuto(); if (shuffleTimerRef.current) clearTimeout(shuffleTimerRef.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -477,8 +478,13 @@ function ChatDemo() {
   const [busy, setBusy] = useState(false)
   const [typing, setTyping] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
+  const replyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight }, [messages, typing])
+
+  useEffect(() => {
+    return () => { if (replyTimerRef.current) clearTimeout(replyTimerRef.current) }
+  }, [])
 
   function sendMsg(text: string) {
     const v = text.trim()
@@ -486,7 +492,7 @@ function ChatDemo() {
     setBusy(true)
     setMessages((m) => [...m, { who: 'you', text: v }])
     setTyping(true)
-    setTimeout(() => {
+    replyTimerRef.current = setTimeout(() => {
       setTyping(false)
       setMessages((m) => [...m, { who: 'them', text: replyFor(v) }])
       setBusy(false)
@@ -525,7 +531,6 @@ function SollyHero() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [speechIdx, setSpeechIdx] = useState(0)
   const [bump, setBump] = useState(false)
-  const [hop, setHop] = useState(false)
   const [greeting, setGreeting] = useState(false)
   const playingRef = useRef(false)
 
@@ -565,10 +570,10 @@ function SollyHero() {
     else v.addEventListener('loadeddata', kick, { once: true })
   }, [greet])
 
+  // prototype setupHero: the hero wrap has a .solly-clip, so isCanvas is true
+  // and click only ever greets (hop belongs to the CTA Solly, not the hero)
   function onClick() {
     greet()
-    setHop(false)
-    requestAnimationFrame(() => setHop(true))
     setSpeechIdx((i) => (i + 1) % SPEECH.length)
     setBump(false)
     requestAnimationFrame(() => setBump(true))
@@ -580,12 +585,11 @@ function SollyHero() {
       <div className="solly-glow" />
       <div className="speech s-main" dangerouslySetInnerHTML={{ __html: SPEECH[speechIdx] }} style={bump ? { transform: 'translateX(-50%) scale(1.09)' } : undefined} />
       <div
-        className={['solly-hero-wrap', hop && 'hop', greeting && 'greeting'].filter(Boolean).join(' ')}
+        className={['solly-hero-wrap', greeting && 'greeting'].filter(Boolean).join(' ')}
         ref={wrapRef}
         role="img" aria-label="Solly the star mascot, waving hello"
         onMouseEnter={greet}
         onClick={onClick}
-        onAnimationEnd={(e) => { if (e.animationName === 'sollyHop' || (e.nativeEvent as AnimationEvent).animationName?.includes('Hop')) setHop(false) }}
       >
         <img className="solly-idle" src="/solly-landing/Solly.png" alt="Solly the star mascot" />
         <video ref={videoRef} className="solly-clip" src="/solly-landing/solly-greet.webm" muted playsInline preload="auto" aria-hidden="true" />
@@ -657,7 +661,7 @@ function CtaSolly() {
       className={['solly-hero-wrap', hop && 'hop', greeting && 'greeting'].filter(Boolean).join(' ')}
       ref={wrapRef} role="img" aria-label="Solly waving"
       onClick={onClick}
-      onAnimationEnd={() => setHop(false)}
+      onAnimationEnd={(e) => { if (e.animationName === 'gfl-sollyHop') setHop(false) }}
     >
       <video ref={videoRef} className="solly-clip" src="/solly-landing/solly-hero.webm" muted playsInline preload="auto" aria-hidden="true" />
       <div ref={svgHostRef} dangerouslySetInnerHTML={{ __html: CTA_SOLLY_SVG }} />

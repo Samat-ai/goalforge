@@ -227,7 +227,7 @@
 .gfl-root .dc-pts { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
 .gfl-root .deck-foot { display: flex; align-items: center; gap: 18px; margin-top: 26px; }
 .gfl-root .deck-dots { display: flex; gap: 8px; align-items: center; }
-.gfl-root .deck-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border-hi); transition: all .3s; cursor: pointer; display: block; }
+.gfl-root .deck-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border-hi); transition: all .3s; cursor: pointer; }
 .gfl-root .deck-dots i.on { width: 24px; border-radius: 99px; background: var(--accent); }
 .gfl-root .deck-next { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--text); padding: 10px 16px; border-radius: 99px; border: 1px solid var(--border-hi); background: var(--card); box-shadow: var(--shadow); transition: transform .2s, border-color .2s; }
 .gfl-root .deck-next:hover { transform: translateY(-2px); border-color: var(--accent); }
