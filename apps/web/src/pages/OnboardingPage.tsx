@@ -150,6 +150,7 @@ export default function OnboardingPage() {
   const [reduceMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches)
 
   const cardRef = useRef<HTMLDivElement>(null)
+  const goalInputRef = useRef<HTMLTextAreaElement>(null)
   const starsWrapRef = useRef<HTMLDivElement>(null)
   const confettiRef = useRef<HTMLCanvasElement>(null)
 
@@ -386,6 +387,7 @@ export default function OnboardingPage() {
                   <div className="goal-field">
                     <span className="goal-star"><StarIcon /></span>
                     <textarea
+                      ref={goalInputRef}
                       className="goal-input"
                       rows={2}
                       value={goalText}
@@ -398,8 +400,9 @@ export default function OnboardingPage() {
                   </div>
                 </div>
                 <div className="goal-chips">
+                  {/* prototype: chip click fills the input AND refocuses it */}
                   {chipList.map(t => (
-                    <button key={t} type="button" className="gchip" onClick={() => setGoalText(t)}>{t}</button>
+                    <button key={t} type="button" className="gchip" onClick={() => { setGoalText(t); goalInputRef.current?.focus() }}>{t}</button>
                   ))}
                 </div>
                 <div className="goal-tip">
