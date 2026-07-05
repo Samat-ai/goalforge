@@ -84,19 +84,47 @@ function StreamingText({ content, onTick }: { content: string; onTick?: () => vo
   )
 }
 
+const THINK_VARIANTS = ['shimmer', 'pulse', 'wave'] as const
+
 function TypingDots() {
+  const [variant] = useState(() => THINK_VARIANTS[Math.floor(Math.random() * THINK_VARIANTS.length)])
   return (
     <div className="gf-co-msg gf-co-assistant gf-co-think">
-      <span className="gf-think-pulse" role="status" aria-label="Thinking"><i /><span>Thinking</span></span>
+      {variant === 'shimmer' && <span className="gf-think-shimmer">Thinking</span>}
+      {variant === 'pulse' && (
+        <span className="gf-think-pulse" role="status" aria-label="Thinking"><i /><span>Thinking</span></span>
+      )}
+      {variant === 'wave' && (
+        <span className="gf-think-wave" role="status" aria-label="Thinking"><i /><i /><i /></span>
+      )}
     </div>
   )
 }
 
 function CoachMsg({ content, animate, stream, onTick }: { content: string; animate: boolean; stream: boolean; onTick: () => void }) {
+  // Per-message action row (prototype: gf-coach.jsx CoachMsg). The prototype's
+  // buttons are inert; real minimal behavior here — Copy writes the message to
+  // the clipboard, Good records a local transient acknowledgement (no backend
+  // feedback endpoint exists, so none is invented).
+  const [acked, setAcked] = useState<'copy' | 'good' | null>(null)
+  const ackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(ackTimer.current), [])
+  const ack = (kind: 'copy' | 'good') => {
+    setAcked(kind)
+    clearTimeout(ackTimer.current)
+    ackTimer.current = setTimeout(() => setAcked(null), 1500)
+  }
+  const copy = () => {
+    navigator.clipboard?.writeText(content).then(() => ack('copy')).catch(() => {})
+  }
   return (
     <div className={cx('gf-co-msg gf-co-assistant', animate && !stream && 'gf-co-in')}>
       <div className="gf-co-text">
         {stream ? <StreamingText content={content} onTick={onTick} /> : renderItalics(content)}
+      </div>
+      <div className="gf-co-actions">
+        <button className="gf-co-act" aria-label={acked === 'copy' ? 'Copied' : 'Copy'} onClick={copy}><Icon name="check" size={14} /></button>
+        <button className="gf-co-act" aria-label={acked === 'good' ? 'Thanks for the feedback' : 'Good'} onClick={() => ack('good')}><Icon name="spark" size={14} /></button>
       </div>
     </div>
   )
@@ -283,6 +311,10 @@ export default function ChatPage() {
                       ) : null}
                       <div className="gf-co-plan-foot">
                         <Link to="/dashboard" className="gf-btn gf-btn-accent">Open Dashboard <Icon name="arrowRight" size={14} /></Link>
+                        {/* Prototype's second footer button (gf-coach.jsx PlanCard). Real
+                            minimal behavior: focus the composer to continue the conversation
+                            (safe no-op when the composer is hidden on completed sessions). */}
+                        <button className="gf-btn gf-btn-soft" onClick={() => taRef.current?.focus()}>Refine plan</button>
                       </div>
                     </div>
                   </div>
