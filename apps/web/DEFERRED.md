@@ -67,6 +67,9 @@ Re-introduce when post-redesign header chrome pass is scheduled.
 | OfflineBanner | UNCHANGED (Task 1) — mounted app-level in `App.tsx`; the offline e2e test depends on it; left as-is | `src/components/OfflineBanner.tsx` | Keep |
 | RewardModal + badge confetti | KEPT (Task 1) — jackpot drops open `RewardModal`; `completeTask.onSuccess` still invalidates `queryKeys.badges(userId)`; badge-unlock confetti effect ported verbatim into `DashboardPage.tsx` | `src/components/RewardModal.tsx`, `src/components/ConfettiContext.tsx`, `src/pages/DashboardPage.tsx` | Keep |
 
+| Landing stats band metrics | PLACEHOLDER (Task 7) — prototype's illustrative figures kept verbatim incl. "Illustrative figures" note | `src/pages/LandingPage.tsx` stats band | Product decision pre-launch: real metrics or drop the band |
+| Landing mobile sign-in path | GAP (Task 7) — burger menu carries only "Let's plan" CTA; desktop-only "Sign in" link hidden ≤760px (prototype had no auth) | `src/pages/LandingPage.tsx` nav + `src/landing.css` | Add "Sign in" item to burger menu when convenient |
+
 Note (Task 0): rows in earlier sections referencing `AppHeader.tsx`/`Layout.tsx` are stale — both files were deleted in the rebuild; ledger gets a full rewrite in Task 9.
 
 ## Out of scope (separate later redesign passes)
