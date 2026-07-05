@@ -1321,8 +1321,6 @@ html { scroll-behavior: smooth; }
 /* reflection */
 /* badges */
 /* hall of fame */
-/* AI coach recommendation card (handoff .gf-coach card; renamed to avoid clash with Coach-page .gf-coach wrapper) */
-.gf-coach-card { margin-top: 4px; border-radius: 12px; border: 1px solid color-mix(in oklab, var(--ring-2) 35%, transparent); background: color-mix(in oklab, var(--ring-2) 9%, transparent); padding: 12px 14px; }
 /* responsive */
 /* ════════════════════ Stars page ════════════════════ */
 /* star log */
