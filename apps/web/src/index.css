@@ -866,7 +866,6 @@ html { scroll-behavior: smooth; }
 .gf-input-readonly { display: flex; align-items: center; gap: 8px; color: var(--text-dim); font-family: var(--font-mono); font-size: 13px; }
 
 /* ════════════════════ TOGGLE SWITCH ════════════════════ */
-/* TODO(Task 5 Settings rebuild): legacy Settings.tsx uses .gf-switch with input+track/thumb markup — collides with this prototype button+knob switch until SettingsPage lands */
 .gf-switch { flex-shrink: 0; width: 48px; height: 28px; border-radius: 99px; background: var(--ring-track); border: 1px solid var(--border); position: relative; transition: background .25s cubic-bezier(.34,1.3,.5,1), border-color .25s; }
 .gf-switch.is-on { background: var(--accent); border-color: var(--accent); }
 .gf-switch-knob { position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform .28s cubic-bezier(.34,1.6,.5,1); }

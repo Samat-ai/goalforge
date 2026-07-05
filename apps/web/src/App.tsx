@@ -10,7 +10,7 @@ import ChatPage from './pages/ChatPage'
 import LogsPage from './pages/LogsPage'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
-import Settings from './pages/Settings'
+import SettingsPage from './pages/SettingsPage'
 import Onboarding from './pages/Onboarding'
 import OnboardingGuard from './components/OnboardingGuard'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -71,7 +71,7 @@ export default function App() {
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/stars"     element={<LogsPage />} />
             <Route path="/coach"     element={<ChatPage />} />
-            <Route path="/settings"  element={<Settings />} />
+            <Route path="/settings"  element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<div className="p-8 text-center">404 - Page Not Found</div>} />
         </Routes>
