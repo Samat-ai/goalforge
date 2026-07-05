@@ -151,6 +151,18 @@ export default function OnboardingPage() {
 
   const cardRef = useRef<HTMLDivElement>(null)
   const goalInputRef = useRef<HTMLTextAreaElement>(null)
+  // Thinking-sequence + confetti timer ids — cleared on unmount so a user
+  // navigating away mid-sequence doesn't get setState/rAF on a dead component
+  // (same discipline as the shooting-star effect's cleanup below).
+  const thinkIvRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const thinkToRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const confettiRafRef = useRef<number | null>(null)
+
+  useEffect(() => () => {
+    if (thinkIvRef.current !== null) clearInterval(thinkIvRef.current)
+    if (thinkToRef.current !== null) clearTimeout(thinkToRef.current)
+    if (confettiRafRef.current !== null) cancelAnimationFrame(confettiRafRef.current)
+  }, [])
   const starsWrapRef = useRef<HTMLDivElement>(null)
   const confettiRef = useRef<HTMLCanvasElement>(null)
 
@@ -224,9 +236,9 @@ export default function OnboardingPage() {
           ctx!.fillStyle = p.c; ctx!.fillRect(-p.r / 2, -p.r / 2, p.r, p.r * 1.6); ctx!.restore()
         }
       })
-      if (alive) requestAnimationFrame(frame); else ctx!.clearRect(0, 0, cv!.width, cv!.height)
+      if (alive) { confettiRafRef.current = requestAnimationFrame(frame) } else { confettiRafRef.current = null; ctx!.clearRect(0, 0, cv!.width, cv!.height) }
     }
-    requestAnimationFrame(frame)
+    confettiRafRef.current = requestAnimationFrame(frame)
   }
 
   function goTo(n: number) { setStep(Math.max(0, Math.min(n, 4))) }
@@ -235,9 +247,11 @@ export default function OnboardingPage() {
     if (!goalText.trim()) return
     setThinking(true)
     setThinkIdx(0)
-    const iv = setInterval(() => setThinkIdx(i => Math.min(i + 1, THINK_MESSAGES.length - 1)), 620)
-    setTimeout(() => {
-      clearInterval(iv)
+    thinkIvRef.current = setInterval(() => setThinkIdx(i => Math.min(i + 1, THINK_MESSAGES.length - 1)), 620)
+    thinkToRef.current = setTimeout(() => {
+      if (thinkIvRef.current !== null) clearInterval(thinkIvRef.current)
+      thinkIvRef.current = null
+      thinkToRef.current = null
       setThinking(false)
       setFinishGoal({ title: goalText.trim(), focus: chosenFocus })
       goTo(4)
