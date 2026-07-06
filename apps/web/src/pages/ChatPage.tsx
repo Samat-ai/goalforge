@@ -11,11 +11,12 @@
 // question sequence, and after 5 answers it synchronously creates the Goal.
 // Post-creation navigation (Link to /dashboard) is lifted from the legacy
 // src/pages/Coach.tsx (behavior only, not markup).
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useUser } from '@clerk/react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
-import { cx, Icon } from '../components/gf/Ui'
+import { Icon } from '../components/gf/Ui'
+import { cx } from '../components/gf/util'
 import SollyIdle from '../components/SollyIdle'
 import { CoachPanelSkeleton } from '../components/ui/Skeleton'
 import { useCoachSessionQuery, useSendCoachMessageMutation, useStartCoachSessionMutation } from '../hooks'
@@ -153,7 +154,7 @@ export default function ChatPage() {
   const taRef = useRef<HTMLTextAreaElement | null>(null)
   const prevLenRef = useRef(0)
 
-  const messages = session?.messages ?? []
+  const messages = useMemo(() => session?.messages ?? [], [session?.messages])
   const answeredCount = messages.filter(m => m.role === 'user').length
   const forgedGoal = result?.forged_goal ?? null
   const isCompleted = !!session?.is_completed

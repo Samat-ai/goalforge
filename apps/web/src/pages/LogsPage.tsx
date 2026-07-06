@@ -6,7 +6,8 @@
 // local UI state — there is no backend toggle mutation), useProfileQuery.
 import { useState } from 'react'
 import { useUser } from '@clerk/react'
-import { cx, Icon, Reveal } from '../components/gf/Ui'
+import { Icon, Reveal } from '../components/gf/Ui'
+import { cx } from '../components/gf/util'
 import { useProfileQuery, useShopRewardsQuery, useShopRewardMutations, useStarLogQuery } from '../hooks'
 import type { ShopReward, StarLogResponse } from '../lib/types'
 

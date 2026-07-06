@@ -6,7 +6,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/react'
-import { cx, Icon } from './Ui'
+import { Icon } from './Ui'
+import { cx } from './util'
 import { getStage } from '../../lib/gamification'
 import { useProfileQuery } from '../../hooks'
 import { useResolvedTheme } from '../../lib/ThemeContext'
@@ -34,6 +35,7 @@ function Header() {
 
   useLayoutEffect(() => {
     const el = wrap.current?.querySelector<HTMLElement>(`[data-nav="${active}"]`)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM measurement after layout
     if (el) setPill({ left: el.offsetLeft, width: el.offsetWidth, ready: true })
     else setPill(p => ({ ...p, ready: false }))
   }, [active])

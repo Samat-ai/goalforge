@@ -6,7 +6,8 @@
 // useBadgesQuery, useLatestWeeklyReflectionQuery, useProfileQuery).
 import { useEffect, useMemo, useState } from 'react'
 import { useUser } from '@clerk/react'
-import { cx, Icon, Reveal, Ring, Sparkline, useCountUp, gfTip, gfHideTip } from '../components/gf/Ui'
+import { Icon, Reveal, Ring, Sparkline } from '../components/gf/Ui'
+import { cx, useCountUp, gfTip, gfHideTip } from '../components/gf/util'
 import {
   useAllGoalsQuery,
   useBadgesQuery,

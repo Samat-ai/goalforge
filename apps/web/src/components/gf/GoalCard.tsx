@@ -6,7 +6,8 @@
 // achieved/abandoned goals reusing this same card) are added as minimal,
 // CSS-class-reuse-only extensions; see task-1-report.md for the list.
 import { useId, useMemo, useState } from 'react'
-import { cx, Icon, Reveal, gfHideTip, gfTip } from './Ui'
+import { Icon, Reveal } from './Ui'
+import { cx, gfHideTip, gfTip } from './util'
 import { toGoalView, type GoalViewTask } from '../../lib/goalView'
 import { todayStr } from '../../lib/gamification'
 import type { Goal } from '../../lib/types'
@@ -148,7 +149,6 @@ function TaskRowG({ task, overdue, onToggle }: { task: GoalViewTask; overdue?: b
 interface TodayTabProps {
   goal: Goal
   onToggleTask: (taskId: string, done: boolean) => void
-  onCelebrate: () => void
   onAbandon: () => void
   onDelete: () => void
   onCompleteSprint: () => void
@@ -160,7 +160,7 @@ interface TodayTabProps {
 }
 
 function TodayTab({
-  goal, onToggleTask, onCelebrate, onAbandon, onDelete, onCompleteSprint, onRetryGeneration,
+  goal, onToggleTask, onAbandon, onDelete, onCompleteSprint, onRetryGeneration,
   completingSprint, retryingGeneration, confirm, setConfirm,
 }: TodayTabProps) {
   const view = toGoalView(goal)
@@ -226,10 +226,10 @@ function TodayTab({
       )}
       <div className="gf-tasks">
         {view.overdue.map(t => (
-          <TaskRowG key={t.id} task={t} overdue onToggle={() => { if (!t.done) onCelebrate(); onToggleTask(t.id, t.done) }} />
+          <TaskRowG key={t.id} task={t} overdue onToggle={() => onToggleTask(t.id, t.done)} />
         ))}
         {view.tasks.map(t => (
-          <TaskRowG key={t.id} task={t} onToggle={() => { if (!t.done) onCelebrate(); onToggleTask(t.id, t.done) }} />
+          <TaskRowG key={t.id} task={t} onToggle={() => onToggleTask(t.id, t.done)} />
         ))}
       </div>
       {!isAbandoned && !isAchieved && (
@@ -333,11 +333,10 @@ export interface GoalCardProps {
   goal: Goal
   index?: number
   defaultOpen?: boolean
-  onCelebrate: () => void
   mutations: Mutations
 }
 
-export default function GoalCard({ goal, index = 0, defaultOpen = false, onCelebrate, mutations }: GoalCardProps) {
+export default function GoalCard({ goal, index = 0, defaultOpen = false, mutations }: GoalCardProps) {
   const [open, setOpen] = useState(defaultOpen)
   const [tab, setTab] = useState<'today' | 'sprints' | 'history'>('today')
   const [confirm, setConfirm] = useState<'abandon' | 'delete' | null>(null)
@@ -416,7 +415,6 @@ export default function GoalCard({ goal, index = 0, defaultOpen = false, onCeleb
               <TodayTab
                 goal={goal}
                 onToggleTask={handleToggleTask}
-                onCelebrate={onCelebrate}
                 onAbandon={handleAbandon}
                 onDelete={handleDelete}
                 onCompleteSprint={handleCompleteSprint}

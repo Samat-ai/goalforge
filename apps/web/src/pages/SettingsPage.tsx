@@ -11,7 +11,8 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useUser } from '@clerk/react'
 import { toast } from 'sonner'
-import { cx, Icon, Reveal, Toggle } from '../components/gf/Ui'
+import { Icon, Reveal, Toggle } from '../components/gf/Ui'
+import { cx } from '../components/gf/util'
 import { useThemeMode, type ThemeMode } from '../lib/ThemeContext'
 import api from '../lib/api'
 import {
@@ -40,6 +41,9 @@ function ConfirmDelete({
   const armed = text.trim().toUpperCase() === DEL_WORD
 
   useEffect(() => {
+    // Resets the modal's internal fields when it closes so the next open starts
+    // blank; this is UI-state reset on visibility change, not derived render state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!open) { setText(''); setPhase('idle'); return }
     const t = setTimeout(() => inputRef.current?.focus(), 80)
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && phase === 'idle') onClose() }

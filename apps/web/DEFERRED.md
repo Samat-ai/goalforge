@@ -5,7 +5,7 @@ Current-state ledger after the 2026-07 full redesign rebuild (branch
 All 8 surfaces (shell, Dashboard, Analytics, Logs, Chat, Settings, Onboarding,
 Landing) are 1:1 transcriptions of `design_handoff_goalforge/` prototypes.
 
-Spec: `docs/superpowers/specs/2026-06-20-app-redesign-1to1-design.md`
+Spec: `docs/superpowers/specs/2026-07-04-full-redesign-rebuild-design.md`
 
 ## 1. Removed (Task 8)
 

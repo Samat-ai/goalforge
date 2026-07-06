@@ -7,7 +7,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { cx, Icon, Reveal, Segmented } from '../components/gf/Ui'
+import { Icon, Reveal, Segmented } from '../components/gf/Ui'
+import { cx } from '../components/gf/util'
 import GoalCard from '../components/gf/GoalCard'
 import { useBadgesQuery, useGoalsQuery, useGoalMutations } from '../hooks'
 import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
@@ -272,7 +273,6 @@ export default function DashboardPage() {
                   goal={goal}
                   index={i}
                   defaultOpen={i === 0 && filter === 'active'}
-                  onCelebrate={() => {}}
                   mutations={mutations}
                 />
               ))}

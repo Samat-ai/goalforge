@@ -69,10 +69,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// Hooks exported beside their Provider is an accepted pattern here (see ConfettiContext.tsx).
+// eslint-disable-next-line react-refresh/only-export-components
 export function useThemeMode() {
   return useContext(ThemeContext)
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- see useThemeMode above.
 export function useResolvedTheme(): ResolvedTheme {
   return useContext(ThemeContext).resolved
 }
