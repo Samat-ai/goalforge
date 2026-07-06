@@ -244,6 +244,7 @@ export default function OnboardingPage() {
   function goTo(n: number) { setStep(Math.max(0, Math.min(n, 4))) }
 
   function createGoal() {
+    if (thinking) return
     if (!goalText.trim()) return
     setThinking(true)
     setThinkIdx(0)
