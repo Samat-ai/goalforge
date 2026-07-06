@@ -1178,7 +1178,7 @@ html { scroll-behavior: smooth; }
    LEGACY — to be removed in per-page tasks (Tasks 1-7). Referenced by
    old page components (Dashboard, GoalCard, DailyTaskList, Analytics,
    Stars, Coach, Settings, CollectionModal, energy/jackpot modals,
-   CompanionWidget, InstallPrompt, ErrorBoundary) plus LandingPage and
+   InstallPrompt, ErrorBoundary) plus LandingPage and
    Onboarding, which are out of scope for this redesign pass.
    ════════════════════════════════════════════════════════════════════════ */
 /* ── Header / nav ── */
@@ -1377,14 +1377,6 @@ html { scroll-behavior: smooth; }
 .gf-coll-read { background: color-mix(in oklab, var(--indigo) 20%, transparent); border: 1px solid color-mix(in oklab, var(--indigo) 40%, transparent); color: var(--indigo); border-radius: 5px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; padding: 4px 10px; cursor: pointer; min-height: 44px; }
 .gf-coll-equip { background: var(--accent); color: #0a0a14; border: none; border-radius: 5px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; padding: 4px 10px; cursor: pointer; min-height: 44px; }
 .gf-coll-equipped { font-family: var(--font-mono); font-size: 9px; background: color-mix(in oklab, var(--accent) 20%, transparent); color: var(--accent); padding: 2px 6px; border-radius: 3px; }
-/* ════════════════════ CompanionWidget ══════════════════ */
-.gf-cw-bar-track { position: fixed; bottom: 8px; right: 20px; z-index: 90; border-radius: 2px; overflow: hidden; background: var(--text-mute); pointer-events: none; }
-.gf-cw-fab-inner { margin-top: -2px; }
-.gf-cw-creature { display: flex; justify-content: center; margin-bottom: 12px; }
-.gf-cw-desc { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); font-style: italic; margin-bottom: 18px; line-height: 1.5; }
-.gf-cw-stages { display: flex; align-items: center; justify-content: center; gap: 3px; margin-bottom: 14px; flex-wrap: wrap; }
-.gf-cw-stage-item { display: flex; align-items: center; gap: 3px; }
-.gf-cw-next { font-family: var(--font-mono); font-size: 10px; color: var(--text-mute); margin-bottom: 16px; }
 /* ════════════════════ InstallPrompt ════════════════════ */
 .gf-install-banner { position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 480px; z-index: 9999; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; background: var(--card-2); border: 1px solid color-mix(in oklab, var(--indigo) 35%, transparent); box-shadow: 0 8px 32px rgba(0,0,0,0.45); backdrop-filter: blur(12px); animation: slide-up 0.4s cubic-bezier(0.16,1,0.3,1) both; }
 .gf-install-ic { width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0; background: color-mix(in oklab, var(--indigo) 20%, transparent); border: 1px solid color-mix(in oklab, var(--indigo) 30%, transparent); display: flex; align-items: center; justify-content: center; font-size: 20px; }

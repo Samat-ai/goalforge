@@ -5,8 +5,8 @@
 // ThemeContext (theme dropdown), Clerk useUser (sign-out lives in AppShell's
 // UserButton — the prototype has no sign-out control on this page). The
 // prototype's tweaks panel (accent/font/density) is never ported — see
-// CLAUDE.md locked design decisions. Accountability section intentionally
-// absent (prototype has none; full code deletion happens separately).
+// CLAUDE.md locked design decisions. Accountability feature removed
+// (FE+BE+DB) in Task 8 of the redesign rebuild.
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useUser } from '@clerk/react'

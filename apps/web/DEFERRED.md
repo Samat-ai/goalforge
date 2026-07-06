@@ -26,21 +26,16 @@ These remain fully wired. The handoff design didn't cover them; they were not re
 | Offline banner | `src/components/OfflineBanner.tsx` | Kept |
 | Push notifications | `src/hooks/usePushNotifications.ts`, push settings | Kept — surfaced on redesigned Settings |
 
-## Cut — DECIDED to remove (2026-06-20), currently only UI-HIDDEN (reversible)
+## Removed (Task 8, 2026-07-05)
 
-These were decided as cut by the user. The redesign **stops surfacing them** in the UI, but
-the code/backend are intentionally still present — the destructive deletion (incl. a DB
-migration) is a separate, explicitly user-gated teardown task (NOT part of the visual re-port).
-
-| Feature | Key file(s) | Current state |
-|---|---|---|
-| **CompanionWidget** ("tamagotchi bubble") | `src/components/CompanionWidget.tsx` (+ `companion-pulse` CSS, removed) | Removed from Dashboard render; component file kept |
-| **Accountability partners** | `src/hooks/useAccountability.ts` + backend accountability routes/model | Removed from Settings UI; hook file + backend untouched |
-
-**Gated teardown (do NOT run without explicit user go-ahead):** delete the CompanionWidget +
-useAccountability files, remove backend accountability routes/model + the `GET /overview`
-`invitee_user_id`/`target_email` match, and run an Alembic migration dropping the accountability
-table. See Task 8 in the plan.
+**CompanionWidget** ("tamagotchi bubble") and **Accountability partners** were fully deleted:
+FE (`useAccountability.ts` + its export, `AccountabilityInvite`/`AccountabilityPartner`/
+`AccountabilityOverview` types, `queryKeys.accountability`, `gf-cw-*` CompanionWidget CSS in
+`index.css`), BE (`routes/accountability.py`, its `main.py` include, `AccountabilityInvite`/
+`AccountabilityPartnership` models + `User` relationships, accountability schemas,
+`tests/test_accountability.py`). Alembic migration dropping the `accountability_invites` /
+`accountability_partnerships` tables was generated but not yet applied — see the migration
+file under `apps/api/alembic/versions/` for the drop; run `alembic upgrade head` to apply.
 
 ## Header chrome — hidden pending post-redesign re-integration (2026-06-21)
 
