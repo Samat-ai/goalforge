@@ -37,7 +37,7 @@ by decision. Do not delete in dead-code sweeps.
 | InstallPrompt (PWA) | `src/components/InstallPrompt.tsx` — live, mounted in `main.tsx` | Keep (active) |
 | OfflineBanner | `src/components/OfflineBanner.tsx` — live, mounted in `App.tsx`; offline e2e depends on it | Keep (active) |
 | Push notification settings | `src/hooks/usePushNotifications.ts` — live, surfaced on redesigned Settings | Keep (active) |
-| Header chrome (equipped-title badge, first-name text, relic-count opener) | not rendered by `src/components/gf/AppShell.tsx`; CSS `.gf-title-badge`/`.gf-relic-btn`/`.gf-header-name` kept in `index.css` | Re-introduce in a post-redesign header pass or cut CSS next sweep |
+| Header chrome (equipped-title badge, first-name text, relic-count opener) | not rendered by `src/components/gf/AppShell.tsx`; JSX + CSS (`.gf-title-badge`/`.gf-relic-btn`/`.gf-header-name`) removed in Task 9 — recover from git history if revived | Re-introduce in a post-redesign header pass |
 
 CSS note: the LEGACY block at the bottom of `src/index.css` now contains only rules
 consumed by the kept components above (FocusOverlay, EnergyModal, RewardModal/jackpot,
