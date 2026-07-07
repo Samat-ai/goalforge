@@ -5,7 +5,9 @@
  *                                   star points / task data in React Query)
  *   /assets/*       → stale-while-revalidate (Vite content-hashes these;
  *                     a cached entry is always correct when the URL hasn't changed)
- *   navigation      → cache-first for app shell, network update in background
+ *   navigation      → network-first, fallback to cached shell (a cached
+ *                     index.html must never outlive a deploy — it references
+ *                     content-hashed bundles that no longer exist → blank page)
  *   everything else → network-first, fallback to cache
  *
  * Offline fallback: navigation requests that fail serve the cached '/' shell so
@@ -14,7 +16,7 @@
  * To purge all caches on next deploy: bump CACHE_VERSION (e.g. 'v3').
  */
 
-const CACHE_VERSION = 'v2'
+const CACHE_VERSION = 'v3'
 const CACHE_NAME = `goalforge-shell-${CACHE_VERSION}`
 const STATIC_CACHE = `goalforge-static-${CACHE_VERSION}`
 
@@ -64,18 +66,6 @@ self.addEventListener('notificationclick', (event) => {
 })
 
 // ── Caching strategies ───────────────────────────────────────────────────────
-
-/** Cache-first: serve from cache, fetch + cache on miss. */
-async function cacheFirst(request, cacheName = CACHE_NAME) {
-  const cached = await caches.match(request)
-  if (cached) return cached
-  const response = await fetch(request)
-  if (response.ok) {
-    const cache = await caches.open(cacheName)
-    cache.put(request, response.clone())
-  }
-  return response
-}
 
 /** Network-first: try network, fall back to cache. Navigation requests fall
  *  back to the cached shell ('/') so React can mount offline. */
@@ -129,14 +119,11 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // 3. App shell / navigation: cache-first with network update in background
+  // 3. App shell / navigation: network-first so a fresh deploy's index.html
+  // always wins; falls back to the cached shell offline (networkFirst handles
+  // the navigate-mode '/' fallback itself)
   if (event.request.mode === 'navigate') {
-    event.respondWith(
-      cacheFirst(event.request, CACHE_NAME).catch(async () => {
-        const shell = await caches.match('/')
-        return shell ?? new Response('Offline', { status: 503 })
-      })
-    )
+    event.respondWith(networkFirst(event.request, CACHE_NAME))
     return
   }
 

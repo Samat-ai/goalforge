@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useUser } from '@clerk/react'
-import { Icon, Reveal, Segmented } from '../components/gf/Ui'
+import { Icon, Reveal, Segmented, Switcher } from '../components/gf/Ui'
 import { cx } from '../components/gf/util'
 import GoalCard from '../components/gf/GoalCard'
 import { useBadgesQuery, useGoalsQuery, useGoalMutations } from '../hooks'
@@ -223,8 +223,6 @@ export default function DashboardPage() {
     achieved: goals.filter(g => g.status === 'achieved').length,
     abandoned: goals.filter(g => g.status === 'abandoned').length,
   }
-  const filtered = goals.filter(g => g.status === filter)
-
   return (
     <>
       {loading && (
@@ -260,24 +258,29 @@ export default function DashboardPage() {
             </Reveal>
           </div>
 
-          {filtered.length === 0 ? (
-            <div className="gf-empty">
-              <div className="gf-empty-ic"><Icon name="trophy" size={26} /></div>
-              <div className="gf-empty-t">{filter === 'abandoned' ? 'Nothing abandoned — you’re holding the line.' : 'No goals here yet.'}</div>
-            </div>
-          ) : (
-            <div className="gf-goallist">
-              {filtered.map((goal, i) => (
-                <GoalCard
-                  key={goal.id}
-                  goal={goal}
-                  index={i}
-                  defaultOpen={i === 0 && filter === 'active'}
-                  mutations={mutations}
-                />
-              ))}
-            </div>
-          )}
+          <Switcher value={filter}>
+            {(shown) => {
+              const list = goals.filter(g => g.status === shown)
+              return list.length === 0 ? (
+                <div className="gf-empty">
+                  <div className="gf-empty-ic"><Icon name="trophy" size={26} /></div>
+                  <div className="gf-empty-t">{shown === 'abandoned' ? 'Nothing abandoned — you’re holding the line.' : 'No goals here yet.'}</div>
+                </div>
+              ) : (
+                <div className="gf-goallist">
+                  {list.map((goal, i) => (
+                    <GoalCard
+                      key={goal.id}
+                      goal={goal}
+                      index={i}
+                      defaultOpen={i === 0 && shown === 'active'}
+                      mutations={mutations}
+                    />
+                  ))}
+                </div>
+              )
+            }}
+          </Switcher>
         </div>
       )}
 

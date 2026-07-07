@@ -198,11 +198,16 @@ export default function ChatPage() {
     if (!session || !userId || isSending || isStarting || session.is_completed) return
     const content = draft.trim()
     if (!content) return
+    // Clear the composer immediately — the message optimistically appears in
+    // the thread (useSendCoachMessageMutation.onMutate); restore on failure.
+    setDraft('')
+    if (taRef.current) taRef.current.style.height = 'auto'
     try {
       await send({ sessionId: session.id, content })
-      setDraft('')
-      if (taRef.current) taRef.current.style.height = 'auto'
-    } catch { toast.error('Coach message failed. Please retry.') }
+    } catch {
+      setDraft(content)
+      toast.error('Coach message failed. Please retry.')
+    }
   }
 
   function grow(e: React.ChangeEvent<HTMLTextAreaElement>) {
