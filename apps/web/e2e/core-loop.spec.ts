@@ -53,10 +53,18 @@ function jsonHeaders() {
 }
 
 function parseBalance(text: string): number {
-  const match = text.match(/Balance:\s*(\d+)\s*pts/i)
+  const match = text.match(/(\d+)\s*balance/i)
   if (!match) throw new Error(`Could not parse balance from: ${text}`)
   return Number(match[1])
 }
+
+// Seed onboarding-complete so OnboardingGuard doesn't redirect /dashboard → /onboarding.
+// These tests exercise the core loop, not the first-run wizard.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem('goalforge_onboarding_complete', 'true') } catch { /* ignore */ }
+  })
+})
 
 test('core loop: login, create goal, complete 3 tasks, and redeem shop reward', async ({ page }) => {
   const userId = 'user_e2e'
@@ -304,7 +312,7 @@ test('core loop: login, create goal, complete 3 tasks, and redeem shop reward', 
       }
       state.points += 10
 
-      await route.fulfill({ status: 200, headers: jsonHeaders(), body: JSON.stringify({ ...task, reward_drop: null }) })
+      await route.fulfill({ status: 200, headers: jsonHeaders(), body: JSON.stringify({ ...task, points_awarded: 10, reward_drop: null }) })
       return
     }
 
@@ -315,8 +323,11 @@ test('core loop: login, create goal, complete 3 tasks, and redeem shop reward', 
   await page.getByRole('link', { name: 'Continue to Dashboard' }).click()
   await expect(page).toHaveURL(/\/dashboard$/)
 
-  await page.getByPlaceholder(/get better at leetcode/i).fill('Ship phase 3 pipeline')
-  await page.getByRole('button', { name: /Create Goal/i }).click()
+  const goalInput = page.getByLabel(/describe your goal/i)
+  await goalInput.click()
+  await goalInput.pressSequentially('Ship phase 3 pipeline')
+  await expect(goalInput).toHaveValue('Ship phase 3 pipeline')
+  await page.getByRole('button', { name: /create goal/i }).click()
 
   // Goal title appears immediately from the optimistic cache update on the 202 response.
   await expect(page.getByText('AI-driven Sprint Goal')).toBeVisible()
@@ -336,21 +347,25 @@ test('core loop: login, create goal, complete 3 tasks, and redeem shop reward', 
     await expect(page.getByLabel('Mark task complete')).toHaveCount(2 - i)
   }
 
-  await expect(page.getByText('Balance: 150 pts')).toBeVisible()
-  const beforeRedeem = parseBalance(await page.getByText(/Balance:\s*\d+\s*pts/).first().innerText())
+  // StarShop moved off the Dashboard to the Logs (/stars) page in #101 (dashboard declutter).
+  await page.getByRole('link', { name: 'Logs' }).first().click()
+  await expect(page).toHaveURL(/\/stars$/)
+
+  await expect(page.getByText('150 balance')).toBeVisible()
+  const beforeRedeem = parseBalance(await page.getByText(/\d+\s*balance/).first().innerText())
 
   await page.getByRole('button', { name: 'Redeem' }).click()
 
   await expect.poll(async () => {
-    const text = await page.getByText(/Balance:\s*\d+\s*pts/).first().innerText()
+    const text = await page.getByText(/\d+\s*balance/).first().innerText()
     return parseBalance(text)
   }).toBeLessThan(beforeRedeem)
 
-  await expect(page.getByText('Balance: 110 pts')).toBeVisible()
+  await expect(page.getByText('110 balance')).toBeVisible()
 
   // Verify the shop card's redemption counter incremented — confirms the server-side
   // deduction was acknowledged and the UI reflects the updated redemption_count.
-  await expect(page.getByText('redeemed 1x')).toBeVisible()
+  await expect(page.getByText('redeemed 1×')).toBeVisible()
 })
 
 test('offline banner appears when network is lost and disappears when restored', async ({ page, context }) => {

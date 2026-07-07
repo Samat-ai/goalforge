@@ -11,10 +11,10 @@
  * Offline fallback: navigation requests that fail serve the cached '/' shell so
  * React can still mount and show a graceful offline state.
  *
- * To purge all caches on next deploy: bump CACHE_VERSION to 'v2'.
+ * To purge all caches on next deploy: bump CACHE_VERSION (e.g. 'v3').
  */
 
-const CACHE_VERSION = 'v1'
+const CACHE_VERSION = 'v2'
 const CACHE_NAME = `goalforge-shell-${CACHE_VERSION}`
 const STATIC_CACHE = `goalforge-static-${CACHE_VERSION}`
 

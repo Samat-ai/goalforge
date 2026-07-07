@@ -24,7 +24,7 @@ from config import settings
 from startup import validate_startup
 from database import engine, Base
 from rate_limiting import limiter, rate_limit_enabled
-from routes import accountability, coach, energy, goals, health, jobs, milestones, push, rewards, shop, tasks, users
+from routes import coach, energy, goals, health, jobs, milestones, push, rewards, shop, tasks, users
 
 # ---------------------------------------------------------------------------
 # Structured logging
@@ -151,5 +151,4 @@ app.include_router(rewards.router, tags=["rewards"])
 app.include_router(energy.router, tags=["energy"])
 app.include_router(push.router, tags=["push"])
 app.include_router(shop.router, tags=["shop"])
-app.include_router(accountability.router, tags=["accountability"])
 app.include_router(coach.router, tags=["coach"])

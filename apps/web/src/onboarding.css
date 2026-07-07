@@ -1,0 +1,204 @@
+/* onboarding.css — transcribed verbatim from
+   design_handoff_goalforge/app/GoalForge Onboarding.html (its own <style> block).
+   Scoped under .onb-root:
+   - The prototype defines its own `:root { --accent: ...; --bg: ...; }` token
+     block and sets `data-theme="dark"` on <html> with no toggle — it is a
+     single, dark-only look. The real app's ThemeProvider can flip
+     `html[data-theme]` to "light" globally, so token names are redeclared
+     here as scoped custom properties on `.onb-root` (closer in the cascade
+     than `:root`/`[data-theme="light"]`) to pin the prototype's fixed dark
+     look regardless of the user's app-wide theme choice. Values are
+     otherwise verbatim from the prototype's :root block.
+   - `*` reset, `button`/`textarea` font-family, and the button tap-highlight
+     rule are already global in index.css — not repeated here.
+   - Every other selector is prefixed with `.onb-root` for isolation; class
+     names themselves are verbatim from the prototype (no renames — no
+     collisions found against the app's existing `gf-`/`lp-`/`ob-`-prefixed
+     CSS during a scope-check pass). */
+
+.onb-root {
+  --accent: #ff6a3d;
+  --accent-2: #ff9a4d;
+  --indigo: #818cf8;
+  --green: #34d399;
+  --gold: #fbbf24;
+  --rose: #fb7185;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Hanken Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --bg: #08080f;
+  --card: #121220;
+  --card-2: #16162a;
+  --card-hi: #1c1c32;
+  --border: rgba(255,255,255,0.08);
+  --border-hi: rgba(255,255,255,0.15);
+  --text: #f1f1f7;
+  --text-dim: #abacc4;
+  --text-mute: #6b6c84;
+  --track: rgba(255,255,255,0.08);
+  --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 18px 50px -26px rgba(0,0,0,0.8);
+  --shadow-hi: 0 2px 4px rgba(0,0,0,0.4), 0 30px 70px -30px rgba(0,0,0,0.9);
+  --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
+  --accent-line: color-mix(in oklab, var(--accent) 38%, transparent);
+
+  min-height: 100dvh;
+  font-family: var(--font-body);
+  color: var(--text);
+  background:
+    radial-gradient(ellipse 55% 40% at 8% -4%, color-mix(in oklab, var(--accent) 14%, transparent) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 44% at 96% 104%, color-mix(in oklab, var(--indigo) 13%, transparent) 0%, transparent 62%),
+    var(--bg);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+.onb-root button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+.onb-root textarea { font-family: inherit; }
+.onb-root :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 10px; }
+.onb-root ::selection { background: var(--accent-soft); }
+
+/* twinkle starfield */
+.onb-root .stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.onb-root .stars i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #fff; opacity: 0.5; animation: onb-tw 3.4s ease-in-out infinite; }
+@keyframes onb-tw { 0%,100% { opacity: 0.12; transform: scale(0.7); } 50% { opacity: 0.7; transform: scale(1.2); } }
+.onb-root .shoot { position: fixed; top: 0; left: 0; width: 3px; height: 3px; border-radius: 50%; background: #fff; box-shadow: 0 0 7px 1px rgba(255,255,255,0.85), 0 0 2px rgba(255,200,160,0.9); pointer-events: none; z-index: 1; opacity: 0; }
+.onb-root .shoot::after { content: ""; position: absolute; top: 50%; right: 2px; width: 70px; height: 1.6px; transform: translateY(-50%); border-radius: 2px; background: linear-gradient(270deg, rgba(255,255,255,0.85), rgba(255,210,170,0.35) 30%, transparent); }
+
+.onb-root .shell { position: relative; z-index: 2; min-height: 100%; display: flex; flex-direction: column; align-items: center; padding: 40px 20px 60px; }
+
+/* logo + stepper */
+.onb-root .brand { font-family: var(--font-display); font-weight: 600; font-size: 23px; letter-spacing: -0.02em; }
+.onb-root .brand span { color: var(--accent); }
+.onb-root .stepper { display: flex; align-items: center; gap: 10px; margin-top: 22px; }
+.onb-root .steps { display: flex; gap: 7px; }
+.onb-root .step-dot { width: 9px; height: 9px; border-radius: 99px; background: var(--track); transition: width .5s cubic-bezier(.34,1.2,.4,1), background .4s; }
+.onb-root .step-dot.done { background: var(--indigo); }
+.onb-root .step-dot.active { width: 30px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+.onb-root .step-count { font-family: var(--font-mono); font-size: 12px; color: var(--text-mute); margin-left: 4px; }
+
+/* card */
+.onb-root .stage { width: min(620px, 100%); margin-top: 30px; flex: 1; display: flex; align-items: flex-start; justify-content: center; }
+.onb-root .card {
+  position: relative; width: 100%;
+  background: linear-gradient(180deg, var(--card-2), var(--card));
+  border: 1px solid var(--border);
+  border-radius: 28px; padding: 40px 40px 30px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.onb-root .card::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--border-hi), transparent); }
+
+/* solly avatar */
+.onb-root .solly { position: relative; width: 116px; height: 116px; margin: 0 auto 22px; }
+.onb-root .solly-glow { position: absolute; left: 50%; top: 52%; transform: translate(-50%,-50%); width: 130%; height: 130%; border-radius: 50%; background: radial-gradient(circle, var(--accent-soft), transparent 64%); filter: blur(10px); animation: onb-breathe 3.4s ease-in-out infinite; }
+@keyframes onb-breathe { 0%,100% { opacity: 0.6; transform: translate(-50%,-50%) scale(0.94); } 50% { opacity: 1; transform: translate(-50%,-50%) scale(1.06); } }
+.onb-root .solly-float { position: relative; width: 100%; height: 100%; animation: onb-bob 4.6s ease-in-out infinite; }
+@keyframes onb-bob { 50% { transform: translateY(-7px); } }
+.onb-root .solly-float img { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transform: scale(0.9); transition: opacity .5s ease, transform .6s cubic-bezier(.34,1.4,.5,1); filter: drop-shadow(0 14px 22px color-mix(in oklab, var(--accent) 40%, transparent)); }
+.onb-root .solly-float img.on { opacity: 1; transform: scale(1); }
+
+/* headings */
+.onb-root .eyebrow { text-align: center; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+.onb-root h1.title { font-family: var(--font-display); font-weight: 600; font-size: clamp(26px, 4vw, 34px); letter-spacing: -0.025em; text-align: center; line-height: 1.08; }
+.onb-root h1.title span { color: var(--accent); }
+.onb-root .sub { text-align: center; color: var(--text-dim); font-size: 15.5px; line-height: 1.6; max-width: 46ch; margin: 12px auto 0; text-wrap: pretty; }
+
+/* panels per step */
+.onb-root .panel { display: none; animation: onb-panelIn .42s cubic-bezier(.2,.7,.2,1); }
+.onb-root .panel.show { display: block; }
+@keyframes onb-panelIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* welcome chips */
+.onb-root .welcome-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 24px auto 0; max-width: 440px; }
+.onb-root .wpill { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-dim); padding: 7px 13px; border-radius: 99px; border: 1px solid var(--border); background: var(--card-hi); }
+.onb-root .wpill svg { width: 14px; height: 14px; color: var(--accent); }
+
+/* focus grid */
+.onb-root .focus-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 26px; }
+.onb-root .focus-card { display: flex; gap: 13px; align-items: flex-start; text-align: left; padding: 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--card-hi); transition: transform .2s, border-color .25s, background .25s; }
+.onb-root .focus-card:hover { transform: translateY(-2px); border-color: var(--border-hi); }
+.onb-root .focus-card.sel { border-color: var(--cc, var(--accent)); background: color-mix(in oklab, var(--cc, var(--accent)) 10%, var(--card-hi)); box-shadow: 0 0 0 3px color-mix(in oklab, var(--cc, var(--accent)) 22%, transparent); }
+.onb-root .fc-ic { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; display: grid; place-items: center; color: var(--cc, var(--accent)); background: color-mix(in oklab, var(--cc, var(--accent)) 14%, transparent); }
+.onb-root .fc-ic svg { width: 21px; height: 21px; }
+.onb-root .fc-name { display: block; font-family: var(--font-display); font-weight: 600; font-size: 15.5px; transition: color .2s; }
+.onb-root .focus-card.sel .fc-name { color: var(--cc, var(--accent)); }
+.onb-root .fc-desc { display: block; font-size: 12.5px; color: var(--text-mute); margin-top: 3px; line-height: 1.4; }
+
+/* how it works */
+.onb-root .how-list { display: flex; flex-direction: column; gap: 12px; margin-top: 26px; }
+.onb-root .how-row { display: flex; gap: 15px; align-items: flex-start; padding: 16px 18px; border-radius: 16px; border: 1px solid var(--border); background: var(--card-hi); }
+.onb-root .how-ic { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; display: grid; place-items: center; color: var(--ic, var(--accent)); background: color-mix(in oklab, var(--ic, var(--accent)) 14%, transparent); }
+.onb-root .how-ic svg { width: 21px; height: 21px; }
+.onb-root .how-h { font-family: var(--font-display); font-weight: 600; font-size: 15.5px; }
+.onb-root .how-p { font-size: 13px; color: var(--text-dim); margin-top: 4px; line-height: 1.5; }
+.onb-root .stage-strip { margin-top: 22px; padding: 18px; border-radius: 16px; border: 1px solid var(--border); background: color-mix(in oklab, var(--accent) 5%, var(--card-hi)); }
+.onb-root .stage-strip-cap { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-mute); text-align: center; margin-bottom: 14px; }
+.onb-root .stage-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 4px; }
+.onb-root .stg { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 7px; }
+.onb-root .stg svg { color: var(--sc); filter: drop-shadow(0 0 calc(2px + var(--lvl) * 12px) color-mix(in oklab, var(--sc) 80%, transparent)); }
+.onb-root .stg-name { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); }
+.onb-root .stg-arrow { color: var(--text-mute); opacity: 0.5; align-self: center; margin-bottom: 14px; }
+
+/* goal step */
+.onb-root .goal-wrap { margin-top: 26px; }
+.onb-root .goal-pillwrap { border-radius: 20px; padding: 1.5px; background: linear-gradient(135deg, var(--accent-line), color-mix(in oklab, var(--indigo) 45%, transparent)); transition: box-shadow .3s; }
+.onb-root .goal-pillwrap.focus { box-shadow: 0 0 0 4px var(--accent-soft); }
+.onb-root .goal-field { display: flex; gap: 12px; align-items: flex-start; background: var(--bg); border-radius: 18.5px; padding: 16px 16px 14px 18px; }
+.onb-root .goal-star { color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+.onb-root .goal-input { flex: 1; border: none; outline: none; background: transparent; color: var(--text); font-family: var(--font-display); font-size: 16px; line-height: 1.5; resize: none; min-height: 52px; }
+.onb-root .goal-input::placeholder { color: var(--text-mute); font-family: var(--font-body); }
+.onb-root .goal-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.onb-root .gchip { font-size: 12.5px; color: var(--text-dim); padding: 7px 13px; border-radius: 99px; border: 1px solid var(--border); background: var(--card-hi); transition: all .2s; }
+.onb-root .gchip:hover { color: var(--accent); border-color: var(--accent-line); transform: translateY(-1px); }
+.onb-root .goal-tip { display: flex; align-items: center; gap: 7px; justify-content: center; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-mute); margin-top: 16px; text-align: center; }
+.onb-root .goal-tip svg { width: 13px; height: 13px; color: var(--accent); flex-shrink: 0; }
+
+/* thinking + finish */
+.onb-root .thinking { display: none; flex-direction: column; align-items: center; gap: 14px; margin-top: 22px; }
+.onb-root .thinking.show { display: flex; }
+.onb-root .think-dots { display: flex; gap: 6px; }
+.onb-root .think-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: onb-bd 1.1s infinite; }
+.onb-root .think-dots i:nth-child(2){ animation-delay: .15s; } .onb-root .think-dots i:nth-child(3){ animation-delay: .3s; }
+@keyframes onb-bd { 0%,60%,100% { opacity: .25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-4px); } }
+.onb-root .think-t { font-family: var(--font-mono); font-size: 12.5px; color: var(--accent); }
+
+.onb-root .finish-goal { margin: 24px auto 0; max-width: 460px; border-radius: 16px; border: 1px solid var(--accent-line); background: color-mix(in oklab, var(--accent) 7%, var(--card-hi)); padding: 18px; }
+.onb-root .fg-cap { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.onb-root .fg-title { font-family: var(--font-display); font-weight: 600; font-size: 16.5px; line-height: 1.35; }
+.onb-root .fg-meta { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 12px; }
+.onb-root .fg-tag { font-family: var(--font-mono); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 4px 9px; border-radius: 99px; border: 1px solid var(--border-hi); color: var(--text-dim); }
+.onb-root .fg-tag.cc { color: var(--cc, var(--accent)); border-color: color-mix(in oklab, var(--cc, var(--accent)) 32%, transparent); background: color-mix(in oklab, var(--cc, var(--accent)) 9%, transparent); }
+
+/* nav */
+.onb-root .nav { display: flex; align-items: center; gap: 14px; margin-top: 30px; padding-top: 24px; border-top: 1px solid var(--border); }
+.onb-root .btn-primary { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 9px; height: 52px; border-radius: 15px; font-family: var(--font-display); font-weight: 600; font-size: 15.5px; color: #fff; background: linear-gradient(140deg, var(--accent-2), var(--accent)); box-shadow: 0 10px 26px -10px var(--accent), inset 0 1px 0 rgba(255,255,255,0.28); transition: transform .18s cubic-bezier(.34,1.5,.5,1), box-shadow .2s, opacity .2s, filter .2s; }
+.onb-root .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 34px -10px var(--accent), inset 0 1px 0 rgba(255,255,255,0.32); }
+.onb-root .btn-primary:active { transform: scale(0.97); }
+.onb-root .btn-primary.disabled { opacity: 0.45; pointer-events: none; filter: grayscale(0.3); }
+.onb-root .btn-primary svg { width: 17px; height: 17px; }
+.onb-root .btn-back { display: inline-flex; align-items: center; gap: 7px; height: 52px; padding: 0 20px; border-radius: 15px; font-family: var(--font-display); font-weight: 600; font-size: 14.5px; color: var(--text-dim); border: 1px solid var(--border); background: var(--card-hi); transition: color .2s, border-color .2s, transform .15s; }
+.onb-root .btn-back:hover { color: var(--text); border-color: var(--border-hi); }
+.onb-root .btn-back svg { width: 15px; height: 15px; }
+.onb-root .btn-skip { display: inline-flex; align-items: center; min-height: 44px; font-size: 13.5px; color: var(--text-mute); padding: 0 12px; border-radius: 10px; transition: color .2s; white-space: nowrap; }
+.onb-root .btn-skip:hover { color: var(--text-dim); }
+.onb-root .nav.center { justify-content: center; }
+.onb-root .nav.center .btn-primary { flex: 0 1 auto; padding: 0 38px; }
+
+/* confetti */
+.onb-root #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 300; }
+
+@media (prefers-reduced-motion: reduce) {
+  .onb-root .solly-float, .onb-root .solly-glow, .onb-root .stars i { animation: none; }
+  .onb-root .panel { animation: none; }
+}
+@media (max-width: 560px) {
+  .onb-root .shell { padding: 28px 16px 48px; }
+  .onb-root .card { padding: 30px 20px 24px; }
+  .onb-root .focus-grid { grid-template-columns: 1fr; }
+  .onb-root .nav { flex-wrap: wrap; gap: 10px; }
+  .onb-root .nav .btn-primary { flex: 1 1 100%; }
+  .onb-root .stage-strip { overflow-x: auto; }
+  .onb-root .wpill, .onb-root .gchip { font-size: 13px; padding: 9px 14px; }
+}
