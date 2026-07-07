@@ -1284,6 +1284,17 @@ html { scroll-behavior: smooth; }
 .gf-coll-read { background: color-mix(in oklab, var(--indigo) 20%, transparent); border: 1px solid color-mix(in oklab, var(--indigo) 40%, transparent); color: var(--indigo); border-radius: 5px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; padding: 4px 10px; cursor: pointer; min-height: 44px; }
 .gf-coll-equip { background: var(--accent); color: #0a0a14; border: none; border-radius: 5px; font-family: var(--font-mono); font-size: 10px; font-weight: 700; padding: 4px 10px; cursor: pointer; min-height: 44px; }
 .gf-coll-equipped { font-family: var(--font-mono); font-size: 9px; background: color-mix(in oklab, var(--accent) 20%, transparent); color: var(--accent); padding: 2px 6px; border-radius: 3px; }
+/* ════════════════════ Trophy Room opener strip (Logs page) + shared loading skeleton ════════════════════ */
+.gf-trophy { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 16px 18px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); cursor: pointer; font: inherit; color: inherit; transition: border-color .18s, background .18s; }
+.gf-trophy:hover { border-color: var(--border-hi); background: var(--card-2); }
+.gf-trophy-ic { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: color-mix(in oklab, var(--accent) 14%, transparent); color: var(--accent); flex-shrink: 0; }
+.gf-trophy-mid { flex: 1; min-width: 0; }
+.gf-trophy-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.gf-trophy-cap { font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text); }
+.gf-trophy-count { font-family: var(--font-mono); font-size: 12px; color: var(--text-mute); }
+.gf-trophy-recent { margin-top: 3px; font-size: 12.5px; color: var(--text-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gf-trophy-open { font-family: var(--font-mono); font-size: 12px; color: var(--accent); flex-shrink: 0; display: flex; align-items: center; gap: 4px; min-height: 44px; }
+.gf-skel { border-radius: 6px; background: color-mix(in oklab, var(--text-mute) 16%, transparent); animation: pulse 1.6s ease-in-out infinite; }
 /* ════════════════════ InstallPrompt ════════════════════ */
 .gf-install-banner { position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 480px; z-index: 9999; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; background: var(--card-2); border: 1px solid color-mix(in oklab, var(--indigo) 35%, transparent); box-shadow: 0 8px 32px rgba(0,0,0,0.45); backdrop-filter: blur(12px); animation: slide-up 0.4s cubic-bezier(0.16,1,0.3,1) both; }
 .gf-install-ic { width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0; background: color-mix(in oklab, var(--indigo) 20%, transparent); border: 1px solid color-mix(in oklab, var(--indigo) 30%, transparent); display: flex; align-items: center; justify-content: center; font-size: 20px; }
