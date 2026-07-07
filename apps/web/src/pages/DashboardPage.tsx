@@ -10,6 +10,8 @@ import { useUser } from '@clerk/react'
 import { Icon, Reveal, Segmented, Switcher } from '../components/gf/Ui'
 import { cx } from '../components/gf/util'
 import GoalCard from '../components/gf/GoalCard'
+import FocusOverlay from '../components/FocusOverlay'
+import { pickOneThing } from '../lib/pickOneThing'
 import { useBadgesQuery, useGoalsQuery, useGoalMutations } from '../hooks'
 import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
 import { useConfetti } from '../components/ConfettiContext'
@@ -188,6 +190,8 @@ export default function DashboardPage() {
   // (matches legacy AddGoal.tsx contract). Lazy initializer per project ESLint rules.
   const [addGoalText, setAddGoalText] = useState(() => onboardingGoal ?? '')
   const [activeRewardDrop, setActiveRewardDrop] = useState<RewardDrop | null>(null)
+  const [focusOpen, setFocusOpen] = useState(false)
+  const hasFocusTarget = pickOneThing(goals) !== null
 
   const { data: rewards = [] } = useRewardsQuery(userId ?? '')
   const equipMutation = useEquipRewardMutation(userId ?? '')
@@ -253,8 +257,15 @@ export default function DashboardPage() {
           <div className="gf-listhead">
             <Reveal as="h2" className="gf-h2" delay={40}>Your goals</Reveal>
             <Reveal delay={60}>
-              <Segmented options={['active', 'achieved', 'abandoned'] as Filter[]} value={filter} onChange={setFilter}
-                getLabel={o => `${o} ${counts[o]}`} />
+              <div className="gf-listhead-r">
+                {hasFocusTarget && (
+                  <button className="gf-btn-ghost-accent" onClick={() => setFocusOpen(true)}>
+                    <Icon name="target" size={14} /> Focus
+                  </button>
+                )}
+                <Segmented options={['active', 'achieved', 'abandoned'] as Filter[]} value={filter} onChange={setFilter}
+                  getLabel={o => `${o} ${counts[o]}`} />
+              </div>
             </Reveal>
           </div>
 
@@ -283,6 +294,13 @@ export default function DashboardPage() {
           </Switcher>
         </div>
       )}
+
+      <FocusOverlay
+        goals={goals}
+        completeTask={mutations.completeTask}
+        isOpen={focusOpen}
+        onClose={() => setFocusOpen(false)}
+      />
 
       {activeRewardDrop && (() => {
         const drop = activeRewardDrop

@@ -25,7 +25,7 @@ by decision. Do not delete in dead-code sweeps.
 
 | Feature | Where code lives | Keep/cut recommendation |
 |---|---|---|
-| Focus mode overlay ("one thing" single-task mode) | `src/components/FocusOverlay.tsx`, `src/lib/pickOneThing.ts` (no importer — entry point was in deleted old Dashboard) | **Keep** — liked anti-overwhelm feature; needs a prototype-styled entry point |
+| ~~Focus mode overlay ("one thing" single-task mode)~~ | `src/components/FocusOverlay.tsx`, `src/lib/pickOneThing.ts` — **re-slotted 2026-07-07**: `◎ Focus` button in Dashboard list head (renders only when `pickOneThing` finds an actionable task) | Keep (active again) |
 | Energy modal / low-energy task resize | `src/components/EnergyModal.tsx`, `src/components/EnergyParamCapture.tsx` (mounted in `App.tsx`, captures `?energy=low` to sessionStorage; nothing reads it), `src/hooks/useEnergyMutations.ts` (no importer) | **Keep** — backend resize endpoint + push deep-link still exist; re-slot after redesign settles |
 | ~~Trophy Room / collection modal~~ | `src/components/CollectionModal.tsx` — **re-slotted 2026-07-07**: opened via `TrophyStrip` on Logs page; registry counts shared via `src/lib/collectibles.ts` | Keep (active again) |
 | Reward modal (jackpot drop) + badge confetti | `src/components/RewardModal.tsx`, `src/components/ConfettiContext.tsx` — **live**, wired in `DashboardPage.tsx` | Keep (active) |
