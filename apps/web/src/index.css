@@ -1297,6 +1297,11 @@ html { scroll-behavior: smooth; }
 .gf-skel { border-radius: 6px; background: color-mix(in oklab, var(--text-mute) 16%, transparent); animation: pulse 1.6s ease-in-out infinite; }
 /* Focus mode opener (Dashboard list head) */
 .gf-listhead-r { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* Energy resize — restore chip on simplified task rows */
+.gf-task-wrap { display: flex; align-items: stretch; gap: 8px; }
+.gf-task-wrap .gf-task { flex: 1; min-width: 0; }
+.gf-task-restore { flex-shrink: 0; background: none; border: 1px solid var(--border); border-radius: 10px; padding: 0 12px; min-height: 44px; font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); cursor: pointer; transition: color .18s, border-color .18s; }
+.gf-task-restore:hover { color: var(--accent); border-color: var(--border-hi); }
 /* ════════════════════ InstallPrompt ════════════════════ */
 .gf-install-banner { position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 480px; z-index: 9999; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; background: var(--card-2); border: 1px solid color-mix(in oklab, var(--indigo) 35%, transparent); box-shadow: 0 8px 32px rgba(0,0,0,0.45); backdrop-filter: blur(12px); animation: slide-up 0.4s cubic-bezier(0.16,1,0.3,1) both; }
 .gf-install-ic { width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0; background: color-mix(in oklab, var(--indigo) 20%, transparent); border: 1px solid color-mix(in oklab, var(--indigo) 30%, transparent); display: flex; align-items: center; justify-content: center; font-size: 20px; }

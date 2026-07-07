@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+
 interface EnergyModalProps {
   onConfirm: () => void
   onDismiss: () => void
@@ -5,6 +7,12 @@ interface EnergyModalProps {
 }
 
 export default function EnergyModal({ onConfirm, onDismiss, isLoading }: EnergyModalProps) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !isLoading) onDismiss() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isLoading, onDismiss])
+
   return (
     <div
       role="dialog" aria-modal="true" aria-label="Low energy mode"

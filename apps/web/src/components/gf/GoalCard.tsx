@@ -135,20 +135,29 @@ function StreakBars({ days }: { days: string[] }) {
 }
 
 // ── Tab content ─────────────────────────────────────────────────────────────────
-function TaskRowG({ task, overdue, onToggle }: { task: GoalViewTask; overdue?: boolean; onToggle: () => void }) {
-  return (
+function TaskRowG({ task, overdue, onToggle, onRestore }: { task: GoalViewTask; overdue?: boolean; onToggle: () => void; onRestore: () => void }) {
+  const row = (
     <button className={cx('gf-task', task.done && 'is-done', overdue && 'is-overdue')} onClick={onToggle}
       aria-label={task.done ? 'Task completed' : 'Mark task complete'}>
       <span className="gf-check"><Icon name="check" size={13} stroke={3} /></span>
       <span className="gf-task-label">{task.title}</span>
       {overdue && !task.done && <span className="gf-task-tag">overdue</span>}
+      {task.resized && !task.done && <span className="gf-task-tag">simplified</span>}
     </button>
+  )
+  if (!task.resized || task.done) return row
+  return (
+    <div className="gf-task-wrap">
+      {row}
+      <button className="gf-task-restore" onClick={onRestore} aria-label="Restore original task">restore ↩</button>
+    </div>
   )
 }
 
 interface TodayTabProps {
   goal: Goal
   onToggleTask: (taskId: string, done: boolean) => void
+  onRestoreTask: (taskId: string) => void
   onAbandon: () => void
   onDelete: () => void
   onCompleteSprint: () => void
@@ -160,7 +169,7 @@ interface TodayTabProps {
 }
 
 function TodayTab({
-  goal, onToggleTask, onAbandon, onDelete, onCompleteSprint, onRetryGeneration,
+  goal, onToggleTask, onRestoreTask, onAbandon, onDelete, onCompleteSprint, onRetryGeneration,
   completingSprint, retryingGeneration, confirm, setConfirm,
 }: TodayTabProps) {
   const view = toGoalView(goal)
@@ -226,10 +235,10 @@ function TodayTab({
       )}
       <div className="gf-tasks">
         {view.overdue.map(t => (
-          <TaskRowG key={t.id} task={t} overdue onToggle={() => onToggleTask(t.id, t.done)} />
+          <TaskRowG key={t.id} task={t} overdue onToggle={() => onToggleTask(t.id, t.done)} onRestore={() => onRestoreTask(t.id)} />
         ))}
         {view.tasks.map(t => (
-          <TaskRowG key={t.id} task={t} onToggle={() => onToggleTask(t.id, t.done)} />
+          <TaskRowG key={t.id} task={t} onToggle={() => onToggleTask(t.id, t.done)} onRestore={() => onRestoreTask(t.id)} />
         ))}
       </div>
       {!isAbandoned && !isAchieved && (
@@ -334,9 +343,10 @@ export interface GoalCardProps {
   index?: number
   defaultOpen?: boolean
   mutations: Mutations
+  onRestoreTask: (taskId: string) => void
 }
 
-export default function GoalCard({ goal, index = 0, defaultOpen = false, mutations }: GoalCardProps) {
+export default function GoalCard({ goal, index = 0, defaultOpen = false, mutations, onRestoreTask }: GoalCardProps) {
   const [open, setOpen] = useState(defaultOpen)
   const [tab, setTab] = useState<'today' | 'sprints' | 'history'>('today')
   const [confirm, setConfirm] = useState<'abandon' | 'delete' | null>(null)
@@ -415,6 +425,7 @@ export default function GoalCard({ goal, index = 0, defaultOpen = false, mutatio
               <TodayTab
                 goal={goal}
                 onToggleTask={handleToggleTask}
+                onRestoreTask={onRestoreTask}
                 onAbandon={handleAbandon}
                 onDelete={handleDelete}
                 onCompleteSprint={handleCompleteSprint}
