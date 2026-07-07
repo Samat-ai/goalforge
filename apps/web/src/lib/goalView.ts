@@ -8,6 +8,7 @@ export interface GoalViewTask {
   id: string
   title: string
   done: boolean
+  resized: boolean
 }
 
 export interface GoalViewMilestone {
@@ -45,7 +46,7 @@ function milestoneStatus(m: Milestone): GoalViewMilestone['status'] {
 }
 
 function toTask(t: Goal['daily_tasks'][number]): GoalViewTask {
-  return { id: t.id, title: t.description, done: t.is_completed }
+  return { id: t.id, title: t.description, done: t.is_completed, resized: t.original_description != null }
 }
 
 export function toGoalView(goal: Goal): GoalView {
