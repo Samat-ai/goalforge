@@ -46,7 +46,7 @@ export default function FocusOverlay({ goals, completeTask, isOpen, onClose }: F
       <div role="dialog" aria-modal="true" aria-label="Task complete" className="gf-overlay">
         <div className="gf-fov-done">
           <div className="gf-fov-done-star">⭐</div>
-          <div className="gf-fov-done-pts">+10 Star Points</div>
+          <div className="gf-fov-done-pts">Star Points earned ⭐</div>
           <div className="gf-fov-done-msg">{doneMessage}</div>
           <button onClick={onClose} className="gf-fov-btn is-back">Back to Dashboard</button>
         </div>
@@ -79,7 +79,7 @@ export default function FocusOverlay({ goals, completeTask, isOpen, onClose }: F
         <div className="gf-fov-task">{task.description}</div>
         {task.tip && <div className="gf-fov-tip">&quot;{task.tip}&quot;</div>}
         <button onClick={handleComplete} disabled={completing} className="gf-fov-btn">
-          Mark Complete +10 ⭐
+          Mark Complete ⭐
         </button>
       </div>
     </div>
