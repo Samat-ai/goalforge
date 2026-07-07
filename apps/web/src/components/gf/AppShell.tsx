@@ -3,8 +3,8 @@
 // tweaks panel, confetti burst (handled by ConfettiProvider/canvas-confetti
 // already wired in main.tsx), and page-switch state (react-router owns
 // routing here via <Outlet/> instead of the prototype's in-memory `tab`).
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { Link, useLocation, useNavigate, useOutlet } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/react'
 import { Icon } from './Ui'
 import { cx } from './util'
@@ -96,6 +96,39 @@ function Header() {
   )
 }
 
+// Router-aware port of the prototype's page-level <Switcher value={tab} scrollTop>
+// (gf-app.jsx): exit→enter cross-fade on route change, single entrance animation.
+// The outgoing page keeps rendering (frozen element snapshot) during the 160ms
+// out-phase; __gfRevealOff stops inner Reveals from replaying on later switches.
+function PageSwitcher() {
+  const location = useLocation()
+  const outlet = useOutlet()
+  const [shown, setShown] = useState<{ key: string; el: ReactNode }>(() => ({ key: location.pathname, el: outlet }))
+  const [phase, setPhase] = useState<'in' | 'out'>('in')
+  const reduce = useRef(window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  useEffect(() => {
+    if (location.pathname === shown.key) return
+    window.__gfRevealOff = true
+    // Two-phase exit→enter transition — effect-driven by design (see Ui.tsx Switcher).
+     
+    if (reduce.current) { setShown({ key: location.pathname, el: outlet }); return }
+    setPhase('out')
+    const id = setTimeout(() => {
+      setShown({ key: location.pathname, el: outlet })
+      setPhase('in')
+      // The app's scroll container is <body> (html{overflow:hidden}) — reset both.
+      window.scrollTo({ top: 0, behavior: 'instant' })
+      document.body.scrollTop = 0
+    }, 160)
+     
+    return () => clearTimeout(id)
+    // `outlet`/`shown` intentionally omitted: the swap is keyed on the route only;
+    // re-running on them would cancel an in-flight transition.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname])
+  return <div className={cx('gf-xfade', phase === 'out' ? 'is-out' : 'is-in')}>{shown.el}</div>
+}
+
 export default function AppShell() {
   // The prototype root ships with these variant attributes baked in
   // (data-theme + data-create/font/motion/density — see the .gf-root element in
@@ -109,7 +142,7 @@ export default function AppShell() {
     <div className="gf-root" data-theme={resolved} data-create="glass" data-font="modern" data-motion="rich" data-density="cozy">
       <Header />
       <main className="gf-main">
-        <Outlet />
+        <PageSwitcher />
       </main>
     </div>
   )

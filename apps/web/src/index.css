@@ -22,8 +22,11 @@ body {
   padding-left: env(safe-area-inset-left);
 }
 
-/* Minimum touch target size (WCAG 2.5.5) */
-button { min-height: 44px; }
+/* Touch target size (WCAG 2.5.5): declared per-component, NOT globally.
+   A previous blanket `button { min-height: 44px }` vertically stretched every
+   prototype control with a designed height < 44px (chat send circle 38px,
+   settings switches 28px, segmented pills) — legacy components that need the
+   44px floor declare it individually in the LEGACY block below. */
 
 /* Disable tap highlight on interactive elements */
 button, a { -webkit-tap-highlight-color: transparent; }

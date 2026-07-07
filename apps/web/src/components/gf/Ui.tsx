@@ -1,7 +1,9 @@
 // gf/Ui.tsx — shared primitives for the GoalForge redesign, transcribed from
 // design_handoff_goalforge/app/gf-ui.jsx. Prop names/behavior kept verbatim;
-// only the window-attachment + Switcher-only bits (not used by this app) are
-// dropped. See design_handoff_goalforge/app/gf-ui.jsx for the source of truth.
+// only the window-attachment bits are dropped. Switcher (+ the __gfRevealOff
+// Reveal gate) is ported: dropping it caused the doubled page/filter motion
+// the prototype had already fixed. AppShell's PageSwitcher is its router-aware
+// twin. See design_handoff_goalforge/app/gf-ui.jsx for the source of truth.
 // Non-component helpers (cx, ICONS, gfTip/gfHideTip, useCountUp, useInView) live
 // in ./util — react-refresh/only-export-components requires this file to only
 // export components for Fast Refresh to work.
@@ -33,6 +35,10 @@ export function Icon({
   )
 }
 
+declare global {
+  interface Window { __gfRevealOff?: boolean }
+}
+
 export function Reveal({
   children, delay = 0, className, style, as = 'div',
 }: {
@@ -44,11 +50,67 @@ export function Reveal({
   as?: ElementType
 }) {
   const El = as
+  // Once the entrance finishes, drop the animation class: a filled
+  // (fill-mode: forwards) opacity/transform animation keeps the element a
+  // permanent stacking context, which traps absolutely-positioned popovers
+  // inside it (e.g. Settings' theme dropdown painted under the next card).
+  const [entered, setEntered] = useState(false)
+  // After the first tab switch, the Switcher wrapper owns the entrance
+  // animation — so inner reveals render statically to avoid a doubled motion
+  // (the staggered animation-delay flashes content visible → hidden → visible).
+  // On first app load (flag unset) they still play their staggered entrance.
+  if (entered || (typeof window !== 'undefined' && window.__gfRevealOff)) {
+    return <El className={className} style={style}>{children}</El>
+  }
   return (
-    <El className={cx('gf-reveal', className)} style={{ ...style, animationDelay: `${Math.max(delay, 40)}ms` }}>
+    <El
+      className={cx('gf-reveal', className)}
+      style={{ ...style, animationDelay: `${Math.max(delay, 40)}ms` }}
+      onAnimationEnd={(e: React.AnimationEvent) => { if (e.target === e.currentTarget && e.animationName === 'gfReveal') setEntered(true) }}
+    >
       {children}
     </El>
   )
+}
+
+// ── Switcher: single smooth exit→enter cross-fade when `value` changes ──────
+// Used for both page (nav) and in-page list (filter) transitions so content
+// animates exactly once. Flipping __gfRevealOff stops inner Reveals from also
+// replaying, which is what caused the doubled "double jump" motion.
+export function Switcher<T extends string>({
+  value, scrollTop = false, className, children,
+}: {
+  value: T
+  scrollTop?: boolean
+  className?: string
+  children: (shown: T) => ReactNode
+}) {
+  const [shown, setShown] = useState(value)
+  const [phase, setPhase] = useState<'in' | 'out'>('in')
+  const reduce = useRef(typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  useEffect(() => {
+    if (value === shown) return
+    window.__gfRevealOff = true
+    // Orchestrating a two-phase exit→enter transition — inherently effect-driven
+    // (prototype contract: out 160ms, swap content, in), not derivable state.
+     
+    if (reduce.current) { setShown(value); return }
+    setPhase('out')
+    const id = setTimeout(() => {
+      setShown(value)
+      setPhase('in')
+      if (scrollTop) {
+        // The app's scroll container is <body> (html{overflow:hidden}) — reset both.
+        window.scrollTo({ top: 0, behavior: 'instant' })
+        document.body.scrollTop = 0
+      }
+    }, 160)
+     
+    return () => clearTimeout(id)
+    // `shown` is transition-internal state; re-running on it would cancel an in-flight swap.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, scrollTop])
+  return <div className={cx('gf-xfade', phase === 'out' ? 'is-out' : 'is-in', className)}>{children(shown)}</div>
 }
 
 // ── Progress ring (animated draw-on) ────────────────────────────────────────
