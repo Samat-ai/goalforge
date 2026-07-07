@@ -11,7 +11,11 @@ import { Icon, Reveal, Segmented, Switcher } from '../components/gf/Ui'
 import { cx } from '../components/gf/util'
 import GoalCard from '../components/gf/GoalCard'
 import FocusOverlay from '../components/FocusOverlay'
+import EnergyModal from '../components/EnergyModal'
+import { toast } from 'sonner'
 import { pickOneThing } from '../lib/pickOneThing'
+import { todayStr } from '../lib/gamification'
+import { useEnergyResizeMutation, useTaskRestoreMutation } from '../hooks/useEnergyMutations'
 import { useBadgesQuery, useGoalsQuery, useGoalMutations } from '../hooks'
 import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
 import { useConfetti } from '../components/ConfettiContext'
@@ -25,6 +29,15 @@ const e2eUserId = import.meta.env.VITE_E2E_USER_ID ?? 'user_e2e'
 
 function greetingFor(h: number) {
   return h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+}
+
+// True when any active goal still has an incomplete, not-yet-resized task today
+// (original_description != null marks an already-resized task).
+function hasUnresizedToday(goals: Goal[]): boolean {
+  const today = todayStr()
+  return goals.some(g => g.status === 'active' && g.daily_tasks.some(
+    t => t.assigned_date === today && !t.is_completed && !t.original_description,
+  ))
 }
 
 // ── Compact greeting strip ──────────────────────────────────────────────────────
@@ -192,6 +205,13 @@ export default function DashboardPage() {
   const [activeRewardDrop, setActiveRewardDrop] = useState<RewardDrop | null>(null)
   const [focusOpen, setFocusOpen] = useState(false)
   const hasFocusTarget = pickOneThing(goals) !== null
+  // Deep-link: EnergyParamCapture stashes ?energy=low in sessionStorage before
+  // the auth redirect can strip it; read lazily, clear on mount.
+  const [energyOpen, setEnergyOpen] = useState(() => sessionStorage.getItem('energy') === 'low')
+  useEffect(() => { sessionStorage.removeItem('energy') }, [])
+  const hasEnergyTarget = hasUnresizedToday(goals)
+  const energyResize = useEnergyResizeMutation(userId ?? '')
+  const taskRestore = useTaskRestoreMutation(userId ?? '')
 
   const { data: rewards = [] } = useRewardsQuery(userId ?? '')
   const equipMutation = useEquipRewardMutation(userId ?? '')
@@ -263,6 +283,11 @@ export default function DashboardPage() {
                     <Icon name="target" size={14} /> Focus
                   </button>
                 )}
+                {hasEnergyTarget && (
+                  <button className="gf-btn-ghost-accent" onClick={() => setEnergyOpen(true)}>
+                    <Icon name="bolt" size={14} /> Low energy
+                  </button>
+                )}
                 <Segmented options={['active', 'achieved', 'abandoned'] as Filter[]} value={filter} onChange={setFilter}
                   getLabel={o => `${o} ${counts[o]}`} />
               </div>
@@ -286,6 +311,7 @@ export default function DashboardPage() {
                       index={i}
                       defaultOpen={i === 0 && shown === 'active'}
                       mutations={mutations}
+                      onRestoreTask={(taskId) => taskRestore.mutate(taskId)}
                     />
                   ))}
                 </div>
@@ -301,6 +327,19 @@ export default function DashboardPage() {
         isOpen={focusOpen}
         onClose={() => setFocusOpen(false)}
       />
+
+      {energyOpen && (
+        <EnergyModal
+          isLoading={energyResize.isPending}
+          onConfirm={() => energyResize.mutate(undefined, {
+            onSuccess: () => {
+              setEnergyOpen(false)
+              toast.success("Today's tasks simplified ⚡")
+            },
+          })}
+          onDismiss={() => { if (!energyResize.isPending) setEnergyOpen(false) }}
+        />
+      )}
 
       {activeRewardDrop && (() => {
         const drop = activeRewardDrop
