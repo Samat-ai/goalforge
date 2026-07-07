@@ -1,7 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { REGISTRY_COUNTS } from '../lib/collectibles'
 import type { Reward } from '../lib/types'
-
-const REGISTRY_COUNTS = { theme: 4, title: 12, lore: 6 }
 
 interface CollectionModalProps {
   rewards: Reward[]
@@ -22,6 +21,12 @@ function EquippedBadge() {
 export default function CollectionModal({ rewards, onEquip, onClose }: CollectionModalProps) {
   const [activeSection, setActiveSection] = useState<Section>('themes')
   const [expandedLore, setExpandedLore] = useState<string | null>(null)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   const themes = rewards.filter(r => r.reward_type === 'theme')
   const titles = rewards.filter(r => r.reward_type === 'title')
