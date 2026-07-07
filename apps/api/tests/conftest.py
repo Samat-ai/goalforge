@@ -323,17 +323,29 @@ async def other_client(engine):
 # Shared helper — create a goal and return the response JSON
 # ---------------------------------------------------------------------------
 
+async def wait_for_goal_generated(client: AsyncClient, goal_id: str) -> dict:
+    """Poll GET /goals/{id} until background generation lands (or fail after ~2.5s).
+
+    BackgroundTasks usually complete before the ASGI test client call returns,
+    but that ordering is not guaranteed by the stack — it flaked on CI.
+    """
+    for _ in range(50):
+        get_resp = await client.get(f"/goals/{goal_id}")
+        assert get_resp.status_code == 200
+        data = get_resp.json()
+        if all(m["sprint_status"] != "generating" for m in data["milestones"]):
+            return data
+        await asyncio.sleep(0.05)
+    raise AssertionError(f"Goal {goal_id} still generating after 2.5s")
+
+
 async def create_test_goal(client: AsyncClient) -> dict:
     resp = await client.post(
         f"/users/{TEST_USER_ID}/goals",
         json={"raw_input": "I want to run a 5K race in under 25 minutes within 3 months"},
     )
-    # BackgroundTasks run synchronously in ASGI test mode — goal is fully populated by now
     assert resp.status_code == 202
-    goal_id = resp.json()["id"]
-    get_resp = await client.get(f"/goals/{goal_id}")
-    assert get_resp.status_code == 200
-    return get_resp.json()
+    return await wait_for_goal_generated(client, resp.json()["id"])
 
 
 @pytest_asyncio.fixture
