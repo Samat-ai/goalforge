@@ -27,7 +27,7 @@ def goal_is_rescue_mode(goal, now: datetime | None = None) -> bool:
     - No rescue task already assigned today (idempotency guard)
     - 48h+ elapsed since last task completion (or since created_at if no completions)
 
-    Note: Uses date.today() (server UTC) for the today check. Unlike the Pydantic
+    Note: Uses the UTC calendar date for the today check. Unlike the Pydantic
     computed field in schemas.py, this function is NOT called in a per-request context
     with user timezone access. The caller (trigger_reminders) already filters to
     users with active goals, so the UTC date check is an acceptable approximation.
@@ -46,7 +46,7 @@ def goal_is_rescue_mode(goal, now: datetime | None = None) -> bool:
     if not active_milestone:
         return False
 
-    today = date.today()
+    today = (now or datetime.now(timezone.utc)).date()
     rescue_task_today = any(
         t.is_rescue_task and t.assigned_date == today
         for t in goal.daily_tasks

@@ -174,7 +174,7 @@ class GoalResponse(BaseModel):
         - no rescue task already created today (idempotency guard)
         - 48h+ elapsed since last task completion (or since created_at if no completions ever)
 
-        Note: uses date.today() (server UTC) for the today check — a known limitation
+        Note: uses the UTC calendar date for the today check — a known limitation
         since this runs in a Pydantic model without access to user.timezone.
         The server-side goal_is_rescue_mode() in rescue_service.py uses user_today() instead.
         """
@@ -188,7 +188,7 @@ class GoalResponse(BaseModel):
         if not active_milestone:
             return False
 
-        today = date.today()
+        today = datetime.now(timezone.utc).date()
         rescue_task_today = any(
             t.is_rescue_task and t.assigned_date == today
             for t in self.daily_tasks

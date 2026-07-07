@@ -6,11 +6,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from ai_utils import resize_task_for_low_energy
+from tests.conftest import utc_today
 
 
 @pytest.mark.asyncio
 async def test_resize_task_returns_first_step():
-    today = date.today()
+    today = utc_today()
     mock_response = MagicMock()
     mock_response.text = (
         f'{{"description": "Open your running app", '
@@ -34,7 +35,7 @@ async def test_resize_task_returns_first_step():
 @pytest.mark.asyncio
 async def test_resize_task_prompt_contains_original_task():
     """The system instruction must include the original task description."""
-    today = date.today()
+    today = utc_today()
     captured_configs = []
     mock_response = MagicMock()
     mock_response.text = (

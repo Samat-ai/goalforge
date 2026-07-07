@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from models import DailyTask, NotificationLog, WebPushSubscription
-from tests.conftest import TEST_USER_ID, create_test_goal
+from tests.conftest import TEST_USER_ID, create_test_goal, utc_today
 
 
 _TEST_JOBS_KEY = "test-jobs-key"
@@ -17,7 +17,7 @@ _JOBS_HEADERS = {"X-Api-Key": _TEST_JOBS_KEY}
 async def test_trigger_reminders_sends_one_digest_per_user(client):
     """Endpoint sends one digest email per user, not per task."""
     goal = await create_test_goal(client)
-    today_tasks = [t for t in goal["daily_tasks"] if t["assigned_date"] == str(date.today())]
+    today_tasks = [t for t in goal["daily_tasks"] if t["assigned_date"] == str(utc_today())]
 
     with (
         patch("routes.jobs.settings") as mock_settings,
@@ -52,7 +52,7 @@ async def test_trigger_reminders_skips_when_reminders_disabled(client, db_sessio
     assert settings_resp.status_code == 200
 
     # Add push subscription and qualifying streak-saver conditions
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = utc_today() - timedelta(days=1)
     db_session.add(DailyTask(
         id=uuid.uuid4(),
         goal_id=uuid.UUID(goal_id),
@@ -124,7 +124,7 @@ async def test_trigger_reminders_skips_when_local_hour_does_not_match(client):
 async def test_trigger_reminders_skips_completed_tasks(client):
     """Completed tasks are not included in the reminder digest."""
     goal = await create_test_goal(client)
-    today_tasks = [t for t in goal["daily_tasks"] if t["assigned_date"] == str(date.today())]
+    today_tasks = [t for t in goal["daily_tasks"] if t["assigned_date"] == str(utc_today())]
     assert today_tasks, "Need at least one task today for this test"
 
     # Complete the first today task
@@ -226,7 +226,7 @@ async def test_streak_saver_fires_after_6pm_with_no_completion_today(client, db_
     goal = await create_test_goal(client)
     goal_id = goal["id"]
 
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = utc_today() - timedelta(days=1)
     db_session.add(DailyTask(
         id=uuid.uuid4(),
         goal_id=uuid.UUID(goal_id),
@@ -275,7 +275,7 @@ async def test_streak_saver_sends_only_once_per_day(client, db_session):
     goal = await create_test_goal(client)
     goal_id = goal["id"]
 
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = utc_today() - timedelta(days=1)
     db_session.add(DailyTask(
         id=uuid.uuid4(),
         goal_id=uuid.UUID(goal_id),
@@ -321,7 +321,7 @@ async def test_streak_saver_does_not_fire_before_6pm(client, db_session):
     goal = await create_test_goal(client)
     goal_id = goal["id"]
 
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = utc_today() - timedelta(days=1)
     db_session.add(DailyTask(
         id=uuid.uuid4(),
         goal_id=uuid.UUID(goal_id),
@@ -363,13 +363,13 @@ async def test_streak_saver_does_not_fire_before_6pm(client, db_session):
 async def test_streak_saver_does_not_fire_when_completed_today(client, db_session):
     """Streak-Saver is silent if the user has already completed a task today."""
     goal = await create_test_goal(client)
-    today_tasks = [t for t in goal["daily_tasks"] if t["assigned_date"] == str(date.today())]
+    today_tasks = [t for t in goal["daily_tasks"] if t["assigned_date"] == str(utc_today())]
     assert today_tasks, "Need at least one task today"
 
     await client.patch(f"/tasks/{today_tasks[0]['id']}/complete")
 
     goal_id = goal["id"]
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = utc_today() - timedelta(days=1)
     db_session.add(DailyTask(
         id=uuid.uuid4(),
         goal_id=uuid.UUID(goal_id),
@@ -412,7 +412,7 @@ async def test_inactivity_nudge_fires_when_last_completion_was_30h_ago(client, d
     from sqlalchemy import update as sql_update
 
     goal = await create_test_goal(client)
-    today_tasks = [t for t in goal["daily_tasks"] if t["assigned_date"] == str(date.today())]
+    today_tasks = [t for t in goal["daily_tasks"] if t["assigned_date"] == str(utc_today())]
     assert today_tasks
 
     thirty_hours_ago = datetime.now(timezone.utc) - timedelta(hours=30)
@@ -459,7 +459,7 @@ async def test_inactivity_nudge_does_not_fire_when_churned_beyond_48h(client, db
     from sqlalchemy import update as sql_update
 
     goal = await create_test_goal(client)
-    today_tasks = [t for t in goal["daily_tasks"] if t["assigned_date"] == str(date.today())]
+    today_tasks = [t for t in goal["daily_tasks"] if t["assigned_date"] == str(utc_today())]
     assert today_tasks
 
     fifty_hours_ago = datetime.now(timezone.utc) - timedelta(hours=50)
@@ -533,7 +533,7 @@ async def test_streak_saver_overrides_regular_digest(client, db_session):
 
     await client.patch(f"/users/{TEST_USER_ID}/settings", json={"reminder_hour": 18})
 
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = utc_today() - timedelta(days=1)
     db_session.add(DailyTask(
         id=uuid.uuid4(),
         goal_id=uuid.UUID(goal_id),
@@ -581,7 +581,7 @@ async def test_triggers_do_not_fire_without_push_subscriptions(client, db_sessio
     goal_id = goal["id"]
 
     # Set up qualifying conditions for streak-saver (completed yesterday, not today, hour >= 18)
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = utc_today() - timedelta(days=1)
     db_session.add(DailyTask(
         id=uuid.uuid4(),
         goal_id=uuid.UUID(goal_id),
@@ -623,7 +623,7 @@ async def test_streak_saver_takes_priority_over_inactivity_nudge(client, db_sess
     # A task completed ~30h ago qualifies for BOTH:
     # - Inactivity nudge (24-48h window)
     # - Streak-saver: it was "yesterday" in terms of assigned_date, and today has no completion
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = utc_today() - timedelta(days=1)
     thirty_hours_ago = datetime.now(timezone.utc) - timedelta(hours=30)
     db_session.add(DailyTask(
         id=uuid.uuid4(),
@@ -860,7 +860,7 @@ async def test_non_sunday_sends_regular_digest_not_star_log(client, db_session):
     goal_id = goal["id"]
 
     # Add a pending task explicitly on _MONDAY so the digest filter finds it
-    # (tasks from create_test_goal use date.today(), but we mock user_today to _MONDAY)
+    # (tasks from create_test_goal use utc_today(), but we mock user_today to _MONDAY)
     db_session.add(DailyTask(
         id=uuid.uuid4(),
         goal_id=uuid.UUID(goal_id),
