@@ -16,9 +16,30 @@ import { useNavigate } from 'react-router-dom'
 import '../onboarding.css'
 
 const ONBOARDING_COMPLETE_KEY = 'goalforge_onboarding_complete'
+const ONBOARDING_STATE_KEY = 'gf_onboarding_state'
 const TOTAL_STEPS = 4 // welcome..goal counted in the dot stepper; finish (step 4) = "Done"
 
 type FocusId = 'fitness' | 'career' | 'learning' | 'finance' | 'relationships' | 'growth'
+
+// Wizard progress survives a mid-flow refresh (sessionStorage; cleared on finish/skip).
+// Step 4 (finish) is never restored — finishGoal/confetti are transient.
+type SavedState = { step: number; chosenFocus: FocusId | null; goalText: string }
+
+function loadSavedState(): SavedState {
+  const fallback: SavedState = { step: 0, chosenFocus: null, goalText: '' }
+  try {
+    const raw = sessionStorage.getItem(ONBOARDING_STATE_KEY)
+    if (!raw) return fallback
+    const parsed = JSON.parse(raw) as Partial<SavedState>
+    return {
+      step: Math.max(0, Math.min(typeof parsed.step === 'number' ? parsed.step : 0, TOTAL_STEPS - 1)),
+      chosenFocus: parsed.chosenFocus ?? null,
+      goalText: typeof parsed.goalText === 'string' ? parsed.goalText : '',
+    }
+  } catch {
+    return fallback
+  }
+}
 
 const FOCUS: Array<{ id: FocusId; name: string; desc: string; cc: string; icon: () => ReactNode }> = [
   { id: 'fitness', name: 'Health & Fitness', desc: 'Exercise, nutrition, sleep', cc: 'var(--rose)', icon: () => (
@@ -138,9 +159,9 @@ function makeStars() {
 export default function OnboardingPage() {
   const navigate = useNavigate()
 
-  const [step, setStep] = useState(0)
-  const [chosenFocus, setChosenFocus] = useState<FocusId | null>(null)
-  const [goalText, setGoalText] = useState('')
+  const [step, setStep] = useState(() => loadSavedState().step)
+  const [chosenFocus, setChosenFocus] = useState<FocusId | null>(() => loadSavedState().chosenFocus)
+  const [goalText, setGoalText] = useState(() => loadSavedState().goalText)
   const [goalFocused, setGoalFocused] = useState(false)
   const [thinking, setThinking] = useState(false)
   const [thinkIdx, setThinkIdx] = useState(0)
@@ -170,6 +191,14 @@ export default function OnboardingPage() {
 
   // Reset card scroll on step change (prototype: `card.scrollTop = 0`).
   useEffect(() => { if (cardRef.current) cardRef.current.scrollTop = 0 }, [step])
+
+  // Persist wizard progress so a refresh resumes where the user left off.
+  useEffect(() => {
+    if (step >= TOTAL_STEPS) return // finish screen is not restorable
+    try {
+      sessionStorage.setItem(ONBOARDING_STATE_KEY, JSON.stringify({ step, chosenFocus, goalText }))
+    } catch { /* storage full/unavailable — persistence is best-effort */ }
+  }, [step, chosenFocus, goalText])
 
   // Occasional slow shooting stars — ported verbatim (DOM append + Web
   // Animations API), skipped under prefers-reduced-motion.
@@ -261,11 +290,13 @@ export default function OnboardingPage() {
   }
 
   function skip() {
+    sessionStorage.removeItem(ONBOARDING_STATE_KEY)
     localStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true')
     navigate('/dashboard', { replace: true })
   }
 
   function enterGoalForge() {
+    sessionStorage.removeItem(ONBOARDING_STATE_KEY)
     localStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true')
     navigate(`/dashboard?goal=${encodeURIComponent(finishGoal.title)}`, { replace: true })
   }

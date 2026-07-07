@@ -758,6 +758,7 @@ export default function LandingPage() {
           <div className={['nav-menu', navOpen && 'open show'].filter(Boolean).join(' ')} id="navMenu">
             {NAV_LINKS.map((l) => <a key={l.href} className="m-link" href={l.href} onClick={() => setNavOpen(false)}>{l.label}</a>)}
             <Show when="signed-out">
+              <Link className="m-link" to="/sign-in" onClick={() => setNavOpen(false)}>Sign in</Link>
               <Link className="btn-primary" to="/sign-up" onClick={() => setNavOpen(false)}>Let's plan</Link>
             </Show>
             <Show when="signed-in">
