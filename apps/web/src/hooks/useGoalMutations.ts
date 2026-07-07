@@ -299,6 +299,9 @@ export function useGoalMutations(userId: string, onJackpot?: (drop: RewardDrop) 
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.goals(userId) })
     },
+    onError: () => {
+      toast.error('Could not start Easy Mode. Please try again.')
+    },
   })
 
   // ── Return handlers matching existing Dashboard signatures ──
