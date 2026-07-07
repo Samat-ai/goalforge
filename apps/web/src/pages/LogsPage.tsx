@@ -6,10 +6,13 @@
 // local UI state — there is no backend toggle mutation), useProfileQuery.
 import { useState } from 'react'
 import { useUser } from '@clerk/react'
+import CollectionModal from '../components/CollectionModal'
 import { Icon, Reveal } from '../components/gf/Ui'
 import { cx } from '../components/gf/util'
 import { useProfileQuery, useShopRewardsQuery, useShopRewardMutations, useStarLogQuery } from '../hooks'
-import type { ShopReward, StarLogResponse } from '../lib/types'
+import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
+import { REGISTRY_TOTAL } from '../lib/collectibles'
+import type { Reward, ShopReward, StarLogResponse } from '../lib/types'
 
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
 const e2eUserId = import.meta.env.VITE_E2E_USER_ID ?? 'user_e2e'
@@ -49,10 +52,66 @@ function StarLogError({ onRetry }: { onRetry: () => void }) {
   )
 }
 
-function StarLogLoading() {
+function StarLogSkeleton() {
   return (
-    <div role="status" aria-label="Loading star log" style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
-      <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid var(--ring-track)', borderTop: '2px solid var(--accent)', animation: 'spin 0.75s linear infinite' }} />
+    <Reveal className="gf-card gf-starlog" delay={90}>
+      <div role="status" aria-label="Loading star log" style={{ display: 'contents' }}>
+        <div className="gf-starlog-rail" />
+        <div className="gf-starlog-aside">
+          <div className="gf-skel" style={{ width: 132, height: 11 }} />
+          <div className="gf-skel" style={{ width: 210, height: 21, marginTop: 12 }} />
+          <div style={{ display: 'flex', gap: 6, marginTop: 14, flexWrap: 'wrap' }}>
+            <div className="gf-skel" style={{ width: 64, height: 22, borderRadius: 999 }} />
+            <div className="gf-skel" style={{ width: 80, height: 22, borderRadius: 999 }} />
+            <div className="gf-skel" style={{ width: 56, height: 22, borderRadius: 999 }} />
+          </div>
+          <div className="gf-skel" style={{ width: 150, height: 11, marginTop: 16 }} />
+        </div>
+        <div className="gf-starlog-main">
+          <div className="gf-skel" style={{ width: '100%', height: 12 }} />
+          <div className="gf-skel" style={{ width: '94%', height: 12, marginTop: 9 }} />
+          <div className="gf-skel" style={{ width: '97%', height: 12, marginTop: 9 }} />
+          <div className="gf-skel" style={{ width: '62%', height: 12, marginTop: 9 }} />
+        </div>
+      </div>
+    </Reveal>
+  )
+}
+
+// ── Trophy Room opener strip ─────────────────────────────────────────────────
+function TrophyStrip({ rewards, onOpen }: { rewards: Reward[]; onOpen: () => void }) {
+  const recent = [...rewards]
+    .sort((a, b) => b.acquired_at.localeCompare(a.acquired_at))
+    .slice(0, 3)
+  return (
+    <Reveal delay={110}>
+      <button className="gf-trophy" onClick={onOpen} aria-label="Open Trophy Room">
+        <span className="gf-trophy-ic" aria-hidden="true"><Icon name="trophy" size={17} /></span>
+        <span className="gf-trophy-mid">
+          <span className="gf-trophy-row">
+            <span className="gf-trophy-cap">Trophy Room</span>
+            <span className="gf-trophy-count">{rewards.length} / {REGISTRY_TOTAL} collected</span>
+          </span>
+          <span className="gf-trophy-recent">
+            {recent.length === 0
+              ? 'No relics yet — jackpot drops land here.'
+              : recent.map(r => r.display_name).join(' · ')}
+          </span>
+        </span>
+        <span className="gf-trophy-open">Open <Icon name="arrowRight" size={13} /></span>
+      </button>
+    </Reveal>
+  )
+}
+
+function TrophyStripSkeleton() {
+  return (
+    <div className="gf-trophy" role="status" aria-label="Loading trophy room" style={{ cursor: 'default' }}>
+      <span className="gf-trophy-ic gf-skel" />
+      <span className="gf-trophy-mid">
+        <span className="gf-skel" style={{ display: 'block', width: 200, height: 12 }} />
+        <span className="gf-skel" style={{ display: 'block', width: 260, height: 10, marginTop: 8, maxWidth: '100%' }} />
+      </span>
     </div>
   )
 }
@@ -159,6 +218,9 @@ export default function LogsPage() {
   const starLogQuery = useStarLogQuery(userId)
   const { rewards } = useShopRewardsQuery(userId)
   const { addReward, redeemReward } = useShopRewardMutations(userId ?? '')
+  const rewardsQuery = useRewardsQuery(userId ?? '')
+  const equipMutation = useEquipRewardMutation(userId ?? '')
+  const [collectionOpen, setCollectionOpen] = useState(false)
 
   return (
     <div className="gf-page">
@@ -166,7 +228,7 @@ export default function LogsPage() {
         <div className="gf-eyebrow">Your journey, in chapters</div>
       </Reveal>
 
-      {starLogQuery.isLoading && <StarLogLoading />}
+      {starLogQuery.isLoading && <StarLogSkeleton />}
       {!starLogQuery.isLoading && starLogQuery.isError && (
         <StarLogError onRetry={() => starLogQuery.refetch()} />
       )}
@@ -174,7 +236,20 @@ export default function LogsPage() {
         <StarLog log={starLogQuery.data} />
       )}
 
+      {rewardsQuery.isLoading && <TrophyStripSkeleton />}
+      {rewardsQuery.data && (
+        <TrophyStrip rewards={rewardsQuery.data} onOpen={() => setCollectionOpen(true)} />
+      )}
+
       <StarShop rewards={rewards} pts={pts} addReward={addReward} redeemReward={redeemReward} />
+
+      {collectionOpen && rewardsQuery.data && (
+        <CollectionModal
+          rewards={rewardsQuery.data}
+          onEquip={id => equipMutation.mutate(id)}
+          onClose={() => setCollectionOpen(false)}
+        />
+      )}
     </div>
   )
 }
