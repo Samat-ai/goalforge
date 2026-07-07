@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Show } from '@clerk/react'
 import { Toaster } from 'sonner'
+import AppShell from './components/gf/AppShell'
 import LandingPage from './pages/LandingPage'
-import Dashboard from './pages/Dashboard'
-import Analytics from './pages/Analytics'
-import Coach from './pages/Coach'
-import Stars from './pages/Stars'
+import DashboardPage from './pages/DashboardPage'
+import AnalyticsPage from './pages/AnalyticsPage'
+import ChatPage from './pages/ChatPage'
+import LogsPage from './pages/LogsPage'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
-import Settings from './pages/Settings'
-import Onboarding from './pages/Onboarding'
+import SettingsPage from './pages/SettingsPage'
+import OnboardingPage from './pages/OnboardingPage'
 import OnboardingGuard from './components/OnboardingGuard'
 import ErrorBoundary from './components/ErrorBoundary'
 import EnergyParamCapture from './components/EnergyParamCapture'
@@ -60,61 +61,18 @@ export default function App() {
             path="/onboarding"
             element={
               <AuthGuard>
-                <Onboarding />
+                <OnboardingPage />
               </AuthGuard>
             }
           />
-          {/* Authenticated + onboarding-complete routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <AuthGuard>
-                <OnboardingGuard>
-                  <Dashboard />
-                </OnboardingGuard>
-              </AuthGuard>
-            }
-          />
-          <Route
-            path="/analytics"
-            element={
-              <AuthGuard>
-                <OnboardingGuard>
-                  <Analytics />
-                </OnboardingGuard>
-              </AuthGuard>
-            }
-          />
-          <Route
-            path="/stars"
-            element={
-              <AuthGuard>
-                <OnboardingGuard>
-                  <Stars />
-                </OnboardingGuard>
-              </AuthGuard>
-            }
-          />
-          <Route
-            path="/coach"
-            element={
-              <AuthGuard>
-                <OnboardingGuard>
-                  <Coach />
-                </OnboardingGuard>
-              </AuthGuard>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <AuthGuard>
-                <OnboardingGuard>
-                  <Settings />
-                </OnboardingGuard>
-              </AuthGuard>
-            }
-          />
+          {/* Authenticated + onboarding-complete routes — persistent AppShell owns the header/nav */}
+          <Route element={<AuthGuard><OnboardingGuard><AppShell /></OnboardingGuard></AuthGuard>}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/stars"     element={<LogsPage />} />
+            <Route path="/coach"     element={<ChatPage />} />
+            <Route path="/settings"  element={<SettingsPage />} />
+          </Route>
           <Route path="*" element={<div className="p-8 text-center">404 - Page Not Found</div>} />
         </Routes>
       </ErrorBoundary>
