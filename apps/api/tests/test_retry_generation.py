@@ -9,7 +9,7 @@ from exceptions import AIGenerationError
 from main import app
 from services.goal_service import PLACEHOLDER_MILESTONE_TITLE
 from schemas import AITaskOutput
-from tests.conftest import OTHER_USER_ID, TEST_USER_ID, create_test_goal
+from tests.conftest import OTHER_USER_ID, TEST_USER_ID, create_test_goal, utc_today
 
 
 # ---------------------------------------------------------------------------
@@ -46,7 +46,7 @@ async def test_retry_generation_passes_difficulty_mode_to_ai(client):
     goal_id = goal["id"]
     milestone_id = _sorted_milestones(goal)[0]["id"]
 
-    start = date.today()
+    start = utc_today()
     task_outputs = [
         AITaskOutput(
             description=f"Task {i + 1}",

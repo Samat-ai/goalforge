@@ -1,6 +1,6 @@
 from main import app
 from auth import get_current_user_id
-from tests.conftest import TEST_USER_ID, OTHER_USER_ID, create_test_goal
+from tests.conftest import TEST_USER_ID, OTHER_USER_ID, create_test_goal, wait_for_goal_generated
 
 
 async def test_create_goal(client):
@@ -18,11 +18,8 @@ async def test_create_goal(client):
     assert len(data["milestones"]) == 1
     assert data["milestones"][0]["sprint_status"] == "generating"
 
-    # After BackgroundTasks run, GET returns the fully-populated goal
-    goal_id = data["id"]
-    get_resp = await client.get(f"/goals/{goal_id}")
-    assert get_resp.status_code == 200
-    full_data = get_resp.json()
+    # After the background task lands, GET returns the fully-populated goal
+    full_data = await wait_for_goal_generated(client, data["id"])
     assert full_data["smart_title"] == "Run 5K in under 25 minutes"
     assert len(full_data["milestones"]) == 3
     assert len(full_data["daily_tasks"]) == 7

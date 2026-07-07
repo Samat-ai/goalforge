@@ -3,12 +3,12 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from tests.conftest import TEST_USER_ID
+from tests.conftest import TEST_USER_ID, utc_today
 from schemas import AICoachTurnOutput, AIGoalOutput, AIMilestoneConfig, AITaskOutput
 
 
 def _mock_goal_output() -> AIGoalOutput:
-    today = date.today()
+    today = utc_today()
     return AIGoalOutput(
         smart_title="Launch a weekly writing habit",
         smart_description="Write and publish one high-quality article each week for 12 weeks.",

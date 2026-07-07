@@ -18,15 +18,29 @@ import pytest
 import pytest_asyncio
 
 
+_EXIT_STATUS = 0
+
+
 def pytest_sessionfinish(session, exitstatus):
+    global _EXIT_STATUS
+    _EXIT_STATUS = int(exitstatus)
+
+
+def pytest_unconfigure(config):
     """Force-exit the process after all tests finish.
 
     Without this, aiosqlite's internal thread pool keeps the Python process alive
     indefinitely on Linux CI after all tests pass — causing a 10+ minute hang.
     os._exit() bypasses Python's atexit/finalizer machinery and kills the process
     immediately, which is safe because all test results have already been collected.
+    Exiting in unconfigure (not sessionfinish) lets the terminal reporter print
+    the failure summary first; the flushes push it past os._exit(), which skips
+    buffer flushing.
     """
-    os._exit(int(exitstatus))
+    import sys
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(_EXIT_STATUS)
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete as sql_delete, update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -37,6 +51,18 @@ from main import app
 from models import DailyTask, Goal, Milestone
 from schemas import AIMilestoneConfig, AIGoalOutput, AITaskOutput
 from services.goal_service import PLACEHOLDER_MILESTONE_TITLE
+from utils import user_today
+
+
+def utc_today() -> date:
+    """Today as the backend computes it for the default-UTC test user.
+
+    Tests MUST use this instead of date.today(): routes resolve "today" via
+    user_today(user.timezone) and the test user's timezone is UTC, so local
+    date.today() diverges from the backend whenever the machine clock is on
+    the other side of the UTC date boundary (e.g. evenings in UTC+ zones).
+    """
+    return user_today("UTC")
 
 # ---------------------------------------------------------------------------
 # Autouse: cancel lingering background tasks after each test (prevents event
@@ -66,14 +92,14 @@ OTHER_USER_ID = "user_other_xyz789"
 # ---------------------------------------------------------------------------
 
 def _make_mock_goal_output() -> AIGoalOutput:
-    today = date.today()
+    today = utc_today()
     return AIGoalOutput(
         smart_title="Run 5K in under 25 minutes",
         smart_description=(
             "Train consistently over 90 days to complete a 5 km run in under "
             "25 minutes, building endurance and speed progressively."
         ),
-        goal_type="fitness",
+        goal_type="health",
         target_date=today + timedelta(days=90),
         milestones=[
             AIMilestoneConfig(
@@ -104,7 +130,7 @@ def _make_mock_goal_output() -> AIGoalOutput:
 
 
 def _make_mock_sprint_tasks() -> list[AITaskOutput]:
-    today = date.today()
+    today = utc_today()
     return [
         AITaskOutput(
             description=f"Sprint day {i + 1} task",
@@ -157,7 +183,7 @@ async def client(engine):
     mock_goal = _make_mock_goal_output()
     mock_tasks = _make_mock_sprint_tasks()
 
-    mock_regen = AITaskOutput(description="Regenerated task", tip="Fresh motivation", assigned_date=date.today())
+    mock_regen = AITaskOutput(description="Regenerated task", tip="Fresh motivation", assigned_date=utc_today())
 
     async def _mock_generate_goal_async(goal_id, user_id, user_timezone, raw_input):
         """Populate goal with mock AI data using the test session_factory."""
@@ -238,7 +264,7 @@ async def other_client(engine):
     mock_goal = _make_mock_goal_output()
     mock_tasks = _make_mock_sprint_tasks()
 
-    mock_regen = AITaskOutput(description="Regenerated task", tip="Fresh motivation", assigned_date=date.today())
+    mock_regen = AITaskOutput(description="Regenerated task", tip="Fresh motivation", assigned_date=utc_today())
 
     async def _mock_generate_goal_async(goal_id, user_id, user_timezone, raw_input):
         """Populate goal with mock AI data using the test session_factory."""
@@ -297,17 +323,29 @@ async def other_client(engine):
 # Shared helper — create a goal and return the response JSON
 # ---------------------------------------------------------------------------
 
+async def wait_for_goal_generated(client: AsyncClient, goal_id: str) -> dict:
+    """Poll GET /goals/{id} until background generation lands (or fail after ~2.5s).
+
+    BackgroundTasks usually complete before the ASGI test client call returns,
+    but that ordering is not guaranteed by the stack — it flaked on CI.
+    """
+    for _ in range(50):
+        get_resp = await client.get(f"/goals/{goal_id}")
+        assert get_resp.status_code == 200
+        data = get_resp.json()
+        if all(m["sprint_status"] != "generating" for m in data["milestones"]):
+            return data
+        await asyncio.sleep(0.05)
+    raise AssertionError(f"Goal {goal_id} still generating after 2.5s")
+
+
 async def create_test_goal(client: AsyncClient) -> dict:
     resp = await client.post(
         f"/users/{TEST_USER_ID}/goals",
         json={"raw_input": "I want to run a 5K race in under 25 minutes within 3 months"},
     )
-    # BackgroundTasks run synchronously in ASGI test mode — goal is fully populated by now
     assert resp.status_code == 202
-    goal_id = resp.json()["id"]
-    get_resp = await client.get(f"/goals/{goal_id}")
-    assert get_resp.status_code == 200
-    return get_resp.json()
+    return await wait_for_goal_generated(client, resp.json()["id"])
 
 
 @pytest_asyncio.fixture

@@ -8,6 +8,7 @@ import pytest
 import pytest_asyncio
 
 from schemas import AIRescueTaskItem
+from tests.conftest import utc_today
 
 
 @pytest.mark.asyncio
@@ -42,7 +43,7 @@ def test_task_response_has_is_rescue_task():
         milestone_id=None,
         description="Test task",
         tip="Keep going",
-        assigned_date=date.today(),
+        assigned_date=utc_today(),
         position=0,
         is_completed=False,
         completed_at=None,
@@ -63,7 +64,7 @@ def test_goal_response_rescue_mode_true_when_inactive_48h():
         smart_title="Spanish Fluency",
         smart_description="90-day goal",
         goal_type="learning",
-        target_date=date.today() + timedelta(days=90),
+        target_date=utc_today() + timedelta(days=90),
         status="active",
         progress=0,
         created_at=old_time,
@@ -89,7 +90,7 @@ def test_goal_response_rescue_mode_true_when_inactive_48h():
                 milestone_id=None,
                 description="Old task",
                 tip="tip",
-                assigned_date=date.today() - timedelta(days=3),
+                assigned_date=utc_today() - timedelta(days=3),
                 position=0,
                 is_completed=True,
                 completed_at=old_time,
@@ -112,7 +113,7 @@ def test_goal_response_rescue_mode_false_when_rescue_task_today():
         smart_title="Spanish Fluency",
         smart_description="90-day goal",
         goal_type="learning",
-        target_date=date.today() + timedelta(days=90),
+        target_date=utc_today() + timedelta(days=90),
         status="active",
         progress=0,
         created_at=old_time,
@@ -138,7 +139,7 @@ def test_goal_response_rescue_mode_false_when_rescue_task_today():
                 milestone_id=None,
                 description="Rescue task",
                 tip="tip",
-                assigned_date=date.today(),
+                assigned_date=utc_today(),
                 position=0,
                 is_completed=False,
                 completed_at=None,
@@ -161,7 +162,7 @@ def test_goal_response_rescue_mode_false_when_active_less_than_48h():
         smart_title="Spanish Fluency",
         smart_description="90-day goal",
         goal_type="learning",
-        target_date=date.today() + timedelta(days=90),
+        target_date=utc_today() + timedelta(days=90),
         status="active",
         progress=0,
         created_at=recent_time,
@@ -187,7 +188,7 @@ def test_goal_response_rescue_mode_false_when_active_less_than_48h():
                 milestone_id=None,
                 description="Recent task",
                 tip="tip",
-                assigned_date=date.today(),
+                assigned_date=utc_today(),
                 position=0,
                 is_completed=True,
                 completed_at=recent_time,
@@ -210,7 +211,7 @@ def test_goal_response_rescue_mode_true_when_no_completions_and_old_goal():
         smart_title="Spanish Fluency",
         smart_description="90-day goal",
         goal_type="learning",
-        target_date=date.today() + timedelta(days=90),
+        target_date=utc_today() + timedelta(days=90),
         status="active",
         progress=0,
         created_at=old_time,
@@ -261,12 +262,12 @@ def _make_orm_goal(
         t.is_completed = True
         t.completed_at = completed_at
         t.is_rescue_task = False
-        t.assigned_date = date.today() - timedelta(days=1)
+        t.assigned_date = utc_today() - timedelta(days=1)
         tasks.append(t)
     if has_rescue_task_today:
         rescue = MagicMock()
         rescue.is_rescue_task = True
-        rescue.assigned_date = date.today()
+        rescue.assigned_date = utc_today()
         rescue.is_completed = False
         tasks.append(rescue)
     goal.daily_tasks = tasks
