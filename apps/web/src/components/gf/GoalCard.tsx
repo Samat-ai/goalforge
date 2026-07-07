@@ -5,7 +5,7 @@
 // Real backend states the mock never needed (sprint_status generating/failed,
 // achieved/abandoned goals reusing this same card) are added as minimal,
 // CSS-class-reuse-only extensions; see task-1-report.md for the list.
-import { useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { Icon, Reveal } from './Ui'
 import { cx, gfHideTip, gfTip } from './util'
 import { toGoalView, type GoalViewTask } from '../../lib/goalView'
@@ -14,6 +14,8 @@ import type { Goal } from '../../lib/types'
 import type { useGoalMutations } from '../../hooks/useGoalMutations'
 
 type Mutations = ReturnType<typeof useGoalMutations>
+
+const RESCUE_DISMISS_MS = 8 * 60 * 60 * 1000 // "show my full plan" hides the rescue card for 8h
 
 // ── PuffyStar (brightness-driven signature glyph) ───────────────────────────────
 function PuffyStar({ brightness = 0.8, size = 46 }: { brightness?: number; size?: number }) {
@@ -158,6 +160,8 @@ interface TodayTabProps {
   goal: Goal
   onToggleTask: (taskId: string, done: boolean) => void
   onRestoreTask: (taskId: string) => void
+  onTriggerRescue: () => Promise<unknown>
+  triggeringRescue: boolean
   onAbandon: () => void
   onDelete: () => void
   onCompleteSprint: () => void
@@ -169,10 +173,36 @@ interface TodayTabProps {
 }
 
 function TodayTab({
-  goal, onToggleTask, onRestoreTask, onAbandon, onDelete, onCompleteSprint, onRetryGeneration,
+  goal, onToggleTask, onRestoreTask, onTriggerRescue, triggeringRescue, onAbandon, onDelete, onCompleteSprint, onRetryGeneration,
   completingSprint, retryingGeneration, confirm, setConfirm,
 }: TodayTabProps) {
   const view = toGoalView(goal)
+  const dismissKey = `rescue_dismissed_${goal.id}`
+  // Lazy read only checks key presence — clock reads are banned in render.
+  const [rescueDismissed, setRescueDismissed] = useState(() => localStorage.getItem(dismissKey) !== null)
+  useEffect(() => {
+    const ts = Number(localStorage.getItem(dismissKey))
+    if (ts && Date.now() - ts >= RESCUE_DISMISS_MS) {
+      localStorage.removeItem(dismissKey)
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- expiring a persisted dismissal needs a clock read, which render/lazy-init may not do
+      setRescueDismissed(false)
+    }
+  }, [dismissKey])
+
+  function dismissRescue() {
+    localStorage.setItem(dismissKey, String(Date.now()))
+    setRescueDismissed(true)
+  }
+
+  async function handleStartEasyMode() {
+    if (triggeringRescue) return
+    try {
+      await onTriggerRescue()
+      dismissRescue() // only on success — prevents re-show during generation churn
+    } catch {
+      // error toast comes from the mutation's onError
+    }
+  }
   const isGenerating = goal.milestones.some(m => m.sprint_status === 'generating')
   const failedMilestone = goal.milestones.find(m => m.sprint_status === 'failed')
   const activeMilestone = goal.milestones.find(m => m.sprint_status === 'active')
@@ -181,6 +211,7 @@ function TodayTab({
   const allMilestonesComplete = goal.milestones.length > 0 && goal.milestones.every(m => m.is_completed)
   const isAbandoned = goal.status === 'abandoned'
   const isAchieved = goal.status === 'achieved'
+  const isRescue = goal.rescue_mode && !rescueDismissed && !isAbandoned && !isAchieved
   const done = view.tasks.filter(t => t.done).length
   const total = view.tasks.length
 
@@ -227,20 +258,38 @@ function TodayTab({
       )}
       {isAchieved && <div className="gf-achieved-banner">🏆 Goal achieved — it lives in your Hall of Fame.</div>}
 
-      {total > 0 && (
+      {isRescue && (
+        <div>
+          <div className="gf-rescue-badge">✦ EASY MODE</div>
+          <div className="gf-rescue-title">Let&apos;s make today easy.</div>
+          <div className="gf-rescue-sub">
+            It looks like you&apos;ve been busy. We paused your schedule and set up two quick wins for today — no pressure, no catching up.
+          </div>
+          <button className="gf-btn-pill is-sprint" style={{ width: '100%', marginBottom: 10 }} onClick={() => void handleStartEasyMode()} disabled={triggeringRescue}>
+            {triggeringRescue ? 'Starting easy mode…' : 'Start Easy Mode (2 min)'}
+          </button>
+          <button onClick={dismissRescue} className="gf-rescue-dismiss">
+            I&apos;m feeling good — show my full plan
+          </button>
+        </div>
+      )}
+
+      {!isRescue && total > 0 && (
         <div className="gf-mini">
           <div className="gf-mini-track"><div className="gf-mini-fill" style={{ width: `${(done / total) * 100}%` }} /></div>
           <span className="gf-mini-c">{done}/{total} tasks</span>
         </div>
       )}
-      <div className="gf-tasks">
-        {view.overdue.map(t => (
-          <TaskRowG key={t.id} task={t} overdue onToggle={() => onToggleTask(t.id, t.done)} onRestore={() => onRestoreTask(t.id)} />
-        ))}
-        {view.tasks.map(t => (
-          <TaskRowG key={t.id} task={t} onToggle={() => onToggleTask(t.id, t.done)} onRestore={() => onRestoreTask(t.id)} />
-        ))}
-      </div>
+      {!isRescue && (
+        <div className="gf-tasks">
+          {view.overdue.map(t => (
+            <TaskRowG key={t.id} task={t} overdue onToggle={() => onToggleTask(t.id, t.done)} onRestore={() => onRestoreTask(t.id)} />
+          ))}
+          {view.tasks.map(t => (
+            <TaskRowG key={t.id} task={t} onToggle={() => onToggleTask(t.id, t.done)} onRestore={() => onRestoreTask(t.id)} />
+          ))}
+        </div>
+      )}
       {!isAbandoned && !isAchieved && (
         <div className="gf-gc-actions">
           {allMilestonesComplete
@@ -426,6 +475,8 @@ export default function GoalCard({ goal, index = 0, defaultOpen = false, mutatio
                 goal={goal}
                 onToggleTask={handleToggleTask}
                 onRestoreTask={onRestoreTask}
+                onTriggerRescue={() => mutations.triggerRescue(goal.id)}
+                triggeringRescue={mutations.isTriggeringRescue}
                 onAbandon={handleAbandon}
                 onDelete={handleDelete}
                 onCompleteSprint={handleCompleteSprint}
