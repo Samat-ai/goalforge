@@ -49,17 +49,16 @@ extras. Zero-consumer rule families were deleted in Task 9.
 - **Landing stats band**: prototype's illustrative figures kept verbatim (incl.
   "Illustrative figures" note) in `src/pages/LandingPage.tsx`. Pre-launch decision:
   real metrics or drop the band.
-- **Landing mobile sign-in gap**: burger menu carries only the "Let's plan" CTA;
-  the desktop "Sign in" link is hidden ≤760px. Add a burger "Sign in" item.
+- ~~**Landing mobile sign-in gap**~~ — FIXED (PR #168): burger menu now carries
+  a "Sign in" m-link for signed-out visitors.
 - **Chat suggestion chips are static**: `src/pages/ChatPage.tsx` renders fixed
   prototype chips, not AI-generated suggestions.
-- **Onboarding has no step persistence**: refresh mid-wizard restarts at step 1
-  (`src/pages/OnboardingPage.tsx` keeps step in component state only).
+- ~~**Onboarding has no step persistence**~~ — FIXED (PR #168): wizard progress
+  persists to sessionStorage; cleared on skip/finish.
 
-## 4. Pre-existing backend issues (not caused by this branch)
+## 4. Pre-existing backend issues — RESOLVED (PR #167)
 
-- `apps/api/tests/conftest.py` seeds `goal_type="fitness"`, which is not a valid
-  value of the strict `GoalType` Literal — masks ~139/175 test results with
-  validation-driven failures.
-- 8 pre-existing test failures in energy-resize / streak-saver suites predate the
-  redesign branch.
+Backend suite is green (180 passed, 2 skipped): the invalid `goal_type="fitness"`
+conftest seed is fixed, and the 8 energy-resize / streak-saver failures were one
+time-of-day bug — tests used local `date.today()` while routes compute
+`user_today("UTC")`. Tests must use `utc_today()` from `tests/conftest.py`.
