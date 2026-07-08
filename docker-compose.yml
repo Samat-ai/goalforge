@@ -1,17 +1,20 @@
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: goalforge
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
+    # Not published to the host — only `api` needs to reach it, over the
+    # compose network. For local psql access, add a docker-compose.override.yml
+    # with a `ports: ["5432:5432"]` entry on this service instead of editing here.
     volumes:
       - pgdata:/var/lib/postgresql/data
 
   api:
     build: ./apps/api
+    restart: unless-stopped
     ports:
       - "8000:8000"
     env_file: ./apps/api/.env
@@ -20,10 +23,32 @@ services:
 
   web:
     build: ./apps/web
+    restart: unless-stopped
     ports:
       - "5173:8080"
     depends_on:
       - api
 
+  # Reverse proxy for production: routes host :80/:443 to api/web over the
+  # compose network. Not needed for local dev (hit :8000/:5173 directly per
+  # README) — only matters once this stack runs on a real server. See
+  # docs/DEPLOYMENT.md. Swap `:80` for a real domain in Caddyfile to get
+  # automatic Let's Encrypt TLS with no other changes.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:
