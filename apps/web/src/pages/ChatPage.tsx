@@ -26,10 +26,11 @@ const e2eUserId = import.meta.env.VITE_E2E_USER_ID ?? 'user_e2e'
 
 const TOTAL_INTAKE_QUESTIONS = 5
 
-// Suggestion chips shown alongside the composer — the prototype swaps these
-// per scripted intake step; the real flow has no such per-step chip data from
-// the backend, so a single static starter set (matching the prototype's first
-// question) is offered throughout, same as the legacy page did.
+// Starter chips shown only for the very first question (answeredCount === 0) —
+// the prototype swaps these per scripted intake step, but the real flow has no
+// per-step chip data from the backend, so this static set (matching the
+// prototype's first question) acts purely as conversation starters and hides
+// once the user has answered. AI-generated per-turn chips are deferred.
 const SUGGESTION_CHIPS = [
   'Get fit & run regularly',
   'Launch a side project',
@@ -331,7 +332,7 @@ export default function ChatPage() {
 
           {session && !isCompleted && (
             <div className="gf-co-composer">
-              {draft === '' && (
+              {draft === '' && answeredCount === 0 && (
                 <div className="gf-co-chips">
                   {SUGGESTION_CHIPS.map(chip => (
                     <button
