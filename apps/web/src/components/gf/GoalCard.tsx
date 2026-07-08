@@ -5,13 +5,29 @@
 // Real backend states the mock never needed (sprint_status generating/failed,
 // achieved/abandoned goals reusing this same card) are added as minimal,
 // CSS-class-reuse-only extensions; see task-1-report.md for the list.
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import {
+  DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext, verticalListSortingStrategy, useSortable, sortableKeyboardCoordinates, arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Icon, Reveal } from './Ui'
 import { cx, gfHideTip, gfTip } from './util'
 import { toGoalView, type GoalViewTask } from '../../lib/goalView'
 import { todayStr } from '../../lib/gamification'
 import type { Goal } from '../../lib/types'
 import type { useGoalMutations } from '../../hooks/useGoalMutations'
+
+type TaskPosition = { id: string; position: number }
+interface TaskRowActions {
+  onToggle: () => void
+  onRestore: () => void
+  onSaveEdit: (taskId: string, description: string) => void
+  onRegenerate: (taskId: string) => Promise<void>
+}
 
 type Mutations = ReturnType<typeof useGoalMutations>
 
@@ -137,29 +153,167 @@ function StreakBars({ days }: { days: string[] }) {
 }
 
 // ── Tab content ─────────────────────────────────────────────────────────────────
-function TaskRowG({ task, overdue, onToggle, onRestore }: { task: GoalViewTask; overdue?: boolean; onToggle: () => void; onRestore: () => void }) {
-  const row = (
-    <button className={cx('gf-task', task.done && 'is-done', overdue && 'is-overdue')} onClick={onToggle}
-      aria-label={task.done ? 'Task completed' : 'Mark task complete'}>
-      <span className="gf-check"><Icon name="check" size={13} stroke={3} /></span>
-      <span className="gf-task-label">{task.title}</span>
-      {overdue && !task.done && <span className="gf-task-tag">overdue</span>}
-      {task.resized && !task.done && <span className="gf-task-tag">simplified</span>}
-    </button>
+// Drag props injected by SortableTaskRow (today's list only). Absent for overdue rows.
+interface SortableParts {
+  setNodeRef: (el: HTMLElement | null) => void
+  style: React.CSSProperties
+  attributes: ReturnType<typeof useSortable>['attributes']
+  listeners: ReturnType<typeof useSortable>['listeners']
+  isDragging: boolean
+}
+
+interface TaskRowProps extends TaskRowActions {
+  task: GoalViewTask
+  overdue?: boolean
+  editMode?: boolean // touch edit-mode forces the grip + action icons visible
+  sortable?: SortableParts
+}
+
+function TaskRow({ task, overdue, editMode, sortable, onToggle, onRestore, onSaveEdit, onRegenerate }: TaskRowProps) {
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState(task.title)
+  const [regenerating, setRegenerating] = useState(false)
+
+  const canEdit = !task.done
+  const canRegen = !task.done && !task.isUserAdded
+  const showGrip = !!sortable && !task.done
+
+  const startEdit = () => { setText(task.title); setEditing(true) }
+  const saveEdit = () => {
+    const next = text.trim()
+    if (next && next !== task.title) onSaveEdit(task.id, next)
+    setEditing(false)
+  }
+  const cancelEdit = () => { setText(task.title); setEditing(false) }
+  const regen = async () => {
+    if (regenerating) return
+    setRegenerating(true)
+    try { await onRegenerate(task.id) } catch { /* toast handled by mutation onError */ } finally { setRegenerating(false) }
+  }
+
+  const rowClass = cx('gf-task', task.done && 'is-done', overdue && 'is-overdue', editMode && 'is-editmode', sortable?.isDragging && 'is-dragging')
+
+  const inner = (
+    <>
+      {showGrip && (
+        <button className="gf-task-grip" type="button" aria-label="Drag to reorder"
+          {...sortable!.attributes} {...(sortable!.listeners ?? {})}>
+          <Icon name="grip" size={15} />
+        </button>
+      )}
+      {editing ? (
+        <input
+          className="gf-task-edit-input"
+          value={text}
+          autoFocus
+          aria-label="Edit task description"
+          onChange={e => setText(e.target.value)}
+          onBlur={saveEdit}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); saveEdit() }
+            else if (e.key === 'Escape') { e.preventDefault(); cancelEdit() }
+          }}
+        />
+      ) : (
+        <button className="gf-task-toggle" type="button" onClick={onToggle} disabled={task.done}
+          aria-label={task.done ? 'Task completed' : 'Mark task complete'}>
+          <span className="gf-check"><Icon name="check" size={13} stroke={3} /></span>
+          <span className="gf-task-label">{task.title}</span>
+        </button>
+      )}
+      {!editing && overdue && !task.done && <span className="gf-task-tag">overdue</span>}
+      {!editing && task.resized && !task.done && <span className="gf-task-tag">simplified</span>}
+      {!editing && (canEdit || canRegen) && (
+        <div className="gf-task-actions">
+          {canEdit && (
+            <button className="gf-task-action" type="button" aria-label="Edit task" onClick={startEdit}>
+              <Icon name="pencil" size={14} />
+            </button>
+          )}
+          {canRegen && (
+            <button className="gf-task-action" type="button" aria-label="Regenerate task" onClick={() => void regen()} disabled={regenerating}>
+              <Icon name="refresh" size={14} className={cx(regenerating && 'gf-spin')} />
+            </button>
+          )}
+        </div>
+      )}
+    </>
   )
-  if (!task.resized || task.done) return row
+
+  if (!task.resized || task.done) {
+    return <div ref={sortable?.setNodeRef} style={sortable?.style} className={rowClass}>{inner}</div>
+  }
   return (
-    <div className="gf-task-wrap">
-      {row}
-      <button className="gf-task-restore" onClick={onRestore} aria-label="Restore original task">restore ↩</button>
+    <div ref={sortable?.setNodeRef} style={sortable?.style} className="gf-task-wrap">
+      <div className={rowClass}>{inner}</div>
+      <button className="gf-task-restore" type="button" onClick={onRestore} aria-label="Restore original task">restore ↩</button>
     </div>
   )
+}
+
+// Inline "add a custom task" affordance (is_user_added=true server-side). Collapsed to a ghost
+// button; expands to an input. A submit guard prevents an Enter-then-blur double-create.
+function AddTaskRow({ onAdd }: { onAdd: (description: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState('')
+  const submitted = useRef(false)
+  const submit = () => {
+    if (submitted.current) return
+    submitted.current = true
+    const next = text.trim()
+    if (next) onAdd(next)
+    setText('')
+    setOpen(false)
+  }
+  if (!open) {
+    return (
+      <button className="gf-task-add-btn" type="button"
+        onClick={() => { submitted.current = false; setOpen(true) }}>
+        <Icon name="plus" size={13} /> Add a task
+      </button>
+    )
+  }
+  return (
+    <div className="gf-task-add">
+      <input
+        className="gf-task-edit-input"
+        value={text}
+        autoFocus
+        placeholder="Describe a task…"
+        aria-label="New task description"
+        onChange={e => setText(e.target.value)}
+        onBlur={submit}
+        onKeyDown={e => {
+          if (e.key === 'Enter') { e.preventDefault(); submit() }
+          else if (e.key === 'Escape') { e.preventDefault(); setText(''); setOpen(false) }
+        }}
+      />
+    </div>
+  )
+}
+
+// Today's tasks are sortable — must render inside <DndContext><SortableContext> (project rule:
+// useSortable always mounts under a context, even when disabled). Overdue rows use TaskRow directly.
+function SortableTaskRow(props: TaskRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: props.task.id, disabled: props.task.done })
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 2 : undefined,
+    position: isDragging ? 'relative' : undefined,
+  }
+  return <TaskRow {...props} sortable={{ setNodeRef, style, attributes, listeners, isDragging }} />
 }
 
 interface TodayTabProps {
   goal: Goal
   onToggleTask: (taskId: string, done: boolean) => void
   onRestoreTask: (taskId: string) => void
+  onSaveEdit: (taskId: string, description: string) => void
+  onRegenerate: (taskId: string) => Promise<void>
+  onReorder: (positions: TaskPosition[]) => void
+  onAddTask: (description: string) => void
   onTriggerRescue: () => Promise<unknown>
   triggeringRescue: boolean
   onAbandon: () => void
@@ -173,11 +327,41 @@ interface TodayTabProps {
 }
 
 function TodayTab({
-  goal, onToggleTask, onRestoreTask, onTriggerRescue, triggeringRescue, onAbandon, onDelete, onCompleteSprint, onRetryGeneration,
+  goal, onToggleTask, onRestoreTask, onSaveEdit, onRegenerate, onReorder, onAddTask,
+  onTriggerRescue, triggeringRescue, onAbandon, onDelete, onCompleteSprint, onRetryGeneration,
   completingSprint, retryingGeneration, confirm, setConfirm,
 }: TodayTabProps) {
   const view = toGoalView(goal)
   const dismissKey = `rescue_dismissed_${goal.id}`
+
+  // Touch devices (no hover) get an explicit "Edit" mode toggle instead of hover-revealed
+  // icons; desktop (hover:hover) reveals affordances via CSS. matchMedia can't run in render.
+  const [coarsePointer, setCoarsePointer] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: coarse)')
+    const update = () => setCoarsePointer(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+  const todayIds = view.tasks.map(t => t.id)
+  function handleDragEnd(e: DragEndEvent) {
+    const { active, over } = e
+    if (!over || active.id === over.id) return
+    const oldIndex = todayIds.indexOf(String(active.id))
+    const newIndex = todayIds.indexOf(String(over.id))
+    if (oldIndex < 0 || newIndex < 0) return
+    // Permute only the position values already held by today's tasks — never touch other days.
+    const pool = view.tasks.map(t => t.position).slice().sort((a, b) => a - b)
+    const positions = arrayMove(view.tasks, oldIndex, newIndex).map((t, i) => ({ id: t.id, position: pool[i] }))
+    onReorder(positions)
+  }
   // Lazy read only checks key presence — clock reads are banned in render.
   const [rescueDismissed, setRescueDismissed] = useState(() => localStorage.getItem(dismissKey) !== null)
   useEffect(() => {
@@ -278,17 +462,33 @@ function TodayTab({
         <div className="gf-mini">
           <div className="gf-mini-track"><div className="gf-mini-fill" style={{ width: `${(done / total) * 100}%` }} /></div>
           <span className="gf-mini-c">{done}/{total} tasks</span>
+          {coarsePointer && (
+            <button className="gf-task-editmode" type="button" onClick={() => setEditMode(m => !m)} aria-pressed={editMode}>
+              {editMode ? 'Done' : <><Icon name="pencil" size={12} /> Edit</>}
+            </button>
+          )}
         </div>
       )}
       {!isRescue && (
         <div className="gf-tasks">
           {view.overdue.map(t => (
-            <TaskRowG key={t.id} task={t} overdue onToggle={() => onToggleTask(t.id, t.done)} onRestore={() => onRestoreTask(t.id)} />
+            <TaskRow key={t.id} task={t} overdue editMode={editMode}
+              onToggle={() => onToggleTask(t.id, t.done)} onRestore={() => onRestoreTask(t.id)}
+              onSaveEdit={onSaveEdit} onRegenerate={onRegenerate} />
           ))}
-          {view.tasks.map(t => (
-            <TaskRowG key={t.id} task={t} onToggle={() => onToggleTask(t.id, t.done)} onRestore={() => onRestoreTask(t.id)} />
-          ))}
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={todayIds} strategy={verticalListSortingStrategy}>
+              {view.tasks.map(t => (
+                <SortableTaskRow key={t.id} task={t} editMode={editMode}
+                  onToggle={() => onToggleTask(t.id, t.done)} onRestore={() => onRestoreTask(t.id)}
+                  onSaveEdit={onSaveEdit} onRegenerate={onRegenerate} />
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
+      )}
+      {!isRescue && !isAbandoned && !isAchieved && (
+        <AddTaskRow onAdd={onAddTask} />
       )}
       {!isAbandoned && !isAchieved && (
         <div className="gf-gc-actions">
@@ -475,6 +675,10 @@ export default function GoalCard({ goal, index = 0, defaultOpen = false, mutatio
                 goal={goal}
                 onToggleTask={handleToggleTask}
                 onRestoreTask={onRestoreTask}
+                onSaveEdit={(taskId, description) => { void mutations.saveEdit(taskId, description).catch(() => { /* toast via onError */ }) }}
+                onRegenerate={mutations.regenerateTask}
+                onReorder={(positions) => mutations.reorderTasks(goal.id, positions)}
+                onAddTask={(description) => { void mutations.addTask(goal.id, null, description).catch(() => { /* toast via onError */ }) }}
                 onTriggerRescue={() => mutations.triggerRescue(goal.id)}
                 triggeringRescue={mutations.isTriggeringRescue}
                 onAbandon={handleAbandon}

@@ -802,6 +802,33 @@ html { scroll-behavior: smooth; }
 .gf-mini-c { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-mute); flex-shrink: 0; }
 .gf-task-tag { margin-left: auto; font-family: var(--font-mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--rose); background: color-mix(in oklab, var(--rose) 10%, transparent); border: 1px solid color-mix(in oklab, var(--rose) 25%, transparent); padding: 2px 7px; border-radius: 99px; }
 .gf-task.is-overdue .gf-check { border-color: color-mix(in oklab, var(--rose) 40%, transparent); }
+
+/* ── Per-task actions (edit / regenerate / drag-reorder) — restored to Today-tab rows ── */
+.gf-task-toggle { flex: 1; min-width: 0; display: flex; align-items: center; gap: 11px; background: none; border: 0; padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.gf-task-toggle:disabled { cursor: default; }
+.gf-task-grip { flex-shrink: 0; display: grid; place-items: center; width: 22px; height: 28px; background: none; border: 0; padding: 0; color: var(--text-mute); cursor: grab; touch-action: none; }
+.gf-task-grip:active { cursor: grabbing; }
+.gf-task-edit-input { flex: 1; min-width: 0; font-size: 14px; font-family: inherit; color: var(--text); background: var(--card-hi); border: 1px solid var(--border-hi); border-radius: 8px; padding: 6px 9px; outline: none; }
+.gf-task-edit-input:focus { border-color: var(--accent-line); }
+.gf-task-actions { flex-shrink: 0; display: flex; align-items: center; gap: 2px; margin-left: 4px; }
+.gf-task-action { width: 28px; height: 28px; display: grid; place-items: center; background: none; border: 0; border-radius: 8px; color: var(--text-mute); cursor: pointer; transition: color .15s, background .15s; }
+.gf-task-action:hover:not(:disabled) { color: var(--text); background: color-mix(in oklab, var(--text) 7%, transparent); }
+.gf-task-action:disabled { opacity: .5; cursor: default; }
+.gf-task.is-dragging { background: var(--card-hi); box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+.gf-spin { animation: gfSpin .8s linear infinite; }
+@keyframes gfSpin { to { transform: rotate(360deg); } }
+/* Reveal: grip + actions hidden by default; desktop reveals on hover/focus, touch via edit mode. */
+.gf-task-grip, .gf-task-actions { opacity: 0; pointer-events: none; transition: opacity .15s; }
+@media (hover: hover) and (pointer: fine) {
+  .gf-task:hover .gf-task-grip, .gf-task:focus-within .gf-task-grip,
+  .gf-task:hover .gf-task-actions, .gf-task:focus-within .gf-task-actions { opacity: 1; pointer-events: auto; }
+}
+.gf-task.is-editmode .gf-task-grip, .gf-task.is-editmode .gf-task-actions { opacity: 1; pointer-events: auto; }
+.gf-task-editmode { margin-left: 2px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 10px; background: none; border: 1px solid var(--border); border-radius: 99px; font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); cursor: pointer; }
+.gf-task-editmode[aria-pressed="true"] { color: var(--accent-ink); border-color: var(--accent-line); background: var(--accent-soft); }
+.gf-task-add-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 7px 8px; background: none; border: 0; border-radius: 10px; font-size: 13px; color: var(--text-mute); cursor: pointer; transition: color .15s, background .15s; }
+.gf-task-add-btn:hover { color: var(--text); background: color-mix(in oklab, var(--text) 4%, transparent); }
+.gf-task-add { margin-top: 4px; padding: 2px 8px; }
 .gf-gc-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 2px; }
 .gf-gc-hint { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); margin-right: auto; }
 .gf-btn-pill { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 13px; border-radius: 9px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.03em; border: 1px solid var(--border-hi); color: var(--text-dim); transition: all .18s; }

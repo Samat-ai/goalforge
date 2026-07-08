@@ -45,6 +45,7 @@ class TaskResponse(TaskBase):
     is_completed: bool
     completed_at: datetime | None
     is_rescue_task: bool = False
+    is_user_added: bool = False
     original_description: str | None = None
     original_tip: str | None = None
 
