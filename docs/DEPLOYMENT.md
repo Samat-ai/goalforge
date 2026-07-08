@@ -4,31 +4,53 @@ This runs the exact stack from `docker-compose.yml` on a single small VPS,
 fronted by Caddy for a unified `:80` entrypoint (and automatic HTTPS the
 moment a domain is pointed at it).
 
-## 1. Provision a VPS
+This guide targets **Azure** (GitHub Student Pack $100 credit + a separate
+free-tier B1s VM for 12 months, so this can end up costing close to $0).
+Any Ubuntu box works the same from step 3 onward — swap step 1-2 for
+DigitalOcean/Hetzner if you'd rather use those.
 
-Any small Ubuntu box works. Concrete options:
+## 1. Provision an Azure VM
 
-- DigitalOcean: $6/mo droplet, Ubuntu 24.04 LTS, 1 vCPU / 1 GB RAM
-- Hetzner: CX22, Ubuntu 24.04 LTS
+Easiest path: no local install — use **Azure Cloud Shell**
+(portal.azure.com → the `>_` icon top-right) which already has `az` and is
+signed into your account. Run this there:
 
-Add your SSH key at creation time so you can log in without a password.
+```bash
+az group create --name goalforge-rg --location eastus
+
+az vm create \
+  --resource-group goalforge-rg \
+  --name goalforge-vm \
+  --image Ubuntu2404 \
+  --size Standard_B1s \
+  --admin-username deploy \
+  --generate-ssh-keys \
+  --public-ip-sku Standard
+
+az vm open-port --resource-group goalforge-rg --name goalforge-vm --port 80 --priority 100
+az vm open-port --resource-group goalforge-rg --name goalforge-vm --port 443 --priority 101
+```
+
+`--generate-ssh-keys` reuses `~/.ssh/id_rsa` if you already have one, or
+creates a new pair. The `az vm create` output includes `publicIpAddress` —
+that's `<VPS_IP>` for the rest of this guide.
+
+> If B1s isn't available/quota-approved in `eastus` for your subscription,
+> try another region (`--location westus2`) or size (`Standard_B2s`).
 
 ## 2. Harden the box
 
+Azure already created `deploy` with SSH-key auth and sudo, and the NSG rules
+from step 1 handle the cloud-level firewall. Add `ufw` on the box itself as
+defense-in-depth:
+
 ```bash
-ssh root@<VPS_IP>
+ssh deploy@<VPS_IP>
 
-adduser deploy
-usermod -aG sudo deploy
-rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy   # copy your SSH key over
-
-ufw allow OpenSSH
-ufw allow 80
-ufw allow 443
-ufw enable
-
-exit
-ssh deploy@<VPS_IP>   # log back in as the new user from here on
+sudo ufw allow OpenSSH
+sudo ufw allow 80
+sudo ufw allow 443
+sudo ufw enable
 ```
 
 ## 3. Install Docker
