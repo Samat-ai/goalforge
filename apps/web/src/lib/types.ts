@@ -90,6 +90,7 @@ export interface Task {
   is_completed: boolean
   completed_at: string | null
   is_rescue_task: boolean
+  is_user_added: boolean
   original_description: string | null
   original_tip: string | null
 }
