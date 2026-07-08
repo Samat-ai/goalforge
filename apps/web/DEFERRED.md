@@ -31,13 +31,13 @@ by decision. Do not delete in dead-code sweeps.
 | Reward modal (jackpot drop) + badge confetti | `src/components/RewardModal.tsx`, `src/components/ConfettiContext.tsx` — **live**, wired in `DashboardPage.tsx` | Keep (active) |
 | Equipped reward themes (body class from purchased theme) | `src/hooks/useRewards.ts` (`useRewardsQuery` used by DashboardPage for jackpot equip; theme body-class effect not applied by `AppShell`) | **Cut theme effect** — conflicts with the locked prototype look; keep the hook (jackpot equip uses it) |
 | Weekly review data hook | `src/hooks/useWeeklyReview.ts` (exported from `hooks/index.ts`, no consumer; reflection card on Analytics uses `useWeeklyReflection` instead) | **Cut** next sweep unless a review card ships |
-| Rescue-mode ("Easy Mode") card | `goal.rescue_mode` + `triggerRescue` in `src/hooks/useGoalMutations.ts` (wired); card JSX only in git history of deleted old `GoalCard.tsx`; backend `/goals/{id}/rescue` intact | **Keep backend**; needs a designed slot on the prototype goal card |
+| ~~Rescue-mode ("Easy Mode") card~~ | `goal.rescue_mode` + `triggerRescue` in `src/hooks/useGoalMutations.ts` — **re-slotted 2026-07-07 (PR #173)**: renders in `GoalCard` Today tab when `goal.rescue_mode` set (not achieved/abandoned), replaces task list with `triggerRescue` CTA + "show my full plan" 8h per-goal localStorage dismissal; error toast on failure; `.gf-rescue-*` CSS restored | Keep (active again) |
 | WelcomeBackCard (3+ days inactivity nudge) | git history of deleted `src/pages/Dashboard.tsx` only; `.gf-nudge.is-indigo` CSS kept | **Cut** — low value vs. streak chips; revive only with a designed slot |
 | DoThisNow inline nudge | git history of deleted `src/pages/Dashboard.tsx` only | **Cut** — overlapped with overdue chips on goal cards |
 | InstallPrompt (PWA) | `src/components/InstallPrompt.tsx` — live, mounted in `main.tsx` | Keep (active) |
 | OfflineBanner | `src/components/OfflineBanner.tsx` — live, mounted in `App.tsx`; offline e2e depends on it | Keep (active) |
 | Push notification settings | `src/hooks/usePushNotifications.ts` — live, surfaced on redesigned Settings | Keep (active) |
-| Header chrome (equipped-title badge, first-name text, relic-count opener) | not rendered by `src/components/gf/AppShell.tsx`; JSX + CSS (`.gf-title-badge`/`.gf-relic-btn`/`.gf-header-name`) removed in Task 9 — recover from git history if revived | Re-introduce in a post-redesign header pass |
+| ~~Header chrome (equipped-title badge, first-name text)~~ | `src/components/gf/AppShell.tsx` — **re-slotted 2026-07-07**: equipped-title badge (gold mono chip, left of stage pill) + first-name greeting (before `UserButton`); `.gf-title-badge`/`.gf-header-name` CSS restored, hidden ≤700px like `.gf-pts`. **Relic-count opener intentionally NOT re-added** — redundant with the shipped `TrophyStrip` on Logs (PR #170). | Keep (active again) |
 
 CSS note: the LEGACY block at the bottom of `src/index.css` now contains only rules
 consumed by the kept components above (FocusOverlay, EnergyModal, RewardModal/jackpot,
