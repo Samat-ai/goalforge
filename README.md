@@ -4,6 +4,7 @@
 
 GoalForge turns plain-language goals into structured SMART goals with milestones and a 7-day daily task plan — powered by Gemini 2.5 Flash. Completing tasks and achieving goals earns **star points** that advance you through six evolution stages: Speck → Ember → Flare → Luminary → Nova → Celestial.
 
+<!-- TODO: replace with a real screenshot/GIF of the Dashboard once available -->
 ![Screenshot placeholder]()
 
 ---
@@ -16,6 +17,35 @@ GoalForge turns plain-language goals into structured SMART goals with milestones
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
 ![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-4285F4?logo=google)
+
+---
+
+## Live Demo
+
+<!-- TODO: add the live URL once deployed, e.g. http://<VPS_IP>/ -->
+_Coming soon._
+
+---
+
+## Features
+
+- **AI goal breakdown** — describe a goal in plain language; Gemini 2.5 Flash converts it into a SMART goal with milestones and a 7-day daily task plan
+- **RPG-style progression** — star points earned from completed tasks and achieved goals advance you through six evolution stages (Speck → Ember → Flare → Luminary → Nova → Celestial)
+- **Adaptive sprints** — difficulty (lighter/balanced/stretch) adjusts automatically from your last 14 days of completion history
+- **Rescue mode** — falling behind on a goal surfaces an "Easy Mode" re-plan instead of letting the goal go stale
+- **Coach chat** — a guided Q&A flow (Coach Forge) that turns a short conversation into a fully generated goal
+- **Star Log & Analytics** — collectible rewards, streaks, and progress trends over time
+- **Web push notifications** — daily digest, streak-saver, and inactivity nudges (PWA, installable)
+
+---
+
+## Tech Stack
+
+- **Backend**: FastAPI (async), SQLAlchemy 2.0 + asyncpg, PostgreSQL, Alembic migrations
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, React Query
+- **Auth**: Clerk
+- **AI**: Google Gemini 2.5 Flash (structured output)
+- **Infra**: Docker Compose, Caddy (reverse proxy + automatic TLS)
 
 ---
 
@@ -32,10 +62,12 @@ docker compose up --build
 |---------|-----|
 | API | http://localhost:8000 |
 | Frontend | http://localhost:5173 |
-| PostgreSQL | localhost:5432 |
 
 > **Note:** The `DATABASE_URL` in `apps/api/.env` should point to the compose db service:
 > `postgresql+asyncpg://postgres:postgres@db:5432/goalforge`
+>
+> Postgres isn't published to the host by default. For direct `psql` access, add a
+> `docker-compose.override.yml` with a `ports: ["5432:5432"]` entry on the `db` service.
 
 ---
 
@@ -65,6 +97,12 @@ npm run dev                 # → http://localhost:5173
 ## Architecture
 
 See [`CLAUDE.md`](.claude/CLAUDE.md) for detailed architecture docs, data model, API endpoints, and coding conventions.
+
+---
+
+## Deployment
+
+See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for a step-by-step guide to running this stack on a VPS with Docker Compose and Caddy (reverse proxy + automatic HTTPS).
 
 ---
 
