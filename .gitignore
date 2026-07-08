@@ -20,3 +20,6 @@ __pycache__/
 # Planning docs (local only)
 docs/superpowers/
 .superpowers/
+
+# Design handoff reference (local-only prototype source for the 1:1 redesign)
+design_handoff_goalforge/
