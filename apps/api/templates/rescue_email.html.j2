@@ -1,0 +1,59 @@
+{% extends "base_email.html.j2" %}
+
+{% block content %}
+  <!-- Greeting -->
+  <h2 style="margin:0 0 8px;color:#f1f5f9;font-size:20px;font-weight:700;">
+    Hey {{ display_name }}, we've prepared a fresh start for you &#128293;
+  </h2>
+  <p style="margin:0 0 24px;color:#94a3b8;font-size:14px;line-height:1.7;">
+    Life happens. We've shifted your tasks and created a lighter starting point &mdash;
+    no catching up, no guilt. Just two small steps to get the momentum going again.
+  </p>
+
+  <!-- Goal reminder -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;background:#1e293b;border-radius:8px;border-left:3px solid #6366f1;">
+    <tr>
+      <td style="padding:12px 16px;">
+        <span style="color:#a5b4fc;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Your goal</span>
+        <p style="margin:4px 0 0;color:#e2e8f0;font-size:15px;font-weight:600;">{{ goal_title }}</p>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Rescue micro-tasks -->
+  <p style="margin:0 0 12px;color:#cbd5e1;font-size:14px;font-weight:600;">Your 2 micro-tasks to restart:</p>
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+    {% for task in rescue_tasks %}
+    <tr>
+      <td style="padding:12px 16px;background:#0f172a;border-radius:{% if loop.first %}8px 8px 0 0{% elif loop.last %}0 0 8px 8px{% else %}0{% endif %};border-bottom:{% if not loop.last %}1px solid #1e293b{% else %}none{% endif %};">
+        <table cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding-right:12px;vertical-align:middle;">
+              <span style="display:inline-block;width:24px;height:24px;background:#1e293b;border-radius:6px;text-align:center;line-height:24px;color:#6366f1;font-weight:700;font-size:13px;">{{ loop.index }}</span>
+            </td>
+            <td>
+              <span style="color:#cbd5e1;font-size:14px;line-height:1.5;">{{ task }}</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <!-- CTA button -->
+  <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+    <tr>
+      <td style="border-radius:8px;background:linear-gradient(135deg,#4338ca,#6366f1);">
+        <a href="{{ app_url }}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+          Get Back on Track &rarr;
+        </a>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Empathetic close -->
+  <p style="margin:0;color:#64748b;font-size:13px;line-height:1.6;">
+    Progress isn't always linear &mdash; what matters is you're here. One small step is all it takes. &#128154;
+  </p>
+{% endblock %}

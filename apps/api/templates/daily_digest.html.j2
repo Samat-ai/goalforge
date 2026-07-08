@@ -1,0 +1,72 @@
+{% extends "base_email.html.j2" %}
+
+{% block content %}
+  <!-- Greeting -->
+  <h2 style="margin:0 0 4px;color:#f1f5f9;font-size:20px;font-weight:700;">
+    Good morning, {{ display_name }}!
+  </h2>
+  <p style="margin:0 0 28px;color:#94a3b8;font-size:14px;">Here's what's on your plate today</p>
+
+  <!-- Tasks by goal -->
+  {% for goal in tasks_by_goal %}
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+    <!-- Goal title row -->
+    <tr>
+      <td style="padding:10px 14px;background:#1e293b;border-radius:8px 8px 0 0;border-left:3px solid #6366f1;">
+        <span style="color:#a5b4fc;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Goal</span>
+        <p style="margin:2px 0 0;color:#e2e8f0;font-size:15px;font-weight:600;">{{ goal.goal_title }}</p>
+      </td>
+    </tr>
+    <!-- Task rows -->
+    {% for task in goal.tasks %}
+    <tr>
+      <td style="padding:10px 14px;background:#0f172a;border-left:3px solid #1e293b;border-bottom:1px solid #1e293b;">
+        <table cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding-right:10px;vertical-align:top;">
+              <span style="color:#4ade80;font-size:16px;">&#10003;</span>
+            </td>
+            <td>
+              <span style="color:#cbd5e1;font-size:14px;line-height:1.5;">{{ task }}</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endfor %}
+
+  <!-- Star balance -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;background:#1e293b;border-radius:8px;">
+    <tr>
+      <td style="padding:14px 18px;">
+        <table cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding-right:10px;font-size:22px;">&#11088;</td>
+            <td>
+              <span style="color:#94a3b8;font-size:12px;display:block;">Your star balance</span>
+              <span style="color:#fbbf24;font-size:20px;font-weight:700;">{{ star_points }} stars</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <!-- CTA button -->
+  <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+    <tr>
+      <td style="border-radius:8px;background:linear-gradient(135deg,#4338ca,#6366f1);">
+        <a href="{{ app_url }}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+          Open GoalForge &rarr;
+        </a>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Motivational closing -->
+  <p style="margin:0;color:#64748b;font-size:13px;line-height:1.6;">
+    Every task completed is a step closer to who you want to become. You've got this. &#127775;
+  </p>
+{% endblock %}
