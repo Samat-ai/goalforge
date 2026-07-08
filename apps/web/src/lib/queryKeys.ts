@@ -5,7 +5,6 @@ export const queryKeys = {
   settings: (userId: string) => ['settings', userId] as const,
   pushSubscriptions: (userId: string) => ['pushSubscriptions', userId] as const,
   weeklyReflectionLatest: (userId: string) => ['weeklyReflectionLatest', userId] as const,
-  weeklyReview: (userId: string, days: number) => ['weeklyReview', userId, days] as const,
   starLog: (userId: string, days: number) => ['starLog', userId, days] as const,
   shopRewards: (userId: string) => ['shopRewards', userId] as const,
   badges: (userId: string) => ['badges', userId] as const,
