@@ -10,6 +10,7 @@ import { Icon } from './Ui'
 import { cx } from './util'
 import { getStage } from '../../lib/gamification'
 import { useProfileQuery } from '../../hooks'
+import { useRewardsQuery } from '../../hooks/useRewards'
 import { useResolvedTheme } from '../../lib/ThemeContext'
 
 const NAV = [
@@ -26,6 +27,8 @@ function Header() {
   const { user } = useUser()
   const { pts } = useProfileQuery(user?.id ?? undefined)
   const stage = getStage(pts)
+  const { data: rewards = [] } = useRewardsQuery(user?.id ?? '')
+  const equippedTitle = rewards.find(r => r.reward_type === 'title' && r.is_equipped)
 
   const active = NAV.find(n => location.pathname === `/${n.id}`)?.id
 
@@ -70,9 +73,13 @@ function Header() {
           ))}
         </nav>
         <div className="gf-header-right">
+          {equippedTitle && (
+            <span className="gf-title-badge" title="Equipped title">{equippedTitle.display_name}</span>
+          )}
           <button className="gf-pts" onClick={() => navigate('/analytics')} aria-label={`Stage ${stage.name}. Go to analytics.`}>
             <Icon name="spark" size={12} /> <span className="gf-pts-stage">{stage.name}</span>
           </button>
+          {user?.firstName && <span className="gf-header-name">{user.firstName}</span>}
           <UserButton />
           <button
             className={cx('gf-burger', menuOpen && 'is-open')}

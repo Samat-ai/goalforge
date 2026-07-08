@@ -286,6 +286,8 @@ html { scroll-behavior: smooth; }
 .gf-pts { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 99px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--accent-ink); background: var(--accent-soft); border: 1px solid var(--accent-line); transition: transform .2s; }
 .gf-pts:hover { transform: translateY(-1px); }
 .gf-pts-stage { color: var(--accent-ink); font-weight: 600; letter-spacing: 0.02em; }
+.gf-title-badge { font-family: var(--font-mono); font-size: 10px; color: var(--gold); background: color-mix(in oklab, var(--gold) 12%, transparent); border: 1px solid color-mix(in oklab, var(--gold) 35%, transparent); padding: 2px 8px; border-radius: 99px; }
+.gf-header-name { font-size: 11px; color: var(--text-mute); font-family: var(--font-mono); }
 .gf-iconbtn { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; color: var(--text-dim); border: 1px solid var(--border); background: var(--card); transition: transform .2s, color .2s, background .2s; }
 .gf-iconbtn:hover { color: var(--text); transform: translateY(-1px); background: var(--card-hi); }
 .gf-avatar { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 15px; color: #fff; background: linear-gradient(140deg, var(--accent), color-mix(in oklab, var(--accent) 50%, #7c6bff)); box-shadow: 0 4px 14px -4px var(--accent); }
@@ -1156,6 +1158,7 @@ html { scroll-behavior: smooth; }
 @media (max-width: 700px) {
   .gf-nav { display: none; }
   .gf-pts { display: none; }
+  .gf-title-badge, .gf-header-name { display: none; }
   .gf-burger { display: flex; }
 }
 @media (max-width: 640px) {
