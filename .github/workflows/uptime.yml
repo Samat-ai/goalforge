@@ -1,0 +1,43 @@
+# Free uptime monitor: probes production every 15 minutes; a failing run on
+# main triggers GitHub's failure-notification email to the repo owner.
+# Note GitHub may delay scheduled runs by a few minutes under load, and
+# pauses schedules after 60 days without repo activity.
+name: uptime
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: API liveness
+        run: |
+          code=$(curl -sm 15 -o /dev/null -w "%{http_code}" https://goalforge.me/health)
+          echo "GET /health -> $code"
+          test "$code" = "200"
+
+      - name: Frontend
+        run: |
+          code=$(curl -sm 15 -o /dev/null -w "%{http_code}" https://goalforge.me/)
+          echo "GET / -> $code"
+          test "$code" = "200"
+
+      - name: API auth path via Caddy
+        run: |
+          # Unauthenticated request must reach FastAPI and get its 401 —
+          # proves the Caddy -> api proxy chain, not just the edge.
+          code=$(curl -sm 15 -o /dev/null -w "%{http_code}" https://goalforge.me/api/users/probe/goals)
+          echo "GET /api/users/probe/goals -> $code"
+          test "$code" = "401"
+
+      - name: TLS certificate validity (>= 14 days)
+        run: |
+          end=$(echo | openssl s_client -servername goalforge.me -connect goalforge.me:443 2>/dev/null \
+            | openssl x509 -noout -enddate | cut -d= -f2)
+          end_epoch=$(date -d "$end" +%s)
+          min_epoch=$(date -d "+14 days" +%s)
+          echo "cert expires: $end"
+          test "$end_epoch" -gt "$min_epoch"
