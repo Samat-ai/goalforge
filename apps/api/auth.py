@@ -28,6 +28,11 @@ _jwks_lock = asyncio.Lock()
 _bearer = HTTPBearer(auto_error=False)
 
 
+def _allowed_origins() -> set[str]:
+    """Origins allowed as the JWT `azp` claim — same list CORS trusts."""
+    return {o.strip() for o in settings.cors_origins.split(",") if o.strip()}
+
+
 async def _get_jwks() -> dict:
     """Fetch Clerk's public JWKS, returning the cached copy when fresh."""
     if "jwks" in _jwks_cache:
@@ -91,6 +96,15 @@ async def _decode_token(
             algorithms=["RS256"],
             options={"verify_aud": False},  # Clerk tokens have no fixed audience
         )
+
+        # Clerk sets `azp` (authorized party) to the origin that requested the
+        # token — reject tokens minted for an origin we don't serve.
+        azp = payload.get("azp")
+        if azp and azp not in _allowed_origins():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: unrecognized authorized party",
+            )
         return payload
 
     except HTTPException:

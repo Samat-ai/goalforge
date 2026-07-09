@@ -7,6 +7,7 @@ Health check and readiness probe endpoints.
 """
 
 import asyncio
+import logging
 import sys
 
 from fastapi import APIRouter
@@ -15,6 +16,8 @@ from sqlalchemy import text
 
 from config import settings
 from database import AsyncSessionLocal
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["health"])
 
@@ -34,11 +37,14 @@ async def readiness():
                 await session.execute(text("SELECT 1"))
         return {"status": "ready", "checks": {"database": "ok"}}
     except Exception as exc:
+        # Log the real error but never echo it — exception text can contain
+        # DSN fragments / internal hostnames, and this endpoint is public.
+        logger.error("Readiness check failed: %s", exc, exc_info=True)
         return JSONResponse(
             status_code=503,
             content={
                 "status": "degraded",
-                "checks": {"database": "error", "detail": str(exc)},
+                "checks": {"database": "error", "detail": "database unreachable"},
             },
         )
 

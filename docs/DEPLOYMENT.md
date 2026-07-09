@@ -4,53 +4,78 @@ This runs the exact stack from `docker-compose.yml` on a single small VPS,
 fronted by Caddy for a unified `:80` entrypoint (and automatic HTTPS the
 moment a domain is pointed at it).
 
-This guide targets **Azure** (GitHub Student Pack $100 credit + a separate
-free-tier B1s VM for 12 months, so this can end up costing close to $0).
-Any Ubuntu box works the same from step 3 onward — swap step 1-2 for
-DigitalOcean/Hetzner if you'd rather use those.
+This guide targets **DigitalOcean** (Droplet credits). Any Ubuntu box works
+the same from step 3 onward — swap step 1-2 for Azure/Hetzner if you'd
+rather use those.
 
-## 1. Provision an Azure VM
+## 1. Provision a DigitalOcean Droplet
 
-Easiest path: no local install — use **Azure Cloud Shell**
-(portal.azure.com → the `>_` icon top-right) which already has `az` and is
-signed into your account. Run this there:
+Easiest path: no local install — use the **DigitalOcean web console**
+(cloud.digitalocean.com → Create → Droplets).
+
+- **Image**: Ubuntu 24.04 (LTS) x64
+- **Size**: Basic → Regular → the cheapest tier (1 vCPU / 1GB is enough to
+  start; bump later if Docker + Postgres feel tight)
+- **Region**: whichever is closest to your users
+- **Authentication**: SSH key — paste your public key (`cat ~/.ssh/id_rsa.pub`),
+  or generate a new pair locally first if you don't have one
+- **Hostname**: `goalforge-vm`
+
+Or via `doctl` (install + `doctl auth init` first) if you prefer the CLI:
 
 ```bash
-az group create --name goalforge-rg --location eastus
-
-az vm create \
-  --resource-group goalforge-rg \
-  --name goalforge-vm \
-  --image Ubuntu2404 \
-  --size Standard_B1s \
-  --admin-username deploy \
-  --generate-ssh-keys \
-  --public-ip-sku Standard
-
-az vm open-port --resource-group goalforge-rg --name goalforge-vm --port 80 --priority 100
-az vm open-port --resource-group goalforge-rg --name goalforge-vm --port 443 --priority 101
+doctl compute droplet create goalforge-vm \
+  --image ubuntu-24-04-x64 \
+  --size s-1vcpu-1gb \
+  --region nyc1 \
+  --ssh-keys <your-ssh-key-fingerprint-or-id> \
+  --wait
 ```
 
-`--generate-ssh-keys` reuses `~/.ssh/id_rsa` if you already have one, or
-creates a new pair. The `az vm create` output includes `publicIpAddress` —
-that's `<VPS_IP>` for the rest of this guide.
-
-> If B1s isn't available/quota-approved in `eastus` for your subscription,
-> try another region (`--location westus2`) or size (`Standard_B2s`).
+The console (or `doctl compute droplet get goalforge-vm --format PublicIPv4`)
+gives you the droplet's public IP — that's `<VPS_IP>` for the rest of this
+guide. DigitalOcean droplets default to a `root` login (no separate `deploy`
+user), so SSH in as `root@<VPS_IP>` unless you created one yourself.
 
 ## 2. Harden the box
 
-Azure already created `deploy` with SSH-key auth and sudo, and the NSG rules
-from step 1 handle the cloud-level firewall. Add `ufw` on the box itself as
-defense-in-depth:
+Create a DigitalOcean **Cloud Firewall** (Networking → Firewalls → create
+one, attach it to the droplet) allowing inbound SSH (22), HTTP (80), and
+HTTPS (443) only. **Do not rely on `ufw` alone**: Docker inserts its own
+iptables rules ahead of ufw's, so any container port published with a bare
+`"HOST:CONTAINER"` mapping is reachable from the internet even with ufw
+enabled. (The compose file binds `api`/`web` to `127.0.0.1` for this reason —
+the Cloud Firewall is the second layer, filtering before traffic reaches the
+droplet at all.)
+
+Optionally add ufw on the box as well:
 
 ```bash
-ssh deploy@<VPS_IP>
+ssh root@<VPS_IP>
 
 sudo ufw allow OpenSSH
 sudo ufw allow 80
 sudo ufw allow 443
 sudo ufw enable
+```
+
+Then add swap — the 1GB tier will OOM during `docker compose build`
+(the Vite frontend build alone can exceed it):
+
+```bash
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+Optional but recommended: create a non-root `deploy` user with sudo instead
+of running everything as `root`.
+
+```bash
+adduser deploy
+usermod -aG sudo deploy
+rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy
 ```
 
 ## 3. Install Docker
@@ -78,11 +103,23 @@ values:
 
 | Variable | Production value |
 |---|---|
-| `DATABASE_URL` | `postgresql+asyncpg://postgres:postgres@db:5432/goalforge` (note the `@db`, not `@localhost` — this runs inside compose) |
-| `ENVIRONMENT` | `production` (enables structured JSON logging) |
-| `CORS_ORIGINS` | not load-bearing once Caddy proxies same-origin, but set it to your eventual URL anyway |
+| `DATABASE_URL` | `postgresql+asyncpg://postgres:<DB_PASSWORD>@db:5432/goalforge` (note the `@db`, not `@localhost` — this runs inside compose) |
+| `ENVIRONMENT` | `production` (enables structured JSON logging **and disables the public `/docs` + `/openapi.json`**) |
+| `CORS_ORIGINS` | `https://goalforge.me,https://www.goalforge.me` — also the allowlist for the Clerk JWT `azp` (authorized party) check, so it IS load-bearing |
 | `RATE_LIMIT_ENABLED` | `true` |
 | `JOBS_API_KEY` | generate a random secret — required, no dev bypass |
+
+Set a real Postgres password via a root-level `.env` next to
+`docker-compose.yml` (compose reads it automatically), and use the same value
+in `DATABASE_URL` above:
+
+```bash
+echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" > .env
+```
+
+(Changing the password after the `pgdata` volume already exists requires
+`ALTER USER postgres PASSWORD '...'` inside the container — the environment
+variable only applies on first initialization.)
 
 Then create the frontend's build-time env file (Vite bakes these in at
 `npm run build`, so this must exist *before* `docker compose build`):
@@ -110,15 +147,52 @@ docker compose exec api alembic upgrade head
 
 ## 6. Verify
 
+The Caddyfile serves `goalforge.me` + `www.goalforge.me`, so both need DNS
+A records pointing at `<VPS_IP>` (Caddy retries Let's Encrypt issuance
+endlessly for any listed hostname whose DNS is missing).
+
 ```bash
-curl http://<VPS_IP>/health         # -> {"status":"ok"} (liveness)
-curl http://<VPS_IP>/health/ready   # -> DB connectivity check
-curl -I http://<VPS_IP>/           # -> frontend served via Caddy
+curl https://goalforge.me/health          # -> {"status":"ok"} (liveness)
+curl -I https://goalforge.me/             # -> frontend via Caddy, security headers present
+curl -I https://www.goalforge.me/         # -> www cert issued too
+
+# Readiness/info are NOT public — probe from the droplet:
+ssh root@<VPS_IP> 'curl -s localhost:8000/health/ready'
+
+# Confirm the API is NOT directly reachable from outside (should time out):
+curl -m 5 http://<VPS_IP>:8000/health || echo "good — not exposed"
 ```
 
-Then open `http://<VPS_IP>/` in a browser and run through sign-up → create a
-goal → complete a task, to confirm the full path (Clerk auth, Gemini call,
-Postgres write) works end-to-end.
+Then open `https://goalforge.me/` in a browser and run through sign-up →
+create a goal → complete a task, to confirm the full path (Clerk auth,
+Gemini call, Postgres write) works end-to-end.
+
+## 7. Operations
+
+**Backups (do this — the droplet volume is the only copy of user data):**
+
+```bash
+crontab -e
+# nightly pg_dump at 04:10, keep 14 days
+10 4 * * * cd /root/goalforge && docker compose exec -T db pg_dump -U postgres goalforge | gzip > /root/backups/goalforge-$(date +\%F).sql.gz && find /root/backups -name '*.sql.gz' -mtime +14 -delete
+```
+
+`mkdir -p /root/backups` first. Better still: also enable droplet **Backups**
+or **Snapshots** in the DigitalOcean panel so a copy lives off the box, and
+periodically test a restore (`gunzip -c backup.sql.gz | docker compose exec -T db psql -U postgres goalforge`).
+
+**Uptime monitoring:** point a free monitor (e.g. UptimeRobot) at
+`https://goalforge.me/health`.
+
+**Reminder emails/pushes:** the jobs endpoint must be triggered daily by a
+cron (nothing in the stack schedules it). Note the path really is
+`/api/api/jobs/...` from outside — Caddy strips one `/api`, the router
+prefix adds the other:
+
+```bash
+# daily at 09:00 UTC
+0 9 * * * curl -s -X POST https://goalforge.me/api/api/jobs/trigger-reminders -H "X-Api-Key: <JOBS_API_KEY>"
+```
 
 ## Updating a deployed instance
 
@@ -130,11 +204,13 @@ docker compose up -d
 docker compose exec api alembic upgrade head   # only if new migrations exist
 ```
 
-## Adding a real domain later
+## Changing the domain later
 
-1. Point an A record for your domain at `<VPS_IP>`.
-2. Edit `Caddyfile`: replace `:80` with your domain, e.g. `goalforge.app`.
-3. `docker compose restart caddy` — Caddy automatically requests and renews
-   a Let's Encrypt certificate; no other config changes needed.
-4. Rebuild the frontend once with `VITE_API_BASE_URL=/api` unchanged (still
-   same-origin) — no rebuild actually required for the domain switch itself.
+1. Point an A record for the new domain (and `www`, if you keep it) at
+   `<VPS_IP>`.
+2. Edit `Caddyfile`: swap the hostnames on the first line.
+3. Update `CORS_ORIGINS` in `apps/api/.env` to the new origin(s) — it also
+   feeds the JWT `azp` allowlist, so a stale value breaks login.
+4. `docker compose restart caddy api` — Caddy automatically requests and
+   renews the Let's Encrypt certificate. `VITE_API_BASE_URL=/api` is
+   same-origin, so no frontend rebuild is needed.

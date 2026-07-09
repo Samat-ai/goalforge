@@ -5,7 +5,9 @@ services:
     environment:
       POSTGRES_DB: goalforge
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      # Override in production via a root .env file (POSTGRES_PASSWORD=...) and
+      # keep DATABASE_URL in apps/api/.env in sync. Default only for local dev.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     # Not published to the host — only `api` needs to reach it, over the
     # compose network. For local psql access, add a docker-compose.override.yml
     # with a `ports: ["5432:5432"]` entry on this service instead of editing here.
@@ -15,8 +17,12 @@ services:
   api:
     build: ./apps/api
     restart: unless-stopped
+    # Loopback-only: Docker's iptables rules bypass ufw, so a bare "8000:8000"
+    # exposes the API to the internet over plain HTTP even with a firewall on.
+    # Caddy reaches this container over the compose network; the host binding
+    # exists only for local debugging.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     env_file: ./apps/api/.env
     depends_on:
       - db
@@ -24,8 +30,9 @@ services:
   web:
     build: ./apps/web
     restart: unless-stopped
+    # Loopback-only for the same reason as `api` above.
     ports:
-      - "5173:8080"
+      - "127.0.0.1:5173:8080"
     depends_on:
       - api
 

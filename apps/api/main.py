@@ -75,11 +75,18 @@ async def lifespan(app: FastAPI):
     yield
 
 
+_is_production = settings.environment == "production"
+
 app = FastAPI(
     title="GoalForge API",
     version="0.1.0",
     description="AI-powered goal-tracking backend",
     lifespan=lifespan,
+    # No interactive docs / schema in production — they hand out a full map of
+    # the API surface.
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
+    openapi_url=None if _is_production else "/openapi.json",
 )
 
 app.add_middleware(
