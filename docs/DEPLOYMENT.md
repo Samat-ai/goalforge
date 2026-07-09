@@ -184,15 +184,19 @@ periodically test a restore (`gunzip -c backup.sql.gz | docker compose exec -T d
 **Uptime monitoring:** point a free monitor (e.g. UptimeRobot) at
 `https://goalforge.me/health`.
 
-**Reminder emails/pushes:** the jobs endpoint must be triggered daily by a
-cron (nothing in the stack schedules it). Note the path really is
-`/api/api/jobs/...` from outside — Caddy strips one `/api`, the router
-prefix adds the other:
+**Reminder emails/pushes:** the jobs endpoint must be triggered **hourly** —
+it sends only to users whose `reminder_hour` matches their current local
+hour, and `notification_logs` dedup makes repeat calls safe. Nothing in the
+stack schedules it. Note the path really is `/api/api/jobs/...` from
+outside — Caddy strips one `/api`, the router prefix adds the other:
 
 ```bash
-# daily at 09:00 UTC
-0 9 * * * curl -s -X POST https://goalforge.me/api/api/jobs/trigger-reminders -H "X-Api-Key: <JOBS_API_KEY>"
+# hourly at :05
+5 * * * * curl -s -X POST https://goalforge.me/api/api/jobs/trigger-reminders -H "X-Api-Key: <JOBS_API_KEY>"
 ```
+
+(The live droplet implements both crons via scripts in `/root/bin/` +
+`/etc/cron.d/goalforge`, logging to `/var/log/goalforge-{backup,jobs}.log`.)
 
 ## Updating a deployed instance
 
