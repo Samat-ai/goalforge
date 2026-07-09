@@ -1,10 +1,20 @@
-:80 {
+goalforge.me, www.goalforge.me {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
 	handle /api/* {
 		uri strip_prefix /api
 		reverse_proxy api:8000
 	}
 
-	handle /health* {
+	# Liveness only — /health/ready and /health/info stay internal (probe them
+	# from the droplet: curl localhost:8000/health/ready).
+	handle /health {
 		reverse_proxy api:8000
 	}
 
