@@ -1,11 +1,19 @@
 # GoalForge
 
+<p align="center">
+     <img src="https://github.com/user-attachments/assets/5f573d11-6996-4086-82cf-f82652287691" alt="GoalForge logo" width="180" />
+</p>
+
+
 > AI-powered goal tracker with RPG-style gamification
 
 GoalForge turns plain-language goals into structured SMART goals with milestones and a 7-day daily task plan — powered by Gemini 2.5 Flash. Completing tasks and achieving goals earns **star points** that advance you through six evolution stages: Speck → Ember → Flare → Luminary → Nova → Celestial.
 
 <!-- TODO: replace with a real screenshot/GIF of the Dashboard once available -->
-![Screenshot placeholder]()
+
+
+<img width="1883" height="894" alt="Screenshot 2026-07-08 215957" src="https://github.com/user-attachments/assets/b6dae8e7-4fdf-4133-a2cb-a4fac067f206" />
+
 
 ---
 
@@ -23,7 +31,7 @@ GoalForge turns plain-language goals into structured SMART goals with milestones
 ## Live Demo
 
 <!-- TODO: add the live URL once deployed, e.g. http://<VPS_IP>/ -->
-_Coming soon._
+[goalforge.me](https://goalforge.me/)
 
 ---
 
