@@ -17,6 +17,11 @@ logger = logging.getLogger(__name__)
 if settings.resend_api_key:
     resend.api_key = settings.resend_api_key
 
+# Sender requires the goalforge.me domain to stay verified in Resend
+# (DNS: MX+SPF on send.goalforge.me, DKIM on resend._domainkey).
+_FROM = "GoalForge <notifications@goalforge.me>"
+_APP_URL = "https://goalforge.me"
+
 
 @dataclass(frozen=True, slots=True)
 class TaskDigestItem:
@@ -59,7 +64,7 @@ def _build_digest_html(display_name: str | None, tasks: list[TaskDigestItem]) ->
     </tbody>
   </table>
 
-  <a href="https://goalforge.app/dashboard?energy=low"
+  <a href="{_APP_URL}/dashboard?energy=low"
      style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#6366f1);
             color:#fff;font-weight:600;font-size:14px;padding:12px 24px;
             border-radius:8px;text-decoration:none;margin-top:20px;">
@@ -108,7 +113,7 @@ async def send_reminder_digest(
         await asyncio.to_thread(
             resend.Emails.send,
             {
-                "from": "GoalForge <onboarding@resend.dev>",
+                "from": _FROM,
                 "to": [recipient],
                 "subject": subject,
                 "html": html,
@@ -122,7 +127,7 @@ async def send_reminder_digest(
 def _build_rescue_html(display_name: str | None) -> str:
     """Build the HTML body for a rescue email."""
     greeting = html_lib.escape(display_name or "Star Forger")
-    app_url = "https://goalforge.app/dashboard"
+    app_url = f"{_APP_URL}/dashboard"
     return f"""\
 <div style="background:#0f0f1a;color:#e2e8f0;font-family:'Plus Jakarta Sans',sans-serif;padding:32px;max-width:600px;margin:0 auto;">
   <h1 style="font-size:22px;margin:0 0 8px;">Let's make today easy, {greeting}.</h1>
@@ -159,7 +164,7 @@ async def send_rescue_email(email: str, display_name: str | None) -> None:
         await asyncio.to_thread(
             resend.Emails.send,
             {
-                "from": "GoalForge <onboarding@resend.dev>",
+                "from": _FROM,
                 "to": [recipient],
                 "subject": "Let's make today easy.",
                 "html": html,
