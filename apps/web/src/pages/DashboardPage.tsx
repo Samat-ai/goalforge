@@ -16,7 +16,7 @@ import { toast } from 'sonner'
 import { pickOneThing } from '../lib/pickOneThing'
 import { todayStr } from '../lib/gamification'
 import { useEnergyResizeMutation, useTaskRestoreMutation } from '../hooks/useEnergyMutations'
-import { useBadgesQuery, useGoalsQuery, useGoalMutations } from '../hooks'
+import { useBadgesQuery, useGoalsQuery, useGoalMutations, useProfileQuery } from '../hooks'
 import { useRewardsQuery, useEquipRewardMutation } from '../hooks/useRewards'
 import { useConfetti } from '../components/ConfettiContext'
 import { GoalCardSkeleton } from '../components/ui/Skeleton'
@@ -43,7 +43,8 @@ function hasUnresizedToday(goals: Goal[]): boolean {
 // ── Compact greeting strip ──────────────────────────────────────────────────────
 function GreetingStrip({ goals }: { goals: Goal[] }) {
   const { user } = useUser()
-  const name = user?.firstName ?? 'there'
+  const { displayName } = useProfileQuery(user?.id ?? undefined)
+  const name = displayName ?? user?.firstName ?? 'there'
   // Greeting computed once on mount (ESLint bans new Date() in render body).
   const [greeting] = useState(() => greetingFor(new Date().getHours()))
 

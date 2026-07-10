@@ -49,7 +49,7 @@ async def get_user_profile(
     _ensure_owner(user_id, current_user_id)
     user = await _get_or_create_user(user_id, current_user_email, db)
     await sync_timezone_from_header(request, user, db)
-    return {"star_points": user.star_points}
+    return {"star_points": user.star_points, "display_name": user.display_name}
 
 
 @router.get(
