@@ -53,10 +53,11 @@ class TaskResponse(TaskBase):
 class RewardDrop(BaseModel):
     tier: Literal['bonus', 'crit', 'jackpot']
     points_awarded: int
-    collectible_type: str | None   # 'theme' | 'title' | 'lore' | None
+    collectible_type: str | None        # 'theme' | 'title' | 'lore' | None
     collectible_key: str | None
     collectible_display_name: str | None
-    collectible_body: str | None   # lore text only; None for theme/title
+    collectible_body: str | None        # lore text only; None for theme/title
+    collectible_rarity: str | None = None  # "common" | "uncommon" | "rare" | "legendary"
 
 
 class TaskCompleteResponse(TaskResponse):
@@ -305,7 +306,9 @@ class RewardResponse(BaseModel):
     reward_type: str
     reward_key: str
     display_name: str
-    body: str | None
+    description: str | None  # lore body text; None for theme/title
+    rarity: str | None       # "common" | "uncommon" | "rare" | "legendary"
+    body: str | None         # alias for description — kept for backwards compatibility
     is_equipped: bool
     acquired_at: datetime
 

@@ -107,6 +107,7 @@ async def complete_task(
             collectible_key=reward_result.collectible_key,
             collectible_display_name=reward_result.collectible_display_name,
             collectible_body=reward_result.collectible_body,
+            collectible_rarity=reward_result.collectible_rarity,
         )
 
     task_resp = TaskResponse.model_validate(task)
