@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ai_utils import generate_rescue_tasks
 from database import engine
 from models import DailyTask, Goal, Milestone, User
-from utils import user_today
+from utils import user_today, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ def goal_is_rescue_mode(goal, now: datetime | None = None) -> bool:
     if rescue_task_today:
         return False
 
-    _now = now or datetime.now(timezone.utc)
+    _now = now or utc_now()
     completed_times = [
         t.completed_at
         for t in goal.daily_tasks
