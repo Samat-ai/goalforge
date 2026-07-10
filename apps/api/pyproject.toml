@@ -1,0 +1,14 @@
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+select = ["E", "F", "W", "I", "N", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["N802", "N803"]
+
+[tool.coverage.run]
+omit = ["tests/*", "alembic/*"]
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:"]
