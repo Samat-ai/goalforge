@@ -56,8 +56,7 @@ def _build_digest_html(display_name: str | None, tasks: list[TaskDigestItem]) ->
             '<div style="background:#121220;border:1px solid #26263a;border-radius:10px;'
             'padding:12px 16px;margin:0 0 8px;">'
             f'<div style="font-size:14.5px;color:#f1f1f7;">'
-            f'<span style="color:#ff6a3d;">&#9670;</span>&nbsp; {desc}'
-            '<span style="float:right;font-size:12px;color:#ff8a5f;">+10 &#11088;</span></div>'
+            f'<span style="color:#ff6a3d;">&#9670;</span>&nbsp; {desc}</div>'
             f'<div style="font-size:12.5px;color:#6b6c84;margin-top:4px;font-style:italic;">{tip}'
             f' &mdash; {goal}</div>'
             "</div>"
