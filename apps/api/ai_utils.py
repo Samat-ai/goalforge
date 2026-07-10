@@ -4,17 +4,22 @@ AI utilities for GoalForge.
 Uses the official Google Gen AI SDK (google-genai) with Gemini 2.5 Flash.
 Structured output is enforced by passing the Pydantic schema directly to the
 `response_schema` parameter so the model is constrained to valid JSON.
+
+Every public function is prompt-building + one `_generate_structured()` call;
+retry/timeout/parse/validate live in exactly one place. Do not call
+`generate_content` directly from new code.
 """
 
 import asyncio
 import json
 import logging
 from datetime import date, timedelta
+from typing import TypeVar
 
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from config import settings
 from exceptions import AIGenerationError
@@ -36,6 +41,77 @@ logger = logging.getLogger(__name__)
 _client = genai.Client(api_key=settings.gemini_api_key)
 
 _MODEL = "gemini-2.5-flash"
+
+# Delays (in seconds) between consecutive attempts: attempt 1→2 waits 1s, 2→3 waits 2s.
+_RETRY_DELAYS = (1, 2)
+
+
+_AI_TIMEOUT = 30.0  # seconds per Gemini call attempt
+
+_SchemaT = TypeVar("_SchemaT", bound=BaseModel)
+
+
+async def _with_retry(make_coro, label: str):
+    """
+    Call make_coro() up to 3 times with exponential backoff.
+
+    Retries on: APIError, JSONDecodeError, ValidationError, TimeoutError.
+    Raises AIGenerationError on final failure.
+    """
+    last_exc: Exception | None = None
+    for attempt in range(1, 4):  # attempts 1, 2, 3
+        try:
+            return await asyncio.wait_for(make_coro(), timeout=_AI_TIMEOUT)
+        except (genai_errors.APIError, json.JSONDecodeError, ValidationError, asyncio.TimeoutError) as exc:
+            last_exc = exc
+            if attempt < 3:
+                delay = _RETRY_DELAYS[attempt - 1]
+                logger.warning(
+                    "AI %s attempt %d/3 failed (%s: %s). Retrying in %ds…",
+                    label, attempt, type(exc).__name__, exc, delay,
+                )
+                await asyncio.sleep(delay)
+    logger.error("AI %s failed after 3 attempts. Last error: %s", label, last_exc)
+    raise AIGenerationError(
+        f"AI generation failed after 3 attempts. Last error: {type(last_exc).__name__}: {last_exc}"
+    )
+
+
+async def _generate_structured(
+    *,
+    system_instruction: str,
+    user_message: str,
+    schema: type[_SchemaT],
+    label: str,
+) -> _SchemaT:
+    """
+    Call Gemini with structured JSON output constrained to `schema`, with retry.
+
+    Returns a validated schema instance. Raises AIGenerationError after 3
+    failed attempts (APIError, JSONDecodeError, ValidationError, or timeout).
+    """
+
+    async def _call() -> _SchemaT:
+        response = await _client.aio.models.generate_content(
+            model=_MODEL,
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                response_mime_type="application/json",
+                response_schema=schema,
+                temperature=1.0,   # Gemini 2.5 Flash thinking works best at 1.0
+            ),
+        )
+        raw_json: str = response.text
+        logger.debug("Gemini raw response (%s): %s", label, raw_json)
+        return schema.model_validate(json.loads(raw_json))
+
+    return await _with_retry(_call, label)
+
+
+# ---------------------------------------------------------------------------
+# Prompts
+# ---------------------------------------------------------------------------
 
 _SYSTEM_PROMPT = """\
 You are GoalForge AI, an expert life coach and productivity specialist.
@@ -86,38 +162,92 @@ Rules:
 - Do not ask a new question; the product asks the next guided question.
 """
 
-# Delays (in seconds) between consecutive attempts: attempt 1→2 waits 1s, 2→3 waits 2s.
-_RETRY_DELAYS = (1, 2)
+_REGEN_SYSTEM_PROMPT = """\
+You are GoalForge AI regenerating a single daily task.
+
+Goal context: {goal_context}
+Sprint theme: {sprint_theme}
+Task date: {assigned_date}
+Current task (DO NOT repeat): {current_description}
+
+Rules:
+- Generate exactly ONE new task that is DIFFERENT from the current task.
+- The new task must serve the sprint theme and overall goal.
+- Keep description ≤20 words, actionable and specific.
+- Keep tip ≤20 words, motivational and explaining why it helps.
+- Use the same assigned_date: {assigned_date}.
+"""
+
+_RESCUE_SYSTEM_PROMPT = """\
+You are helping a user who has missed several days of their goal plan.
+Goal: {goal_title}
+Goal description: {goal_description}
+
+Generate exactly 2 recovery micro-tasks. Each task must:
+- Take 2 minutes or less
+- Require almost zero willpower to start
+- Feel like a guaranteed win, not a chore
+- Be directly relevant to the goal
+- Be written in second-person, action-first ("Listen to...", "Write one...", "Review...")
+- Keep description under 70 characters
+
+Tone: encouraging, zero shame, zero pressure.
+"""
+
+_WEEKLY_COACH_SYSTEM_PROMPT = """\
+You are GoalForge Coach. Based on weekly reflection and execution metrics,
+write one concise coaching recommendation for next week.
+
+Rules:
+- Be practical and specific (1-3 actions).
+- Keep tone supportive, non-judgmental, and confidence-building.
+- Reference both what worked and what blocked progress.
+- Max 4 sentences.
+"""
+
+_ENERGY_RESIZE_PROMPT = """\
+You are GoalForge AI helping a user who is low on energy today.
+Original task: {original_description}
+Goal context: {goal_context}
+Sprint theme: {sprint_theme}
+
+Your job is to find the single, absurdly small FIRST STEP that physically initiates this task.
+
+Rules:
+- The micro-task MUST be the literal first physical or digital action toward the original task.
+  (e.g. "Open your notes app" not "Review your notes strategy")
+- It must be completable in under 3 minutes.
+- The description MUST start with a strong action verb: Open, Put on, Type, Pull up, Set, Write.
+- Keep description <= 15 words.
+- The tip MUST be empathetic and zero-pressure.
+  Good: "Just doing this is a win today." Bad: "Stay consistent!"
+- Keep tip <= 15 words.
+- Do NOT invent a thematic alternative. Stay anchored to the original task.
+- Use the same assigned_date: {assigned_date}.
+"""
+
+_STAR_LOG_SYSTEM_PROMPT = """\
+You write a short weekly Star Log chapter for GoalForge.
+
+Inputs:
+- date range: {start_date} to {end_date}
+- completed task count: {completed_tasks}
+- completed distinct days: {completed_days}
+- completed task snippets: {task_snippets}
+
+Rules:
+- Keep tone encouraging, specific, and grounded in completed actions only.
+- Avoid generic motivational filler.
+- chapter_title: 3-8 words.
+- chapter_body: 2 short paragraphs (max 110 words total).
+- highlights: 2-3 concise bullet-like lines.
+- Never shame the user.
+"""
 
 
-_AI_TIMEOUT = 30.0  # seconds per Gemini call attempt
-
-
-async def _with_retry(make_coro, label: str):
-    """
-    Call make_coro() up to 3 times with exponential backoff.
-
-    Retries on: APIError, JSONDecodeError, ValidationError, TimeoutError.
-    Raises AIGenerationError on final failure.
-    """
-    last_exc: Exception | None = None
-    for attempt in range(1, 4):  # attempts 1, 2, 3
-        try:
-            return await asyncio.wait_for(make_coro(), timeout=_AI_TIMEOUT)
-        except (genai_errors.APIError, json.JSONDecodeError, ValidationError, asyncio.TimeoutError) as exc:
-            last_exc = exc
-            if attempt < 3:
-                delay = _RETRY_DELAYS[attempt - 1]
-                logger.warning(
-                    "AI %s attempt %d/3 failed (%s: %s). Retrying in %ds…",
-                    label, attempt, type(exc).__name__, exc, delay,
-                )
-                await asyncio.sleep(delay)
-    logger.error("AI %s failed after 3 attempts. Last error: %s", label, last_exc)
-    raise AIGenerationError(
-        f"AI generation failed after 3 attempts. Last error: {type(last_exc).__name__}: {last_exc}"
-    )
-
+# ---------------------------------------------------------------------------
+# Public generation functions
+# ---------------------------------------------------------------------------
 
 async def generate_smart_goal(raw_input: str, today: date | None = None) -> AIGoalOutput:
     """
@@ -134,57 +264,28 @@ async def generate_smart_goal(raw_input: str, today: date | None = None) -> AIGo
         AIGenerationError: after 3 failed attempts (APIError, JSONDecodeError, or ValidationError).
     """
     today_str = (today or date.today()).isoformat()
-    system_instruction = _SYSTEM_PROMPT.format(today=today_str)
-    user_message = (
-        f"Transform this goal into a structured SMART goal plan:\n\n{raw_input}"
+    return await _generate_structured(
+        system_instruction=_SYSTEM_PROMPT.format(today=today_str),
+        user_message=f"Transform this goal into a structured SMART goal plan:\n\n{raw_input}",
+        schema=AIGoalOutput,
+        label="generate_smart_goal",
     )
-
-    async def _call() -> AIGoalOutput:
-        response = await _client.aio.models.generate_content(
-            model=_MODEL,
-            contents=user_message,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                response_mime_type="application/json",
-                response_schema=AIGoalOutput,
-                temperature=1.0,   # Gemini 2.5 Flash thinking works best at 1.0
-            ),
-        )
-        raw_json: str = response.text
-        logger.debug("Gemini raw response (goal): %s", raw_json)
-        data = json.loads(raw_json)
-        return AIGoalOutput.model_validate(data)
-
-    return await _with_retry(_call, "generate_smart_goal")
 
 
 async def generate_coach_turn(transcript: str, question_focus: str) -> AICoachTurnOutput:
     """Generate a personalized coach acknowledgement for the latest user answer."""
-
     user_message = (
         "Conversation transcript so far:\n"
         f"{transcript}\n\n"
         f"Upcoming focus area: {question_focus}\n"
         "Return acknowledgement only."
     )
-
-    async def _call() -> AICoachTurnOutput:
-        response = await _client.aio.models.generate_content(
-            model=_MODEL,
-            contents=user_message,
-            config=types.GenerateContentConfig(
-                system_instruction=_COACH_TURN_SYSTEM_PROMPT,
-                response_mime_type="application/json",
-                response_schema=AICoachTurnOutput,
-                temperature=1.0,
-            ),
-        )
-        raw_json: str = response.text
-        logger.debug("Gemini raw response (coach_turn): %s", raw_json)
-        data = json.loads(raw_json)
-        return AICoachTurnOutput.model_validate(data)
-
-    return await _with_retry(_call, "generate_coach_turn")
+    return await _generate_structured(
+        system_instruction=_COACH_TURN_SYSTEM_PROMPT,
+        user_message=user_message,
+        schema=AICoachTurnOutput,
+        label="generate_coach_turn",
+    )
 
 
 async def generate_sprint_tasks(
@@ -221,46 +322,16 @@ async def generate_sprint_tasks(
         end_date=end_date,
         difficulty_mode=difficulty_mode,
     )
-    user_message = (
-        f"Generate the 7-day task plan for this sprint: {sprint_theme}\n"
-        f"Goal: {goal_context}"
+    sprint = await _generate_structured(
+        system_instruction=system_instruction,
+        user_message=(
+            f"Generate the 7-day task plan for this sprint: {sprint_theme}\n"
+            f"Goal: {goal_context}"
+        ),
+        schema=AISprintOutput,
+        label="generate_sprint_tasks",
     )
-
-    async def _call() -> list[AITaskOutput]:
-        response = await _client.aio.models.generate_content(
-            model=_MODEL,
-            contents=user_message,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                response_mime_type="application/json",
-                response_schema=AISprintOutput,
-                temperature=1.0,
-            ),
-        )
-        raw_json: str = response.text
-        logger.debug("Gemini raw response (sprint): %s", raw_json)
-        data = json.loads(raw_json)
-        sprint = AISprintOutput.model_validate(data)
-        return sprint.tasks
-
-    return await _with_retry(_call, "generate_sprint_tasks")
-
-
-_REGEN_SYSTEM_PROMPT = """\
-You are GoalForge AI regenerating a single daily task.
-
-Goal context: {goal_context}
-Sprint theme: {sprint_theme}
-Task date: {assigned_date}
-Current task (DO NOT repeat): {current_description}
-
-Rules:
-- Generate exactly ONE new task that is DIFFERENT from the current task.
-- The new task must serve the sprint theme and overall goal.
-- Keep description ≤20 words, actionable and specific.
-- Keep tip ≤20 words, motivational and explaining why it helps.
-- Use the same assigned_date: {assigned_date}.
-"""
+    return sprint.tasks
 
 
 async def regenerate_single_task(
@@ -281,57 +352,15 @@ async def regenerate_single_task(
         assigned_date=assigned_date.isoformat(),
         current_description=current_description,
     )
-    user_message = (
-        f"Generate a replacement task for: {current_description}\n"
-        f"Sprint theme: {sprint_theme}\nGoal: {goal_context}"
+    return await _generate_structured(
+        system_instruction=system_instruction,
+        user_message=(
+            f"Generate a replacement task for: {current_description}\n"
+            f"Sprint theme: {sprint_theme}\nGoal: {goal_context}"
+        ),
+        schema=AITaskOutput,
+        label="regenerate_single_task",
     )
-
-    async def _call() -> AITaskOutput:
-        response = await _client.aio.models.generate_content(
-            model=_MODEL,
-            contents=user_message,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                response_mime_type="application/json",
-                response_schema=AITaskOutput,
-                temperature=1.0,
-            ),
-        )
-        raw_json: str = response.text
-        logger.debug("Gemini raw response (regen): %s", raw_json)
-        data = json.loads(raw_json)
-        return AITaskOutput.model_validate(data)
-
-    return await _with_retry(_call, "regenerate_single_task")
-
-
-_RESCUE_SYSTEM_PROMPT = """\
-You are helping a user who has missed several days of their goal plan.
-Goal: {goal_title}
-Goal description: {goal_description}
-
-Generate exactly 2 recovery micro-tasks. Each task must:
-- Take 2 minutes or less
-- Require almost zero willpower to start
-- Feel like a guaranteed win, not a chore
-- Be directly relevant to the goal
-- Be written in second-person, action-first ("Listen to...", "Write one...", "Review...")
-- Keep description under 70 characters
-
-Tone: encouraging, zero shame, zero pressure.
-"""
-
-
-_WEEKLY_COACH_SYSTEM_PROMPT = """\
-You are GoalForge Coach. Based on weekly reflection and execution metrics,
-write one concise coaching recommendation for next week.
-
-Rules:
-- Be practical and specific (1-3 actions).
-- Keep tone supportive, non-judgmental, and confidence-building.
-- Reference both what worked and what blocked progress.
-- Max 4 sentences.
-"""
 
 
 async def generate_rescue_tasks(
@@ -339,50 +368,16 @@ async def generate_rescue_tasks(
     goal_description: str,
 ) -> list[AIRescueTaskItem]:
     """Generate 2 AI micro-tasks for a Recovery Sprint."""
-
-    user_message = f"Generate 2 recovery micro-tasks for goal: {goal_title}"
-
-    async def _attempt() -> list[AIRescueTaskItem]:
-        response = await _client.aio.models.generate_content(
-            model=_MODEL,
-            contents=user_message,
-            config=types.GenerateContentConfig(
-                system_instruction=_RESCUE_SYSTEM_PROMPT.format(
-                    goal_title=goal_title,
-                    goal_description=goal_description,
-                ),
-                temperature=1.0,
-                response_mime_type="application/json",
-                response_schema=AIRescueOutput,
-            ),
-        )
-        data = json.loads(response.text)
-        parsed = AIRescueOutput.model_validate(data)
-        return parsed.tasks
-
-    return await _with_retry(_attempt, "generate_rescue_tasks")
-
-
-_ENERGY_RESIZE_PROMPT = """\
-You are GoalForge AI helping a user who is low on energy today.
-Original task: {original_description}
-Goal context: {goal_context}
-Sprint theme: {sprint_theme}
-
-Your job is to find the single, absurdly small FIRST STEP that physically initiates this task.
-
-Rules:
-- The micro-task MUST be the literal first physical or digital action toward the original task.
-  (e.g. "Open your notes app" not "Review your notes strategy")
-- It must be completable in under 3 minutes.
-- The description MUST start with a strong action verb: Open, Put on, Type, Pull up, Set, Write.
-- Keep description <= 15 words.
-- The tip MUST be empathetic and zero-pressure.
-  Good: "Just doing this is a win today." Bad: "Stay consistent!"
-- Keep tip <= 15 words.
-- Do NOT invent a thematic alternative. Stay anchored to the original task.
-- Use the same assigned_date: {assigned_date}.
-"""
+    rescue = await _generate_structured(
+        system_instruction=_RESCUE_SYSTEM_PROMPT.format(
+            goal_title=goal_title,
+            goal_description=goal_description,
+        ),
+        user_message=f"Generate 2 recovery micro-tasks for goal: {goal_title}",
+        schema=AIRescueOutput,
+        label="generate_rescue_tasks",
+    )
+    return rescue.tasks
 
 
 async def resize_task_for_low_energy(
@@ -406,28 +401,15 @@ async def resize_task_for_low_energy(
         sprint_theme=sprint_theme,
         assigned_date=assigned_date.isoformat(),
     )
-    user_message = (
-        f"Generate a 3-minute first step for: {original_description}\n"
-        f"Goal: {goal_context}"
+    return await _generate_structured(
+        system_instruction=system_instruction,
+        user_message=(
+            f"Generate a 3-minute first step for: {original_description}\n"
+            f"Goal: {goal_context}"
+        ),
+        schema=AITaskOutput,
+        label="resize_task_for_low_energy",
     )
-
-    async def _call() -> AITaskOutput:
-        response = await _client.aio.models.generate_content(
-            model=_MODEL,
-            contents=user_message,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                response_mime_type="application/json",
-                response_schema=AITaskOutput,
-                temperature=1.0,
-            ),
-        )
-        raw_json: str = response.text
-        logger.debug("Gemini raw response (energy_resize): %s", raw_json)
-        data = json.loads(raw_json)
-        return AITaskOutput.model_validate(data)
-
-    return await _with_retry(_call, "resize_task_for_low_energy")
 
 
 async def generate_weekly_coach_recommendation(
@@ -438,7 +420,6 @@ async def generate_weekly_coach_recommendation(
     overdue_tasks: int,
 ) -> str:
     """Generate a concise coaching recommendation for the next week."""
-
     user_message = (
         "Weekly reflection inputs:\n"
         f"- Went well: {went_well}\n"
@@ -448,42 +429,13 @@ async def generate_weekly_coach_recommendation(
         f"- Overdue tasks: {overdue_tasks}\n"
         "Return one recommendation only."
     )
-
-    async def _attempt() -> str:
-        response = await _client.aio.models.generate_content(
-            model=_MODEL,
-            contents=user_message,
-            config=types.GenerateContentConfig(
-                system_instruction=_WEEKLY_COACH_SYSTEM_PROMPT,
-                temperature=1.0,
-                response_mime_type="application/json",
-                response_schema=AIWeeklyCoachOutput,
-            ),
-        )
-        data = json.loads(response.text)
-        parsed = AIWeeklyCoachOutput.model_validate(data)
-        return parsed.recommendation
-
-    return await _with_retry(_attempt, "generate_weekly_coach_recommendation")
-
-
-_STAR_LOG_SYSTEM_PROMPT = """\
-You write a short weekly Star Log chapter for GoalForge.
-
-Inputs:
-- date range: {start_date} to {end_date}
-- completed task count: {completed_tasks}
-- completed distinct days: {completed_days}
-- completed task snippets: {task_snippets}
-
-Rules:
-- Keep tone encouraging, specific, and grounded in completed actions only.
-- Avoid generic motivational filler.
-- chapter_title: 3-8 words.
-- chapter_body: 2 short paragraphs (max 110 words total).
-- highlights: 2-3 concise bullet-like lines.
-- Never shame the user.
-"""
+    parsed = await _generate_structured(
+        system_instruction=_WEEKLY_COACH_SYSTEM_PROMPT,
+        user_message=user_message,
+        schema=AIWeeklyCoachOutput,
+        label="generate_weekly_coach_recommendation",
+    )
+    return parsed.recommendation
 
 
 async def generate_star_log_narrative(
@@ -495,7 +447,6 @@ async def generate_star_log_narrative(
     task_snippets: list[str],
 ) -> AIStarLogOutput:
     """Generate a narrative Star Log chapter for a user's recent 7-day effort."""
-
     snippets = task_snippets[:8]
     snippet_text = " | ".join(snippets) if snippets else "No completed tasks in this window"
     system_instruction = _STAR_LOG_SYSTEM_PROMPT.format(
@@ -505,25 +456,12 @@ async def generate_star_log_narrative(
         completed_days=completed_days,
         task_snippets=snippet_text,
     )
-    user_message = (
-        "Write the user's weekly Star Log chapter from this evidence. "
-        "Only mention actions present in completed tasks."
+    return await _generate_structured(
+        system_instruction=system_instruction,
+        user_message=(
+            "Write the user's weekly Star Log chapter from this evidence. "
+            "Only mention actions present in completed tasks."
+        ),
+        schema=AIStarLogOutput,
+        label="generate_star_log_narrative",
     )
-
-    async def _call() -> AIStarLogOutput:
-        response = await _client.aio.models.generate_content(
-            model=_MODEL,
-            contents=user_message,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                response_mime_type="application/json",
-                response_schema=AIStarLogOutput,
-                temperature=1.0,
-            ),
-        )
-        raw_json: str = response.text
-        logger.debug("Gemini raw response (star_log): %s", raw_json)
-        data = json.loads(raw_json)
-        return AIStarLogOutput.model_validate(data)
-
-    return await _with_retry(_call, "generate_star_log_narrative")

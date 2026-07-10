@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ai_utils import resize_task_for_low_energy
 from auth import get_current_user_id
 from database import get_db
-from deps import _load_goal_with_ownership
+from deps import _ensure_owner, _load_task_with_ownership
 from models import DailyTask, Goal, Milestone, User
 from rate_limiting import _user_key, rate_limit
 from schemas import EnergyResizeResponse, TaskResponse
@@ -34,8 +34,7 @@ async def energy_resize(
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user_id != user_id:
-        raise HTTPException(status_code=403, detail="Forbidden")
+    _ensure_owner(user_id, current_user_id)
 
     user_result = await db.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
@@ -132,12 +131,7 @@ async def restore_task(
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(DailyTask).where(DailyTask.id == task_id))
-    task = result.scalar_one_or_none()
-    if task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    await _load_goal_with_ownership(task.goal_id, current_user_id, db)
+    task, _ = await _load_task_with_ownership(task_id, current_user_id, db)
 
     if task.original_description is None:
         raise HTTPException(status_code=400, detail="Task is not in resized state")

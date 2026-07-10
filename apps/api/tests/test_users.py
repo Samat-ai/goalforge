@@ -171,41 +171,6 @@ async def test_weekly_reflection_403_wrong_user(client):
     assert resp.status_code == 403
 
 
-async def test_get_weekly_review_returns_metrics(client):
-    goal = await create_test_goal(client)
-    task_id = goal["daily_tasks"][0]["id"]
-    complete_resp = await client.patch(f"/tasks/{task_id}/complete")
-    assert complete_resp.status_code == 200
-
-    resp = await client.get(f"/users/{TEST_USER_ID}/weekly-review?days=7")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["total_tasks"] >= 1
-    assert data["completed_tasks"] >= 1
-    assert 0 <= data["completion_rate"] <= 1
-    assert data["risk_level"] in ["low", "medium", "high"]
-    assert isinstance(data["recommendation"], str)
-
-
-async def test_get_weekly_review_no_data_window(client):
-    await create_test_goal(client)
-    resp = await client.get(f"/users/{TEST_USER_ID}/weekly-review?days=3")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["completed_tasks"] == 0
-    assert data["risk_level"] in ["medium", "high"]
-
-
-async def test_get_weekly_review_403_wrong_user(client):
-    await create_test_goal(client)
-    try:
-        app.dependency_overrides[get_current_user_id] = lambda: OTHER_USER_ID
-        resp = await client.get(f"/users/{TEST_USER_ID}/weekly-review")
-    finally:
-        app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
-    assert resp.status_code == 403
-
-
 # ── Star Log ──────────────────────────────────────────────────────────
 
 

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import get_current_user_id
 from database import get_db
-from deps import _load_reward_with_ownership
+from deps import _ensure_owner, _load_reward_with_ownership
 from models import Reward
 from schemas import RewardResponse
 from services.reward_service import get_collectible_info
@@ -40,8 +40,7 @@ async def list_rewards(
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    if user_id != current_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    _ensure_owner(user_id, current_user_id)
 
     result = await db.execute(
         select(Reward)

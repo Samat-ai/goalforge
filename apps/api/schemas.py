@@ -109,10 +109,6 @@ class GoalStatusUpdate(BaseModel):
     status: Literal["active", "achieved", "abandoned"]
 
 
-class GoalProgressUpdate(BaseModel):
-    progress: int = Field(..., ge=0, le=100)
-
-
 class GoalResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -284,18 +280,6 @@ class WeeklyReflectionResponse(BaseModel):
     week_rating: int
     coach_recommendation: str
     created_at: datetime
-
-
-class WeeklyReviewResponse(BaseModel):
-    start_date: date
-    end_date: date
-    total_tasks: int
-    completed_tasks: int
-    completion_rate: float
-    completed_days: int
-    overdue_tasks: int
-    risk_level: Literal["low", "medium", "high"]
-    recommendation: str
 
 
 class RewardResponse(BaseModel):

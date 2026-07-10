@@ -10,32 +10,15 @@ from sqlalchemy.orm import selectinload
 
 from auth import get_current_user_email, get_current_user_id
 from database import get_db
-from deps import _load_goal_with_ownership
+from deps import _ensure_owner, _load_goal_with_ownership, get_or_create_user, load_full_goal
 from models import Goal, Milestone, User
 from services.goal_service import _generate_goal_async, PLACEHOLDER_MILESTONE_TITLE
 from services.rescue_service import _execute_rescue_sprint
 from rate_limiting import _user_key, rate_limit
-from schemas import (
-    GoalCreate, GoalProgressUpdate, GoalResponse, GoalStatusUpdate,
-    PaginatedGoalsResponse,
-)
+from schemas import GoalCreate, GoalResponse, GoalStatusUpdate, PaginatedGoalsResponse
 from utils import user_today
 
 router = APIRouter()
-
-
-async def get_or_create_user(
-    user_id: str,
-    email: str,
-    db: AsyncSession,
-) -> User:
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user is None:
-        user = User(id=user_id, email=email)
-        db.add(user)
-        await db.flush()
-    return user
 
 
 @router.post(
@@ -54,8 +37,7 @@ async def create_goal(
     current_user_email: str = Depends(get_current_user_email),
     db: AsyncSession = Depends(get_db),
 ):
-    if user_id != current_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    _ensure_owner(user_id, current_user_id)
     user = await get_or_create_user(user_id, current_user_email, db)
     user_timezone = user.timezone  # capture before session closes
 
@@ -98,12 +80,7 @@ async def create_goal(
     )
 
     # Return the placeholder goal (milestones eagerly loaded)
-    result = await db.execute(
-        select(Goal)
-        .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
-        .where(Goal.id == goal.id)
-    )
-    return result.scalar_one()
+    return await load_full_goal(goal.id, db)
 
 
 @router.get(
@@ -118,8 +95,7 @@ async def list_goals(
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    if user_id != current_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    _ensure_owner(user_id, current_user_id)
     total_result = await db.execute(
         select(func.count(Goal.id)).where(Goal.user_id == user_id)
     )
@@ -166,13 +142,7 @@ async def get_goal(
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    await _load_goal_with_ownership(goal_id, current_user_id, db)  # 403/404 guard
-    result = await db.execute(
-        select(Goal)
-        .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
-        .where(Goal.id == goal_id)
-    )
-    return result.scalar_one()
+    return await _load_goal_with_ownership(goal_id, current_user_id, db, full=True)
 
 
 @router.patch(
@@ -186,16 +156,10 @@ async def update_goal_status(
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    await _load_goal_with_ownership(goal_id, current_user_id, db)  # 403/404 guard
-    result = await db.execute(
-        select(Goal)
-        .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
-        .where(Goal.id == goal_id)
-        .with_for_update()
+    goal = await _load_goal_with_ownership(
+        goal_id, current_user_id, db, full=True, for_update=True
     )
-    goal = result.scalar_one()
 
-    old_status = goal.status
     goal.status = body.status
 
     # Award 100 star points exactly once per goal (idempotency flag prevents farming via re-activation)
@@ -207,30 +171,6 @@ async def update_goal_status(
         )
         goal.achievement_reward_granted = True
 
-    await db.flush()
-    return goal
-
-
-@router.patch(
-    "/goals/{goal_id}/progress",
-    response_model=GoalResponse,
-    summary="Update goal progress percentage (0-100)",
-)
-async def update_goal_progress(
-    goal_id: uuid.UUID,
-    body: GoalProgressUpdate,
-    current_user_id: str = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
-):
-    await _load_goal_with_ownership(goal_id, current_user_id, db)  # 403/404 guard
-    result = await db.execute(
-        select(Goal)
-        .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
-        .where(Goal.id == goal_id)
-    )
-    goal = result.scalar_one()
-
-    goal.progress = body.progress
     await db.flush()
     return goal
 
@@ -261,15 +201,7 @@ async def trigger_rescue_sprint(
     db: AsyncSession = Depends(get_db),
 ):
     """Trigger a Recovery Sprint: shift uncompleted tasks + generate 2 AI micro-tasks."""
-    await _load_goal_with_ownership(goal_id, current_user_id, db)  # 403/404 guard
-
-    # Re-fetch with milestones eagerly loaded (async session cannot lazy-load)
-    goal_result = await db.execute(
-        select(Goal)
-        .options(selectinload(Goal.milestones))
-        .where(Goal.id == goal_id)
-    )
-    goal = goal_result.scalar_one()
+    goal = await _load_goal_with_ownership(goal_id, current_user_id, db, full=True)
 
     if goal.status != "active":
         raise HTTPException(status_code=409, detail="Goal is not active")
@@ -294,12 +226,4 @@ async def trigger_rescue_sprint(
     )
 
     # Re-load goal to return the updated state (sprint_status = 'generating')
-    result = await db.execute(
-        select(Goal)
-        .options(
-            selectinload(Goal.milestones),
-            selectinload(Goal.daily_tasks),
-        )
-        .where(Goal.id == goal_id)
-    )
-    return result.scalar_one()
+    return await load_full_goal(goal_id, db)
