@@ -124,6 +124,39 @@ async def send_reminder_digest(
         logger.exception("Failed to send reminder digest to=%s", email)
 
 
+async def send_feedback_notification(category: str, message: str, from_email: str) -> None:
+    """Notify the owner inbox about a new feedback submission.
+
+    Falls back to logging when RESEND_API_KEY or FEEDBACK_NOTIFY_EMAIL is not
+    configured. Never raises — feedback must be stored even if notification fails.
+    """
+    if not settings.resend_api_key or not settings.feedback_notify_email:
+        logger.info("Feedback (mock notify) category=%s from=%s: %s", category, from_email, message)
+        return
+
+    body = html_lib.escape(message).replace("\n", "<br />")
+    html = (
+        f'<div style="font-family:sans-serif;max-width:600px;">'
+        f"<h2>New {html_lib.escape(category)} feedback</h2>"
+        f"<p><b>From:</b> {html_lib.escape(from_email)}</p>"
+        f'<p style="white-space:pre-wrap;border-left:3px solid #7c3aed;padding-left:12px;">{body}</p>'
+        f"</div>"
+    )
+    try:
+        await asyncio.to_thread(
+            resend.Emails.send,
+            {
+                "from": _FROM,
+                "to": [settings.feedback_notify_email],
+                "subject": f"[GoalForge feedback] {category} from {from_email}",
+                "html": html,
+            },
+        )
+        logger.info("Feedback notification sent category=%s", category)
+    except Exception:
+        logger.exception("Failed to send feedback notification")
+
+
 def _build_rescue_html(display_name: str | None) -> str:
     """Build the HTML body for a rescue email."""
     greeting = html_lib.escape(display_name or "Star Forger")

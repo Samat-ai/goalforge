@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useUser } from '@clerk/react'
 import { toast } from 'sonner'
-import { Icon, Reveal, Toggle } from '../components/gf/Ui'
+import { Icon, Reveal, Segmented, Toggle } from '../components/gf/Ui'
 import { cx } from '../components/gf/util'
 import { useThemeMode, type ThemeMode } from '../lib/ThemeContext'
 import api from '../lib/api'
@@ -331,6 +331,57 @@ function DataControls({ userId, delay }: { userId: string; delay?: number }) {
   )
 }
 
+type FeedbackCategory = 'bug' | 'idea' | 'other'
+const FEEDBACK_LABELS: Record<FeedbackCategory, string> = { bug: 'Bug', idea: 'Idea', other: 'Other' }
+
+function FeedbackSection({ delay }: { delay?: number }) {
+  const [category, setCategory] = useState<FeedbackCategory>('idea')
+  const [message, setMessage] = useState('')
+  const [sending, setSending] = useState(false)
+  const trimmed = message.trim()
+
+  async function send() {
+    if (!trimmed || sending) return
+    setSending(true)
+    try {
+      await api.post('/feedback', { category, message: trimmed })
+      setMessage('')
+      toast.success('Thanks — your feedback landed in the maker’s inbox ✨')
+    } catch {
+      toast.error('Could not send feedback. Please try again.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <SettingsSection icon="chat" title="Feedback" subtitle="Spotted a bug? Have an idea? Tell us" delay={delay}>
+      <div className="gf-field">
+        <Segmented<FeedbackCategory>
+          options={['bug', 'idea', 'other']}
+          value={category}
+          onChange={setCategory}
+          getLabel={o => FEEDBACK_LABELS[o]}
+        />
+      </div>
+      <div className="gf-field">
+        <textarea
+          className="gf-textarea"
+          rows={4}
+          maxLength={2000}
+          placeholder={category === 'bug' ? 'What happened, and what did you expect instead?' : 'What would make GoalForge better for you?'}
+          value={message}
+          onChange={e => setMessage(e.target.value)}
+        />
+        <div className="gf-field-hint">{message.length}/2000</div>
+      </div>
+      <button className="gf-btn gf-btn-soft" disabled={!trimmed || sending} onClick={() => void send()}>
+        <Icon name="arrowRight" size={14} /> {sending ? 'Sending…' : 'Send feedback'}
+      </button>
+    </SettingsSection>
+  )
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { user } = useUser()
@@ -364,6 +415,7 @@ export default function SettingsPage() {
       {!isLoading && !isError && settings && userId && (
         <>
           <SettingsForm settings={settings} userId={userId} />
+          <FeedbackSection delay={130} />
           <DataControls userId={userId} delay={150} />
         </>
       )}
