@@ -30,49 +30,75 @@ class TaskDigestItem:
     goal_title: str
 
 
+# Deep-space palette from the 2026-07 app redesign (src/index.css tokens).
+# Voice: Solly the sun mascot, deadpan guilt-trip wrapped in star-forge lore
+# (chosen 2026-07-10 over "hype friend" / pure-Duolingo variants).
+_FONT = "'Segoe UI',system-ui,-apple-system,Helvetica,Arial,sans-serif"
+
+
+def _digest_subject(count: int) -> str:
+    """Count-aware subject line for the daily digest (no emoji prefix)."""
+    if count == 1:
+        return "One task stands between you and a brighter star"
+    return f"Your star noticed you haven't shown up ({count} tasks waiting)"
+
+
 def _build_digest_html(display_name: str | None, tasks: list[TaskDigestItem]) -> str:
     """Build the HTML body for a daily reminder digest."""
     greeting = html_lib.escape(display_name or "Star Forger")
+    n = len(tasks)
     task_rows = ""
     for t in tasks:
         desc = html_lib.escape(t.description)
         tip = html_lib.escape(t.tip)
         goal = html_lib.escape(t.goal_title)
         task_rows += (
-            "<tr>"
-            f'<td style="padding:8px 12px;border-bottom:1px solid #2a2a3a;">{desc}</td>'
-            f'<td style="padding:8px 12px;border-bottom:1px solid #2a2a3a;color:#94a3b8;font-style:italic;">{tip}</td>'
-            f'<td style="padding:8px 12px;border-bottom:1px solid #2a2a3a;color:#a78bfa;">{goal}</td>'
-            "</tr>"
+            '<div style="background:#121220;border:1px solid #26263a;border-radius:10px;'
+            'padding:12px 16px;margin:0 0 8px;">'
+            f'<div style="font-size:14.5px;color:#f1f1f7;">'
+            f'<span style="color:#ff6a3d;">&#9670;</span>&nbsp; {desc}</div>'
+            f'<div style="font-size:12.5px;color:#6b6c84;margin-top:4px;font-style:italic;">{tip}'
+            f' &mdash; {goal}</div>'
+            "</div>"
         )
 
+    if n == 1:
+        waiting_line = (
+            "One task is waiting to feed the forge. Just one. "
+            "It has been rehearsing all morning."
+        )
+    else:
+        waiting_line = f"{n} tasks are waiting to feed the forge:"
+
     return f"""\
-<div style="background:#0f0f1a;color:#e2e8f0;font-family:'Plus Jakarta Sans',sans-serif;padding:32px;max-width:600px;margin:0 auto;">
-  <h1 style="font-size:22px;margin:0 0 4px;">Keep your star glowing, {greeting}!</h1>
-  <p style="color:#94a3b8;margin:0 0 24px;">You have {len(tasks)} pending task{"s" if len(tasks) != 1 else ""} today.</p>
+<div style="background:#08080f;color:#f1f1f7;font-family:{_FONT};padding:36px 28px 30px;max-width:600px;margin:0 auto;border-radius:14px;">
+  <h1 style="font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 10px;">Hi {greeting}. It's Solly.</h1>
+  <p style="color:#c9cad8;font-size:15px;margin:0 0 14px;">
+    Your star dimmed a little overnight. Not dramatically &mdash; just enough for me to mention it.
+    {waiting_line}
+  </p>
 
-  <table style="width:100%;border-collapse:collapse;font-size:14px;">
-    <thead>
-      <tr style="text-align:left;">
-        <th style="padding:8px 12px;border-bottom:2px solid #a78bfa;color:#a78bfa;">Task</th>
-        <th style="padding:8px 12px;border-bottom:2px solid #a78bfa;color:#a78bfa;">Tip</th>
-        <th style="padding:8px 12px;border-bottom:2px solid #a78bfa;color:#a78bfa;">Goal</th>
-      </tr>
-    </thead>
-    <tbody>
-      {task_rows}
-    </tbody>
-  </table>
+  <div style="margin:20px 0 22px;">
+    {task_rows}
+  </div>
 
-  <a href="{_APP_URL}/dashboard?energy=low"
-     style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#6366f1);
-            color:#fff;font-weight:600;font-size:14px;padding:12px 24px;
-            border-radius:8px;text-decoration:none;margin-top:20px;">
-    Low energy today? Simplify everything &rarr;
+  <p style="color:#c9cad8;font-size:15px;margin:0 0 18px;">
+    Do one. Even the tiny one. The forge doesn't judge. I do, a little.
+  </p>
+
+  <a href="{_APP_URL}/dashboard"
+     style="display:inline-block;background:#ff6a3d;color:#ffffff;font-weight:700;font-size:14.5px;
+            padding:13px 26px;border-radius:99px;text-decoration:none;">
+    Fine, I'll stoke the forge &rarr;
   </a>
 
-  <p style="margin:24px 0 0;font-size:13px;color:#64748b;">
-    Every task you complete earns +10 ⭐ — keep the momentum going!
+  <p style="margin:18px 0 0;font-size:13px;">
+    <a href="{_APP_URL}/dashboard?energy=low" style="color:#8a8ca0;">Rough day? Simplify everything to 2-minute versions</a>
+  </p>
+
+  <p style="margin:26px 0 0;font-size:13px;color:#6b6c84;">
+    This email gets 4% more dramatic every day you skip.
+    Dim the reminders any time in <a href="{_APP_URL}/settings" style="color:#8a8ca0;">Settings</a>.
   </p>
 </div>"""
 
@@ -102,7 +128,7 @@ async def send_reminder_digest(
 
     html = _build_digest_html(display_name, tasks)
     count = len(tasks)
-    subject = f"🌟 You have {count} pending task{'s' if count != 1 else ''} today — keep going!"
+    subject = _digest_subject(count)
 
     recipient = email
     if settings.dev_email_override:
@@ -158,21 +184,26 @@ async def send_feedback_notification(category: str, message: str, from_email: st
 
 
 def _build_rescue_html(display_name: str | None) -> str:
-    """Build the HTML body for a rescue email."""
+    """Build the HTML body for a rescue email.
+
+    Deliberately gentler than the digest — rescue mode is a no-pressure
+    feature, so the guilt-trip humor stays out of this one.
+    """
     greeting = html_lib.escape(display_name or "Star Forger")
     app_url = f"{_APP_URL}/dashboard"
     return f"""\
-<div style="background:#0f0f1a;color:#e2e8f0;font-family:'Plus Jakarta Sans',sans-serif;padding:32px;max-width:600px;margin:0 auto;">
-  <h1 style="font-size:22px;margin:0 0 8px;">Let's make today easy, {greeting}.</h1>
-  <p style="color:#94a3b8;margin:0 0 24px;line-height:1.6;">
-    It looks like you've been busy. We went ahead and paused your schedule, and set up two quick 2-minute tasks for you whenever you're ready.
-    No pressure, no catching up. Just open the app when you feel like it.
+<div style="background:#08080f;color:#f1f1f7;font-family:{_FONT};padding:36px 28px 30px;max-width:600px;margin:0 auto;border-radius:14px;">
+  <h1 style="font-size:22px;font-weight:700;letter-spacing:-0.02em;margin:0 0 10px;">Your star is on standby, {greeting}. That's fine.</h1>
+  <p style="color:#c9cad8;font-size:15px;margin:0 0 14px;line-height:1.6;">
+    Life got loud &mdash; it happens to every star. So we paused your schedule and set out
+    two 2-minute tasks for whenever you're ready. No catching up. No backlog waiting to
+    ambush you. Stars are patient.
   </p>
-  <a href="{app_url}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#6366f1);color:#fff;font-weight:600;font-size:15px;padding:14px 28px;border-radius:10px;text-decoration:none;">
+  <a href="{app_url}" style="display:inline-block;background:#ff6a3d;color:#ffffff;font-weight:700;font-size:14.5px;padding:13px 26px;border-radius:99px;text-decoration:none;">
     Open Easy Mode &rarr;
   </a>
-  <p style="margin:24px 0 0;font-size:12px;color:#475569;">
-    No catch-up required &mdash; just one small step.
+  <p style="margin:26px 0 0;font-size:13px;color:#6b6c84;">
+    One small spark is all it takes.
   </p>
 </div>"""
 
@@ -199,7 +230,7 @@ async def send_rescue_email(email: str, display_name: str | None) -> None:
             {
                 "from": _FROM,
                 "to": [recipient],
-                "subject": "Let's make today easy.",
+                "subject": "Your star is on standby. No pressure.",
                 "html": html,
             },
         )
