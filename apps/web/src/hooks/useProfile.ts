@@ -4,6 +4,7 @@ import { queryKeys } from '../lib/queryKeys'
 
 interface ProfileResponse {
   star_points: number
+  display_name: string | null
 }
 
 export function useProfileQuery(userId: string | undefined) {
@@ -18,6 +19,7 @@ export function useProfileQuery(userId: string | undefined) {
 
   return {
     pts: query.data?.star_points ?? 0,
+    displayName: query.data?.display_name ?? null,
     isLoading: query.isLoading,
   }
 }

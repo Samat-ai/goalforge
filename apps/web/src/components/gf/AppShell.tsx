@@ -25,7 +25,7 @@ function Header() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useUser()
-  const { pts } = useProfileQuery(user?.id ?? undefined)
+  const { pts, displayName } = useProfileQuery(user?.id ?? undefined)
   const stage = getStage(pts)
   const { data: rewards = [] } = useRewardsQuery(user?.id ?? '')
   const equippedTitle = rewards.find(r => r.reward_type === 'title' && r.is_equipped)
@@ -63,7 +63,7 @@ function Header() {
   return (
     <header className="gf-header">
       <div className="gf-header-in">
-        <div className="gf-logo">Goal<span>Forge</span></div>
+        <Link to="/dashboard" className="gf-logo" aria-label="GoalForge — go to dashboard" onClick={() => setMenuOpen(false)}>Goal<span>Forge</span></Link>
         <nav className="gf-nav" ref={wrap}>
           <div className="gf-nav-pill" style={{ transform: `translateX(${pill.left}px)`, width: pill.width, opacity: pill.ready ? 1 : 0 }} />
           {NAV.map(n => (
@@ -79,7 +79,7 @@ function Header() {
           <button className="gf-pts" onClick={() => navigate('/analytics')} aria-label={`Stage ${stage.name}. Go to analytics.`}>
             <Icon name="spark" size={12} /> <span className="gf-pts-stage">{stage.name}</span>
           </button>
-          {user?.firstName && <span className="gf-header-name">{user.firstName}</span>}
+          {(displayName ?? user?.firstName) && <span className="gf-header-name">{displayName ?? user?.firstName}</span>}
           <UserButton />
           <button
             className={cx('gf-burger', menuOpen && 'is-open')}
