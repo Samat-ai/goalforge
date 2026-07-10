@@ -25,6 +25,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Show } from '@clerk/react'
+import SiteFooter from '../components/SiteFooter'
 import '../landing.css'
 
 const THEME_KEY = 'gf-landing-theme'
@@ -255,7 +256,7 @@ function StatsBand() {
             </div>
           ))}
         </div>
-        <div className="ph-note reveal in">✦ Illustrative figures — replace with real metrics before launch</div>
+        <div className="ph-note reveal in">✦ Projected figures</div>
       </div>
     </section>
   )
@@ -881,20 +882,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <footer>
-          <div className="container">
-            <div className="foot-in">
-              <a className="logo" href="#top">GoalForge</a>
-              <div className="foot-links">
-                <a href="#chat">Chat</a>
-                <a href="#how">How it works</a>
-                <a href="#stages">Stages</a>
-                <a href="#cta">Get started</a>
-              </div>
-            </div>
-            <div className="foot-copy">© 2026 GoalForge · Big goals, one small step at a time — with Solly.</div>
-          </div>
-        </footer>
+        <SiteFooter />
       </div>
     </div>
   )
