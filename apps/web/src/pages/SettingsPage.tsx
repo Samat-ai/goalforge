@@ -16,6 +16,7 @@ import { cx } from '../components/gf/util'
 import { useThemeMode, type ThemeMode } from '../lib/ThemeContext'
 import api from '../lib/api'
 import {
+  useDisablePushMutation,
   useEnablePushMutation,
   usePushSubscriptionsQuery,
   useSaveSettingsMutation,
@@ -189,13 +190,15 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
   const { save, isSaving } = useSaveSettingsMutation(userId)
   const { subscriptions } = usePushSubscriptionsQuery(userId)
   const { enablePush, isEnabling } = useEnablePushMutation(userId)
+  const { disablePush, isDisabling } = useDisablePushMutation(userId)
 
   const [name, setName] = useState(settings.display_name ?? '')
   const [remOn, setRemOn] = useState(settings.reminder_enabled)
   const [hour, setHour] = useState(settings.reminder_hour)
   const [saved, setSaved] = useState(false)
 
-  const pushOn = subscriptions.some(s => s.is_active)
+  const activeSubs = subscriptions.filter(s => s.is_active)
+  const pushOn = activeSubs.length > 0
 
   const onSave = () => {
     if (isSaving) return
@@ -205,9 +208,9 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
   }
 
   const onTogglePush = (next: boolean) => {
-    // No unsubscribe endpoint exists yet — enabling is the only real action;
-    // turning the switch off with no active subscription is a no-op.
-    if (next && !isEnabling) enablePush()
+    if (isEnabling || isDisabling) return
+    if (next) enablePush()
+    else if (activeSubs.length) disablePush(activeSubs.map(s => s.id))
   }
 
   return (
@@ -248,7 +251,7 @@ function SettingsForm({ settings, userId }: { settings: UserSettings; userId: st
         <div className="gf-row">
           <div className="gf-row-text">
             <div className="gf-row-title">Browser push notifications</div>
-            <div className="gf-row-sub">{pushOn ? '1 active browser subscription' : 'No active subscriptions'}</div>
+            <div className="gf-row-sub">{pushOn ? `${activeSubs.length} active browser subscription${activeSubs.length === 1 ? '' : 's'}` : 'No active subscriptions'}</div>
           </div>
           <Toggle checked={pushOn} onChange={onTogglePush} label="Browser push notifications" />
         </div>
