@@ -4,6 +4,7 @@ import { Show } from '@clerk/react'
 import { Toaster } from 'sonner'
 import AppShell from './components/gf/AppShell'
 import LandingPage from './pages/LandingPage'
+import AboutPage from './pages/AboutPage'
 import DashboardPage from './pages/DashboardPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import ChatPage from './pages/ChatPage'
@@ -54,6 +55,7 @@ export default function App() {
       <ErrorBoundary>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route path="/sign-in/*" element={<SignInPage />} />
           <Route path="/sign-up/*" element={<SignUpPage />} />
           {/* Onboarding — authenticated but intentionally before OnboardingGuard */}
