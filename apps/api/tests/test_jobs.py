@@ -202,9 +202,14 @@ async def test_trigger_reminders_sends_rescue_email_when_in_rescue_mode(
 ):
     """When goal_is_rescue_mode returns True, send_rescue_email is called, not digest."""
     with patch("routes.jobs.settings") as mock_settings, \
+         patch("routes.jobs.user_now") as mock_user_now, \
          patch("routes.jobs.goal_is_rescue_mode", return_value=True) as mock_rescue_mode, \
          patch("routes.jobs.send_rescue_email", new=AsyncMock()) as mock_rescue_email, \
          patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_digest:
+        class _Now:
+            hour = 9  # rescue is hour-gated to the user's reminder_hour (default 9)
+
+        mock_user_now.return_value = _Now()
         mock_settings.jobs_api_key = _TEST_JOBS_KEY
         resp = await client.post(
             "/api/jobs/trigger-reminders",
@@ -218,6 +223,77 @@ async def test_trigger_reminders_sends_rescue_email_when_in_rescue_mode(
     assert data["push_notifications"] == 0
     mock_rescue_email.assert_called_once()
     mock_digest.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_rescue_email_respects_reminder_enabled(client, created_goal):
+    """Users who disabled reminders never get rescue emails (consent gate)."""
+    settings_resp = await client.patch(
+        f"/users/{TEST_USER_ID}/settings",
+        json={"reminder_enabled": False},
+    )
+    assert settings_resp.status_code == 200
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.goal_is_rescue_mode", return_value=True),
+        patch("routes.jobs.send_rescue_email", new=AsyncMock()) as mock_rescue_email,
+    ):
+        class _Now:
+            hour = 9  # matches default reminder_hour
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.status_code == 200
+    assert resp.json()["rescue_emails"] == 0
+    mock_rescue_email.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_rescue_email_sends_only_once_per_day(client, created_goal):
+    """Second cron run on the same local date does not re-send the rescue email."""
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.goal_is_rescue_mode", return_value=True),
+        patch("routes.jobs.send_rescue_email", new=AsyncMock()) as mock_rescue_email,
+    ):
+        class _Now:
+            hour = 9  # matches default reminder_hour
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+
+        resp1 = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+        resp2 = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp1.json()["rescue_emails"] == 1
+    assert resp2.json()["rescue_emails"] == 0
+    assert mock_rescue_email.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_rescue_email_only_sends_at_reminder_hour(client, created_goal):
+    """Rescue email arrives at the user's reminder hour, not on every hourly cron run."""
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.goal_is_rescue_mode", return_value=True),
+        patch("routes.jobs.send_rescue_email", new=AsyncMock()) as mock_rescue_email,
+    ):
+        class _Now:
+            hour = 15  # user's reminder_hour is the default 9
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.status_code == 200
+    assert resp.json()["rescue_emails"] == 0
+    mock_rescue_email.assert_not_called()
 
 
 @pytest.mark.asyncio
