@@ -321,3 +321,15 @@
 .gfl-root .about-section h2 { font-family: var(--font-display); font-size: 24px; margin: 0 0 12px; }
 .gfl-root .about-section p { color: var(--text-mute); line-height: 1.7; margin: 0 0 14px; }
 .gfl-root .about-solly { display: block; width: 140px; margin: 0 0 16px; }
+
+/* FAQ PAGE */
+.gfl-root .faq-list { max-width: 640px; margin: 0 auto; }
+.gfl-root .static-main > h1 { max-width: 640px; margin: 0 auto 28px; }
+.gfl-root .faq-item { border-bottom: 1px solid var(--border); }
+.gfl-root .faq-item summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 17px; padding: 16px 0; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.gfl-root .faq-item summary::-webkit-details-marker { display: none; }
+.gfl-root .faq-item summary::after { content: '+'; font-family: var(--font-mono); font-size: 18px; color: var(--text-mute); transition: rotate .2s; }
+.gfl-root .faq-item[open] summary::after { rotate: 45deg; }
+.gfl-root .faq-a { color: var(--text-mute); line-height: 1.7; padding: 0 0 18px; }
+.gfl-root .faq-a p { margin: 0; }
+.gfl-root .faq-a a { color: var(--text); text-decoration: underline; }
