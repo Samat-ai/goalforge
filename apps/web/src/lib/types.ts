@@ -7,6 +7,13 @@ export interface PaginatedGoalsResponse {
   offset: number
 }
 
+export interface CursorPageGoalsResponse {
+  items: Goal[]
+  next_cursor: string | null
+  has_more: boolean
+  total: number | null
+}
+
 export interface UserSettings {
   id: string
   email: string

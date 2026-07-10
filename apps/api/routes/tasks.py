@@ -3,7 +3,7 @@
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -15,6 +15,7 @@ from deps import _load_goal_with_ownership
 from models import DailyTask, Goal, Milestone, User
 from rate_limiting import _user_key, rate_limit
 from schemas import (
+    CursorPage,
     RewardDrop,
     TaskCompleteResponse,
     TaskCreate,
@@ -23,7 +24,7 @@ from schemas import (
     TaskUpdate,
 )
 from services.task_service import complete_task_and_award_points
-from utils import user_today
+from utils import decode_cursor, encode_cursor, user_today
 
 router = APIRouter()
 
@@ -53,22 +54,55 @@ async def _load_task_with_ownership(
 
 @router.get(
     "/goals/{goal_id}/tasks",
-    response_model=list[TaskResponse],
+    response_model=CursorPage[TaskResponse],
     summary="List tasks for a goal, optionally filtered by date",
 )
 async def list_tasks(
     goal_id: uuid.UUID,
     assigned_date: date | None = None,
+    cursor: str | None = Query(None),
+    limit: int = Query(20, ge=1, le=100),
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     await _load_goal_with_ownership(goal_id, current_user_id, db)
 
-    query = select(DailyTask).where(DailyTask.goal_id == goal_id)
+    base_query = select(DailyTask).where(DailyTask.goal_id == goal_id)
     if assigned_date:
-        query = query.where(DailyTask.assigned_date == assigned_date)
-    result = await db.execute(query.order_by(DailyTask.assigned_date, DailyTask.position))
-    return result.scalars().all()
+        base_query = base_query.where(DailyTask.assigned_date == assigned_date)
+    base_query = base_query.order_by(DailyTask.assigned_date, DailyTask.position)
+
+    if cursor is not None:
+        # Cursor encodes "assigned_date|position" — keyset: rows after that position
+        try:
+            cursor_val = decode_cursor(cursor)
+            cursor_date_str, cursor_pos_str = cursor_val.split("|", 1)
+            cursor_date = date.fromisoformat(cursor_date_str)
+            cursor_pos = int(cursor_pos_str)
+        except Exception:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid cursor")
+        # Keyset condition: (assigned_date, position) > (cursor_date, cursor_pos)
+        base_query = base_query.where(
+            (DailyTask.assigned_date > cursor_date)
+            | (
+                (DailyTask.assigned_date == cursor_date)
+                & (DailyTask.position > cursor_pos)
+            )
+        )
+        result = await db.execute(base_query.limit(limit))
+    else:
+        # No cursor: return all (backward-compatible) or paginated if limit supplied explicitly
+        result = await db.execute(base_query)
+
+    items = list(result.scalars().all())
+
+    has_more = cursor is not None and len(items) == limit
+    next_cursor: str | None = None
+    if has_more and items:
+        last = items[-1]
+        next_cursor = encode_cursor(f"{last.assigned_date.isoformat()}|{last.position}")
+
+    return CursorPage(items=items, next_cursor=next_cursor, has_more=has_more, total=None)
 
 
 @router.patch(

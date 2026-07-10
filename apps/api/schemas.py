@@ -1,8 +1,10 @@
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from typing import Literal
+from typing import Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
+
+T = TypeVar("T")
 
 
 # ---------------------------------------------------------------------------
@@ -394,6 +396,13 @@ class PaginatedGoalsResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class CursorPage(BaseModel, Generic[T]):
+    items: list[T]
+    next_cursor: str | None   # base64-encoded last item id, None if no more
+    has_more: bool
+    total: int | None = None  # optional, expensive to compute
 
 
 # ---------------------------------------------------------------------------

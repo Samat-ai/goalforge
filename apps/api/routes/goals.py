@@ -16,10 +16,11 @@ from services.goal_service import _generate_goal_async, PLACEHOLDER_MILESTONE_TI
 from services.rescue_service import _execute_rescue_sprint
 from rate_limiting import _user_key, rate_limit
 from schemas import (
+    CursorPage,
     GoalCreate, GoalProgressUpdate, GoalResponse, GoalStatusUpdate,
     PaginatedGoalsResponse,
 )
-from utils import user_today
+from utils import decode_cursor, encode_cursor, user_today
 
 router = APIRouter()
 
@@ -108,11 +109,12 @@ async def create_goal(
 
 @router.get(
     "/users/{user_id}/goals",
-    response_model=PaginatedGoalsResponse,
+    response_model=CursorPage[GoalResponse],
     summary="List all goals for a user",
 )
 async def list_goals(
     user_id: str,
+    cursor: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user_id: str = Depends(get_current_user_id),
@@ -120,19 +122,36 @@ async def list_goals(
 ):
     if user_id != current_user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     total_result = await db.execute(
         select(func.count(Goal.id)).where(Goal.user_id == user_id)
     )
     total = total_result.scalar_one()
-    result = await db.execute(
+
+    base_query = (
         select(Goal)
         .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
         .where(Goal.user_id == user_id)
         .order_by(Goal.created_at.desc())
-        .limit(limit)
-        .offset(offset)
     )
-    items = result.scalars().all()
+
+    if cursor is not None:
+        # Cursor-based keyset pagination: decode cursor to created_at timestamp
+        try:
+            cursor_ts_str = decode_cursor(cursor)
+            cursor_ts = datetime.fromisoformat(cursor_ts_str)
+        except Exception:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid cursor")
+        result = await db.execute(
+            base_query
+            .where(Goal.created_at < cursor_ts)
+            .limit(limit)
+        )
+    else:
+        # Legacy offset-based behaviour (no cursor supplied)
+        result = await db.execute(base_query.limit(limit).offset(offset))
+
+    items = list(result.scalars().all())
 
     # Lazy eval: reset milestones stuck in "generating" for >5 minutes to "failed"
     stale_threshold = datetime.now(timezone.utc) - timedelta(minutes=5)
@@ -153,7 +172,15 @@ async def list_goals(
     if mutated:
         await db.flush()
 
-    return PaginatedGoalsResponse(items=items, total=total, limit=limit, offset=offset)
+    has_more = len(items) == limit
+    next_cursor: str | None = None
+    if has_more and items:
+        last_ts = items[-1].created_at
+        if last_ts.tzinfo is None:
+            last_ts = last_ts.replace(tzinfo=timezone.utc)
+        next_cursor = encode_cursor(last_ts.isoformat())
+
+    return CursorPage(items=items, next_cursor=next_cursor, has_more=has_more, total=total)
 
 
 @router.get(
