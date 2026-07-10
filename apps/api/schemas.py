@@ -358,6 +358,24 @@ class PushSubscriptionResponse(BaseModel):
     created_at: datetime
 
 
+class FeedbackCreate(BaseModel):
+    category: Literal["bug", "idea", "other"]
+    message: str = Field(..., min_length=1, max_length=2000)
+
+    @field_validator("message")
+    @classmethod
+    def _strip_and_require_content(cls, v: str) -> str:
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("message must not be blank")
+        return stripped
+
+
+class FeedbackResponse(BaseModel):
+    id: uuid.UUID
+    status: Literal["received"] = "received"
+
+
 class BadgeResponse(BaseModel):
     key: str
     title: str

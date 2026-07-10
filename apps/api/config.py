@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = True
     jobs_api_key: str = ""  # if empty, 401 is always returned — no dev bypass
     resend_api_key: str = ""  # if empty, emails are logged instead of sent
+    feedback_notify_email: str = ""  # owner inbox for user feedback; if empty, logged only
     dev_email_override: str | None = None  # if set, all emails route here (dev/testing only)
     vapid_private_key: str = ""
     vapid_subject: str = ""

@@ -64,6 +64,9 @@ class User(Base):
     coach_sessions: Mapped[list["CoachSession"]] = relationship(
         "CoachSession", back_populates="user", cascade="all, delete-orphan"
     )
+    feedback_entries: Mapped[list["Feedback"]] = relationship(
+        "Feedback", back_populates="user", cascade="all, delete-orphan"
+    )
     notification_logs: Mapped[list["NotificationLog"]] = relationship(
         "NotificationLog", back_populates="user", cascade="all, delete-orphan"
     )
@@ -382,6 +385,31 @@ class ShopReward(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="shop_rewards")
+
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+    __table_args__ = (
+        CheckConstraint(
+            "category IN ('bug', 'idea', 'other')",
+            name="ck_feedback_category",
+        ),
+        Index("ix_feedback_user_id", "user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    category: Mapped[str] = mapped_column(String(16), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="feedback_entries")
 
 
 class NotificationLog(Base):
