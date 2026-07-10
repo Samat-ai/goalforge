@@ -312,3 +312,25 @@
   .gfl-root .hero-cta .btn-primary, .gfl-root .hero-cta .btn-ghost { width: 100%; }
   .gfl-root .btn-lg { padding: 16px 24px; font-size: 16px; }
 }
+
+/* STATIC PAGES (About, FAQ) */
+.gfl-root.gfl-static .wrap { padding-top: 96px; }
+.gfl-root .static-main { min-height: 60vh; padding-bottom: 72px; }
+.gfl-root .static-main h1 { font-family: var(--font-display); font-size: clamp(28px, 5vw, 42px); line-height: 1.15; margin: 0 0 16px; }
+/* padding: 0 neutralizes the generic `.gfl-root section` 94px band padding */
+.gfl-root .about-section { margin: 0 auto 48px; max-width: 640px; padding: 0; }
+.gfl-root .about-section h2 { font-family: var(--font-display); font-size: 24px; margin: 0 0 12px; }
+.gfl-root .about-section p { color: var(--text-mute); line-height: 1.7; margin: 0 0 14px; }
+.gfl-root .about-solly { display: block; width: 140px; margin: 0 0 16px; }
+
+/* FAQ PAGE */
+.gfl-root .faq-list { max-width: 640px; margin: 0 auto; }
+.gfl-root .static-main > h1 { max-width: 640px; margin: 0 auto 28px; }
+.gfl-root .faq-item { border-bottom: 1px solid var(--border); }
+.gfl-root .faq-item summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 17px; padding: 16px 0; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.gfl-root .faq-item summary::-webkit-details-marker { display: none; }
+.gfl-root .faq-item summary::after { content: '+'; font-family: var(--font-mono); font-size: 18px; color: var(--text-mute); transition: rotate .2s; }
+.gfl-root .faq-item[open] summary::after { rotate: 45deg; }
+.gfl-root .faq-a { color: var(--text-mute); line-height: 1.7; padding: 0 0 18px; }
+.gfl-root .faq-a p { margin: 0; }
+.gfl-root .faq-a a { color: var(--text); text-decoration: underline; }
