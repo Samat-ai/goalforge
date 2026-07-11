@@ -23,3 +23,7 @@ docs/superpowers/
 
 # Design handoff reference (local-only prototype source for the 1:1 redesign)
 design_handoff_goalforge/
+
+# Local-only compose override (republishes db:5432 for local alembic/psql —
+# committing it would re-expose Postgres on the droplet, undoing PR #180)
+docker-compose.override.yml
