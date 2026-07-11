@@ -225,6 +225,7 @@ async def client(engine):
 
     with (
         patch("routes.goals._generate_goal_async", new=_mock_generate_goal_async),
+        patch("routes.goals.classify_user_input", new=AsyncMock(return_value=AIGuardVerdict(verdict="allow", category="on_topic"))),
         patch("routes.milestones.generate_sprint_tasks", new=AsyncMock(return_value=mock_tasks)),
         patch("services.task_service._pre_generate_sprint", new=AsyncMock()),
         patch("routes.tasks.regenerate_single_task", new=AsyncMock(return_value=mock_regen)),
@@ -308,6 +309,7 @@ async def other_client(engine):
 
     with (
         patch("routes.goals._generate_goal_async", new=_mock_generate_goal_async),
+        patch("routes.goals.classify_user_input", new=AsyncMock(return_value=AIGuardVerdict(verdict="allow", category="on_topic"))),
         patch("routes.milestones.generate_sprint_tasks", new=AsyncMock(return_value=mock_tasks)),
         patch("services.task_service._pre_generate_sprint", new=AsyncMock()),
         patch("routes.tasks.regenerate_single_task", new=AsyncMock(return_value=mock_regen)),
