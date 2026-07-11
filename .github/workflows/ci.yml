@@ -59,8 +59,13 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # NOTE: plain `tsc --noEmit` is a no-op here — the root tsconfig is
+      # solution-style (references only) and checks zero files. `-b` is required.
       - name: Type check
-        run: npx tsc --noEmit
+        run: npx tsc -b --noEmit
+
+      - name: Unit tests
+        run: npm run test
 
       - name: Build
         run: npm run build
