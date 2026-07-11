@@ -161,18 +161,32 @@ export interface CoachMessage {
   session_id: string
   role: 'coach' | 'user'
   content: string
+  chips: string[] | null
+  forged_goal_id: string | null
   created_at: string
 }
 
 export interface CoachSession {
   id: string
   user_id: string
-  stage: number
+  title: string | null
   is_completed: boolean
-  forged_goal_id: string | null
   created_at: string
   updated_at: string
   messages: CoachMessage[]
+}
+
+export interface CoachSessionListItem {
+  id: string
+  title: string | null
+  updated_at: string
+}
+
+export interface PaginatedCoachSessions {
+  items: CoachSessionListItem[]
+  total: number
+  limit: number
+  offset: number
 }
 
 export interface CoachSendMessageResponse {
