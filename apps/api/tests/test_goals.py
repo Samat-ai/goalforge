@@ -1,6 +1,9 @@
+from sqlalchemy import select
+
 from main import app
 from auth import get_current_user_id
-from tests.conftest import TEST_USER_ID, OTHER_USER_ID, create_test_goal, wait_for_goal_generated
+from models import User
+from tests.conftest import TEST_USER_ID, TEST_USER_EMAIL, OTHER_USER_ID, create_test_goal, wait_for_goal_generated
 
 
 async def test_create_goal(client):
@@ -23,6 +26,27 @@ async def test_create_goal(client):
     assert full_data["smart_title"] == "Run 5K in under 25 minutes"
     assert len(full_data["milestones"]) == 3
     assert len(full_data["daily_tasks"]) == 7
+
+
+async def test_create_goal_upgrades_placeholder_email(client, db_session):
+    """A user row stored with a placeholder email (JWT had no email claim yet)
+    gets upgraded to the real email when goal creation is their next API call.
+
+    Regression guard: routes/goals.py carried a stale local copy of
+    get_or_create_user that was missing the upgrade branch in deps.py.
+    """
+    user = User(id=TEST_USER_ID, email=f"{TEST_USER_ID}@placeholder.goalforge.app")
+    db_session.add(user)
+    await db_session.commit()
+
+    resp = await client.post(
+        f"/users/{TEST_USER_ID}/goals",
+        json={"raw_input": "I want to run a 5K race in under 25 minutes within 3 months"},
+    )
+    assert resp.status_code == 202
+
+    await db_session.refresh(user)
+    assert user.email == TEST_USER_EMAIL
 
 
 async def test_create_goal_forbidden_for_other_user(client):

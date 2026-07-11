@@ -6,13 +6,12 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from ai_utils import regenerate_single_task
 from auth import get_current_user_id
 from database import get_db
-from deps import _load_goal_with_ownership
-from models import DailyTask, Goal, Milestone, User
+from deps import _load_goal_with_ownership, _load_task_with_ownership
+from models import DailyTask, Milestone, User
 from rate_limiting import _user_key, rate_limit
 from schemas import (
     RewardDrop,
@@ -26,25 +25,6 @@ from services.task_service import complete_task_and_award_points
 from utils import user_today
 
 router = APIRouter()
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-async def _load_task_with_ownership(
-    task_id: uuid.UUID, current_user_id: str, db: AsyncSession,
-) -> tuple[DailyTask, Goal]:
-    result = await db.execute(
-        select(DailyTask)
-        .options(selectinload(DailyTask.milestone))
-        .where(DailyTask.id == task_id)
-    )
-    task = result.scalar_one_or_none()
-    if task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
-    goal = await _load_goal_with_ownership(task.goal_id, current_user_id, db)
-    return task, goal
 
 
 # ---------------------------------------------------------------------------

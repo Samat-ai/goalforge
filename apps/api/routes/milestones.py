@@ -4,19 +4,18 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy import delete as sql_delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from ai_utils import generate_sprint_tasks
 from auth import get_current_user_id
 from services.task_service import compute_adaptive_difficulty_mode, create_sprint_tasks
 from services.goal_service import _generate_goal_async, PLACEHOLDER_MILESTONE_TITLE
 from database import get_db
-from deps import _load_goal_with_ownership
+from deps import _load_goal_with_ownership, load_full_goal
 from exceptions import AIGenerationError
-from models import DailyTask, Goal, Milestone, User
+from models import DailyTask, Milestone, User
 from rate_limiting import _user_key, rate_limit
 from schemas import GoalResponse
 from utils import user_today
@@ -111,12 +110,7 @@ async def complete_milestone(
         await db.flush()
 
     # Return full goal with updated milestones and tasks
-    result = await db.execute(
-        select(Goal)
-        .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
-        .where(Goal.id == goal_id)
-    )
-    return result.scalar_one()
+    return await load_full_goal(goal_id, db)
 
 
 @router.post(
@@ -167,12 +161,7 @@ async def retry_sprint_generation(
             user_timezone=user_obj.timezone if user_obj else "UTC",
             raw_input=goal_obj.raw_input,
         )
-        result = await db.execute(
-            select(Goal)
-            .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
-            .where(Goal.id == goal_id)
-        )
-        return result.scalar_one()
+        return await load_full_goal(goal_id, db)
 
     goal_context = f"{goal_obj.smart_title}: {goal_obj.smart_description}"
     try:
@@ -196,9 +185,4 @@ async def retry_sprint_generation(
     milestone.sprint_status = "active"
     await db.flush()
 
-    result = await db.execute(
-        select(Goal)
-        .options(selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
-        .where(Goal.id == goal_id)
-    )
-    return result.scalar_one()
+    return await load_full_goal(goal_id, db)

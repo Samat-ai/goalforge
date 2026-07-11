@@ -11,7 +11,7 @@ from database import get_db
 from exceptions import AIGenerationError
 from models import CoachMessage, CoachSession, DailyTask, Goal, Milestone, User
 from rate_limiting import _user_key, rate_limit
-from deps import get_or_create_user
+from deps import _ensure_owner, get_or_create_user
 from schemas import (
     CoachMessageCreate,
     CoachSendMessageResponse,
@@ -94,8 +94,7 @@ async def start_coach_session(
     current_user_email: str = Depends(get_current_user_email),
     db: AsyncSession = Depends(get_db),
 ):
-    if user_id != current_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    _ensure_owner(user_id, current_user_id)
 
     await get_or_create_user(user_id, current_user_email, db)
 
@@ -144,8 +143,7 @@ async def get_active_coach_session(
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    if user_id != current_user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    _ensure_owner(user_id, current_user_id)
 
     result = await db.execute(
         select(CoachSession)

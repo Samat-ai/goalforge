@@ -7,8 +7,9 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from models import Goal, Reward, ShopReward, User
+from models import DailyTask, Goal, Reward, ShopReward, User
 
 logger = logging.getLogger(__name__)
 
@@ -50,16 +51,62 @@ async def _load_user_with_ownership(
     return user
 
 
+_FULL_GOAL_OPTIONS = (selectinload(Goal.milestones), selectinload(Goal.daily_tasks))
+
+
 async def _load_goal_with_ownership(
-    goal_id: uuid.UUID, current_user_id: str, db: AsyncSession,
+    goal_id: uuid.UUID,
+    current_user_id: str,
+    db: AsyncSession,
+    *,
+    full: bool = False,
+    for_update: bool = False,
 ) -> Goal:
-    """Load a goal and verify ownership. Raises 404 or 403 on failure."""
-    result = await db.execute(select(Goal).where(Goal.id == goal_id))
+    """Load a goal and verify ownership. Raises 404 or 403 on failure.
+
+    full=True eager-loads milestones + daily_tasks — required whenever the goal
+    will be serialized as GoalResponse (async sessions cannot lazy-load).
+    for_update=True locks the goal row for status-transition mutations.
+    """
+    stmt = select(Goal).where(Goal.id == goal_id)
+    if full:
+        stmt = stmt.options(*_FULL_GOAL_OPTIONS)
+    if for_update:
+        stmt = stmt.with_for_update()
+    result = await db.execute(stmt)
     goal = result.scalar_one_or_none()
     if goal is None:
         raise HTTPException(status_code=404, detail="Goal not found")
     _ensure_owner(goal.user_id, current_user_id)
     return goal
+
+
+async def load_full_goal(goal_id: uuid.UUID, db: AsyncSession) -> Goal:
+    """Load a goal with milestones + daily_tasks for GoalResponse serialization.
+
+    No ownership check — call only after ownership was already verified in the
+    same request (typically to return fresh state after mutations).
+    """
+    result = await db.execute(
+        select(Goal).options(*_FULL_GOAL_OPTIONS).where(Goal.id == goal_id)
+    )
+    return result.scalar_one()
+
+
+async def _load_task_with_ownership(
+    task_id: uuid.UUID, current_user_id: str, db: AsyncSession,
+) -> tuple[DailyTask, Goal]:
+    """Load a task (milestone eager-loaded) and its goal, verifying ownership."""
+    result = await db.execute(
+        select(DailyTask)
+        .options(selectinload(DailyTask.milestone))
+        .where(DailyTask.id == task_id)
+    )
+    task = result.scalar_one_or_none()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    goal = await _load_goal_with_ownership(task.goal_id, current_user_id, db)
+    return task, goal
 
 
 async def _load_reward_with_ownership(

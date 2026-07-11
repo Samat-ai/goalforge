@@ -205,6 +205,13 @@ export function useGoalMutations(userId: string, onJackpot?: (drop: RewardDrop) 
       if (context?.prevProfile) qc.setQueryData(profileKey, context.prevProfile)
       toast.error('Could not update goal status.')
     },
+    onSettled: (_data, _err, { newStatus }) => {
+      // Backend awards +100 only once per goal (achievement_reward_granted);
+      // re-sync so a re-achieve doesn't keep the optimistic +100 it never earned.
+      if (newStatus === 'achieved') {
+        qc.invalidateQueries({ queryKey: profileKey })
+      }
+    },
   })
 
   // ── Add Task (await server response) ──
