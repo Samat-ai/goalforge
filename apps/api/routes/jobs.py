@@ -82,13 +82,7 @@ async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
         active_goals = [g for g in user.goals if g.status == "active"]
         in_rescue = any(goal_is_rescue_mode(g) for g in active_goals)
 
-        # ── Rescue (existing, unchanged) ───────────────────────────────────
-        if in_rescue:
-            await send_rescue_email(user.email, user.display_name)
-            rescue_count += 1
-            continue
-
-        # ── Consent gate ───────────────────────────────────────────────────
+        # ── Consent gate — applies to ALL notifications, rescue included ────
         if not user.reminder_enabled:
             continue
 
@@ -96,6 +90,19 @@ async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
         today_local = user_today(user.timezone)
         yesterday_local = today_local - timedelta(days=1)
         now_local = user_now(user.timezone)
+
+        # ── Rescue (highest priority) ───────────────────────────────────────
+        # Hour-gated + deduped: the cron fires hourly, so without both guards a
+        # stalled user would get a rescue email every hour indefinitely.
+        if in_rescue:
+            if (
+                now_local.hour == user.reminder_hour
+                and not await _already_notified(db, user.id, "rescue", today_local)
+            ):
+                await send_rescue_email(user.email, user.display_name)
+                db.add(NotificationLog(user_id=user.id, type="rescue", sent_date=today_local))
+                rescue_count += 1
+            continue  # rescue-mode users get no other notifications today
 
         # Derive engagement signals from already-loaded task data — no extra queries
         all_tasks = [t for g in active_goals for t in g.daily_tasks]
