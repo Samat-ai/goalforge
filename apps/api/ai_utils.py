@@ -24,7 +24,6 @@ from pydantic import BaseModel, ValidationError
 from config import settings
 from exceptions import AIGenerationError
 from schemas import (
-    AICoachTurnOutput,
     AICoachTurnV2,
     AIGoalOutput,
     AIGuardVerdict,
@@ -241,19 +240,6 @@ Rules:
 - If difficulty_mode is "stretch": increase challenge slightly while remaining realistic for one day.
 """
 
-_COACH_TURN_SYSTEM_PROMPT = """\
-You are GoalForge Coach, an empathetic and practical AI coach.
-
-You are in an intake conversation. Your job is to acknowledge the user's latest
-answer in a grounded way and keep momentum high.
-
-Rules:
-- acknowledgement must reference concrete details from the user's message.
-- Keep acknowledgement to 1-2 concise sentences.
-- No generic hype or cliches.
-- Do not ask a new question; the product asks the next guided question.
-"""
-
 _REGEN_SYSTEM_PROMPT = """\
 You are GoalForge AI regenerating a single daily task.
 
@@ -371,22 +357,6 @@ async def generate_smart_goal(raw_input: str, today: date | None = None) -> AIGo
         user_message=f"Transform this goal into a structured SMART goal plan:\n\n{raw_input}",
         schema=AIGoalOutput,
         label="generate_smart_goal",
-    )
-
-
-async def generate_coach_turn(transcript: str, question_focus: str) -> AICoachTurnOutput:
-    """Generate a personalized coach acknowledgement for the latest user answer."""
-    user_message = (
-        "Conversation transcript so far:\n"
-        f"{transcript}\n\n"
-        f"Upcoming focus area: {question_focus}\n"
-        "Return acknowledgement only."
-    )
-    return await _generate_structured(
-        system_instruction=_COACH_TURN_SYSTEM_PROMPT,
-        user_message=user_message,
-        schema=AICoachTurnOutput,
-        label="generate_coach_turn",
     )
 
 

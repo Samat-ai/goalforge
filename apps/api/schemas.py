@@ -232,9 +232,7 @@ class CoachSessionResponse(BaseModel):
     id: uuid.UUID
     user_id: str
     title: str | None = None
-    stage: int
     is_completed: bool
-    forged_goal_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime
     messages: list[CoachMessageResponse] = []
@@ -481,15 +479,6 @@ class AIWeeklyCoachOutput(BaseModel):
         min_length=20,
         max_length=800,
         description="Practical coaching recommendation for next week",
-    )
-
-
-class AICoachTurnOutput(BaseModel):
-    acknowledgement: str = Field(
-        ...,
-        min_length=10,
-        max_length=320,
-        description="Empathetic acknowledgement grounded in the user's latest answer",
     )
 
 

@@ -72,7 +72,7 @@ async def test_apply_plan_edits_validation_matrix(db_session):
 @pytest.mark.asyncio
 async def test_build_user_context_contains_ids_and_tasks(db_session):
     goal, ms, open_task, _ = await _seed_user_and_goal(db_session)
-    session = CoachSession(id=uuid.uuid4(), user_id=TEST_USER_ID, stage=0, is_completed=False)
+    session = CoachSession(id=uuid.uuid4(), user_id=TEST_USER_ID, is_completed=False)
     db_session.add(session)
     await db_session.flush()
 
@@ -86,7 +86,7 @@ async def test_build_user_context_contains_ids_and_tasks(db_session):
 @pytest.mark.asyncio
 async def test_count_user_messages_today(db_session):
     await _seed_user_and_goal(db_session)
-    session = CoachSession(id=uuid.uuid4(), user_id=TEST_USER_ID, stage=0, is_completed=False)
+    session = CoachSession(id=uuid.uuid4(), user_id=TEST_USER_ID, is_completed=False)
     db_session.add(session)
     await db_session.flush()
     for i in range(3):
