@@ -106,6 +106,23 @@ def _log_task_exception(task: asyncio.Task) -> None:
         logger.error("Background task %r raised an unhandled exception: %s", task.get_name(), exc, exc_info=exc)
 
 
+async def _mark_milestone_failed(db: AsyncSession, milestone_id: uuid.UUID) -> None:
+    """Best-effort: set sprint_status='failed', discarding any dead transaction first."""
+    try:
+        await db.rollback()
+        await db.execute(
+            sql_update(Milestone)
+            .where(Milestone.id == milestone_id)
+            .values(sprint_status="failed")
+        )
+        await db.commit()
+    except Exception as exc:
+        logger.error(
+            "Pre-gen: could not write failed status for milestone %s: %s",
+            milestone_id, exc,
+        )
+
+
 async def _pre_generate_sprint(
     milestone_id: uuid.UUID,
     goal_id: uuid.UUID,
@@ -120,28 +137,36 @@ async def _pre_generate_sprint(
 
     Status transitions: pending -> generating -> ready (or failed on error).
     The milestone advance endpoint handles "failed" by regenerating synchronously.
+
+    Transaction style: plain execute + commit (session autobegin) throughout.
+    Never mix an explicit `session.begin()` with earlier queries on the same
+    session — autobegin already opened a transaction and begin() then raises
+    InvalidRequestError (this exact bug silently disabled pre-gen; see
+    tests/test_pre_generation.py).
     """
     async with AsyncSession(engine) as db:
-        # 0. Resolve start_date using the user's local timezone
-        user_result = await db.execute(select(User).where(User.id == user_id))
-        user_obj = user_result.scalar_one_or_none()
-        start_date = user_today(user_obj.timezone if user_obj else "UTC") + timedelta(days=1)
-
-        # 1. Mark as generating (own commit so the frontend sees it immediately)
+        # 1. Resolve start_date and mark as generating (committed immediately
+        #    so the frontend sees the status without waiting on Gemini).
         try:
-            async with db.begin():
-                await db.execute(
-                    sql_update(Milestone)
-                    .where(Milestone.id == milestone_id)
-                    .values(sprint_status="generating", generation_started_at=datetime.now(timezone.utc))
-                )
+            user_result = await db.execute(select(User).where(User.id == user_id))
+            user_obj = user_result.scalar_one_or_none()
+            start_date = user_today(user_obj.timezone if user_obj else "UTC") + timedelta(days=1)
+
+            await db.execute(
+                sql_update(Milestone)
+                .where(Milestone.id == milestone_id)
+                .values(sprint_status="generating", generation_started_at=datetime.now(timezone.utc))
+            )
+            await db.commit()
         except Exception as exc:
             logger.error("Pre-gen: could not set generating status for %s: %s", milestone_id, exc)
             return
 
-        # 2. Call Gemini with retry (outside any DB transaction)
+        # 2. Call Gemini with retry. Commit after the difficulty reads so no
+        #    DB transaction/connection is held across the network call.
         try:
             difficulty_mode = await compute_adaptive_difficulty_mode(goal_id, user_id, db)
+            await db.commit()
             task_outputs = await generate_sprint_tasks(
                 goal_context,
                 sprint_theme,
@@ -153,50 +178,34 @@ async def _pre_generate_sprint(
                 "Pre-gen: AI failed for milestone %s (goal %s, theme %r, start %s): %s",
                 milestone_id, goal_id, sprint_theme, start_date, exc,
             )
-            async with db.begin():
-                await db.execute(
-                    sql_update(Milestone)
-                    .where(Milestone.id == milestone_id)
-                    .values(sprint_status="failed")
-                )
+            await _mark_milestone_failed(db, milestone_id)
             return
 
         # 3. Persist tasks and mark ready (guard against overwriting 'active')
         try:
-            async with db.begin():
-                ms_row = (await db.execute(
-                    select(Milestone).where(Milestone.id == milestone_id)
-                )).scalar_one_or_none()
-                already_active = ms_row is not None and ms_row.sprint_status == "active"
+            ms_row = (await db.execute(
+                select(Milestone).where(Milestone.id == milestone_id)
+            )).scalar_one_or_none()
+            already_active = ms_row is not None and ms_row.sprint_status == "active"
 
-                await create_sprint_tasks(db, goal_id, milestone_id, task_outputs, start_date)
+            await create_sprint_tasks(db, goal_id, milestone_id, task_outputs, start_date)
 
-                if already_active:
-                    logger.info(
-                        "Pre-gen: milestone %s already advanced to active; "
-                        "tasks written but status left as active",
-                        milestone_id,
-                    )
-                else:
-                    await db.execute(
-                        sql_update(Milestone)
-                        .where(Milestone.id == milestone_id)
-                        .values(sprint_status="ready")
-                    )
+            if already_active:
+                logger.info(
+                    "Pre-gen: milestone %s already advanced to active; "
+                    "tasks written but status left as active",
+                    milestone_id,
+                )
+            else:
+                await db.execute(
+                    sql_update(Milestone)
+                    .where(Milestone.id == milestone_id)
+                    .values(sprint_status="ready")
+                )
+            await db.commit()
         except Exception as exc:
             logger.error("Pre-gen: DB write failed for milestone %s: %s", milestone_id, exc)
-            try:
-                async with db.begin():
-                    await db.execute(
-                        sql_update(Milestone)
-                        .where(Milestone.id == milestone_id)
-                        .values(sprint_status="failed")
-                    )
-            except Exception as inner_exc:
-                logger.error(
-                    "Pre-gen: could not write failed status for milestone %s: %s",
-                    milestone_id, inner_exc,
-                )
+            await _mark_milestone_failed(db, milestone_id)
 
 
 # ---------------------------------------------------------------------------
