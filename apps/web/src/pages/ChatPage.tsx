@@ -5,13 +5,15 @@
 // INTAKE sequence (canned questions/chips per step, fake `setTimeout` typing delays,
 // a hardcoded FORGED plan). None of that scripted behavior is ported — only its
 // *visuals* (message bubbles, typing indicator, suggestion chips, composer, empty
-// state, progress segments, plan card). The actual session state comes from the
-// real backend via useCoachSessionQuery / useStartCoachSessionMutation /
+// state, plan card). The actual session state comes from the real backend via
+// useCoachSessionsQuery / useCoachSessionQuery / useCreateCoachSessionMutation /
 // useSendCoachMessageMutation (see src/hooks/useCoach.ts): the backend drives the
-// question sequence, and after 5 answers it synchronously creates the Goal.
+// conversation and per-turn chip suggestions, and forges a Goal synchronously
+// whenever it decides the brief is ready — signaled per-message via
+// `forged_goal_id`, no fixed question count and no `is_completed` gate.
 // Post-creation navigation (Link to /dashboard) is lifted from the legacy
 // src/pages/Coach.tsx (behavior only, not markup).
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useUser } from '@clerk/react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -19,24 +21,10 @@ import { Icon } from '../components/gf/Ui'
 import { cx } from '../components/gf/util'
 import SollyIdle from '../components/SollyIdle'
 import { CoachPanelSkeleton } from '../components/ui/Skeleton'
-import { useCoachSessionQuery, useSendCoachMessageMutation, useStartCoachSessionMutation } from '../hooks'
+import { useCoachSessionQuery, useCoachSessionsQuery, useCreateCoachSessionMutation, useSendCoachMessageMutation } from '../hooks'
 
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
 const e2eUserId = import.meta.env.VITE_E2E_USER_ID ?? 'user_e2e'
-
-const TOTAL_INTAKE_QUESTIONS = 5
-
-// Starter chips shown only for the very first question (answeredCount === 0) —
-// the prototype swaps these per scripted intake step, but the real flow has no
-// per-step chip data from the backend, so this static set (matching the
-// prototype's first question) acts purely as conversation starters and hides
-// once the user has answered. AI-generated per-turn chips are deferred.
-const SUGGESTION_CHIPS = [
-  'Get fit & run regularly',
-  'Launch a side project',
-  'Read more books',
-  'Learn a language',
-]
 
 const STARTER_PROMPTS = ['I want to get fit', 'Help me finish my side project', 'Build a daily reading habit', 'I keep procrastinating']
 
@@ -144,8 +132,18 @@ export default function ChatPage() {
   const { user } = useUser()
   const userId = user?.id ?? (isE2EMode ? e2eUserId : undefined)
 
-  const { session, isLoading } = useCoachSessionQuery(userId)
-  const { start, isStarting } = useStartCoachSessionMutation(userId ?? '')
+  const { sessions, isLoading: isListLoading } = useCoachSessionsQuery(userId)
+  // undefined = no explicit choice yet (defaults to the most recent session);
+  // null = user clicked "New chat" (explicit empty-state); string = explicit
+  // session id. A plain `string | null` can't tell "unset" apart from "user
+  // chose new chat" since both would be `null` — that collapses the `??`
+  // fallback below and the New Chat button would silently reopen the most
+  // recent thread instead of showing the empty state. Kept as a pure render-time
+  // derivation (no effect) to avoid the set-state-in-effect lint ban.
+  const [activeSessionId, setActiveSessionId] = useState<string | null | undefined>(undefined)
+  const currentSessionId = activeSessionId !== undefined ? activeSessionId : (sessions[0]?.id ?? null)
+  const { session, isLoading: isSessionLoading } = useCoachSessionQuery(userId, currentSessionId)
+  const { create, isCreating } = useCreateCoachSessionMutation(userId ?? '')
   const { send, isSending, result } = useSendCoachMessageMutation(userId ?? '')
 
   const [draft, setDraft] = useState('')
@@ -155,10 +153,9 @@ export default function ChatPage() {
   const taRef = useRef<HTMLTextAreaElement | null>(null)
   const prevLenRef = useRef(0)
 
+  const isLoading = isListLoading || isSessionLoading
   const messages = useMemo(() => session?.messages ?? [], [session?.messages])
-  const answeredCount = messages.filter(m => m.role === 'user').length
   const forgedGoal = result?.forged_goal ?? null
-  const isCompleted = !!session?.is_completed
 
   useEffect(() => { document.title = 'Chat — GoalForge' }, [])
 
@@ -166,7 +163,7 @@ export default function ChatPage() {
     const f = feedRef.current
     if (f) f.scrollTo({ top: f.scrollHeight, behavior: 'smooth' })
   }
-  useEffect(() => { scrollFeed() }, [messages.length, isSending, isCompleted])
+  useEffect(() => { scrollFeed() }, [messages.length, isSending])
 
   // Stream the newest coach reply word-by-word when it arrives.
   useEffect(() => {
@@ -178,25 +175,31 @@ export default function ChatPage() {
   }, [messages.length, messages])
 
   async function handleStart() {
-    if (!userId || isStarting) return
-    try { await start() } catch { toast.error('Could not start coach session. Please try again.') }
+    if (!userId || isCreating) return
+    try {
+      const created = await create()
+      setActiveSessionId(created.id)
+    } catch {
+      toast.error('Could not start a chat. Please try again.')
+    }
   }
 
   async function handleStartWithPrompt(prompt: string) {
-    if (!userId || isStarting || isStartingWithPrompt) return
+    if (!userId || isCreating || isStartingWithPrompt) return
     setIsStartingWithPrompt(true)
     try {
-      const startedSession = await start()
-      await send({ sessionId: startedSession.id, content: prompt })
+      const created = await create()
+      setActiveSessionId(created.id)
+      await send({ sessionId: created.id, content: prompt })
     } catch {
-      toast.error('Could not start coach session. Please try again.')
+      toast.error('Could not start a chat. Please try again.')
     } finally {
       setIsStartingWithPrompt(false)
     }
   }
 
   async function handleSend() {
-    if (!session || !userId || isSending || isStarting || session.is_completed) return
+    if (!session || !userId || isSending || isCreating) return
     const content = draft.trim()
     if (!content) return
     // Clear the composer immediately — the message optimistically appears in
@@ -218,6 +221,12 @@ export default function ChatPage() {
     el.style.height = Math.min(el.scrollHeight, 160) + 'px'
   }
 
+  // Only the latest coach message's chips, and only while the composer is
+  // empty and idle — matches the prototype's "chips vanish once you're typing
+  // or waiting" visual.
+  const lastCoach = [...messages].reverse().find(m => m.role === 'coach')
+  const chips = draft === '' && !isSending ? lastCoach?.chips ?? [] : []
+
   return (
     <div className="gf-page gf-chat">
       {isLoading ? (
@@ -232,18 +241,13 @@ export default function ChatPage() {
                 </div>
                 <div>
                   <div className="gf-co-head-title">Chat</div>
-                  <div className="gf-co-head-sub">
-                    {isCompleted
-                      ? 'Plan forged · ready to go'
-                      : `Intake · question ${Math.min(answeredCount + 1, TOTAL_INTAKE_QUESTIONS)} of ${TOTAL_INTAKE_QUESTIONS}`}
-                  </div>
+                  <div className="gf-co-head-sub">{session?.title ?? 'New conversation'}</div>
                 </div>
               </div>
-              <div className="gf-co-prog" aria-label={`Progress ${answeredCount} of ${TOTAL_INTAKE_QUESTIONS}`}>
-                {Array.from({ length: TOTAL_INTAKE_QUESTIONS }, (_, i) => (
-                  <span key={i} className={cx('gf-co-prog-seg', i < answeredCount && 'is-done', i === answeredCount && !isCompleted && 'is-cur')} />
-                ))}
-              </div>
+              {/* Interim affordance — the session rail/switcher lands in PR 2. */}
+              <button className="gf-btn gf-btn-soft" aria-label="New chat" onClick={() => setActiveSessionId(null)}>
+                <Icon name="plus" size={14} /> New chat
+              </button>
             </div>
           )}
 
@@ -253,8 +257,8 @@ export default function ChatPage() {
                 <div className="gf-co-empty-av"><SollyIdle className="gf-co-solly-lg" /></div>
                 <h2 className="gf-co-empty-title">{"Let's forge your next goal"}</h2>
                 <p className="gf-co-empty-sub">
-                  Answer five quick questions and I'll turn your real constraints and motivation into a
-                  personalized SMART goal — with sprint milestones and your first week of tasks. Not a motivational speech.
+                  Tell me what you're chasing and I'll help you shape it into a plan with milestones and a
+                  first week of tasks. You can also ask about the goals you already have.
                 </p>
                 <div className="gf-co-starters">
                   {STARTER_PROMPTS.map(s => (
@@ -262,14 +266,14 @@ export default function ChatPage() {
                       key={s}
                       className="gf-co-starter"
                       onClick={() => { void handleStartWithPrompt(s) }}
-                      disabled={isStarting || isStartingWithPrompt}
+                      disabled={isCreating || isStartingWithPrompt}
                     >
                       <Icon name="spark" size={14} /> {s}
                     </button>
                   ))}
                 </div>
-                <button className="gf-btn gf-btn-accent gf-co-startbtn" onClick={() => { void handleStart() }} disabled={isStarting || isStartingWithPrompt}>
-                  {isStarting || isStartingWithPrompt ? 'Starting…' : 'Start coaching session'} <Icon name="arrowRight" size={15} />
+                <button className="gf-btn gf-btn-accent gf-co-startbtn" onClick={() => { void handleStart() }} disabled={isCreating || isStartingWithPrompt}>
+                  {isCreating || isStartingWithPrompt ? 'Starting…' : 'Start coaching session'} <Icon name="arrowRight" size={15} />
                 </button>
               </div>
             ) : (
@@ -281,60 +285,74 @@ export default function ChatPage() {
                   }
                   const stream = isLast && m.id === streamId
                   return (
-                    <CoachMsg key={m.id} content={m.content} animate={isLast} stream={stream} onTick={scrollFeed} />
+                    <Fragment key={m.id}>
+                      <CoachMsg content={m.content} animate={isLast} stream={stream} onTick={scrollFeed} />
+                      {m.forged_goal_id && (
+                        forgedGoal && m.forged_goal_id === forgedGoal.id ? (
+                          <div className={cx('gf-co-msg gf-co-assistant', isLast && 'gf-co-in')}>
+                            <div className="gf-co-plan">
+                              <div className="gf-co-plan-glow" />
+                              <div className="gf-co-plan-cap"><Icon name="spark" size={12} /> Plan forged · your SMART goal</div>
+                              <h3 className="gf-co-plan-title">{forgedGoal.smart_title}</h3>
+                              {forgedGoal.smart_description && <p className="gf-co-plan-desc">{forgedGoal.smart_description}</p>}
+                              {forgedGoal.milestones?.length || forgedGoal.daily_tasks?.length ? (
+                                <div className="gf-co-plan-grid">
+                                  {forgedGoal.milestones?.length ? (
+                                    <div>
+                                      <div className="gf-co-plan-h">Sprint milestones</div>
+                                      <ul className="gf-co-plan-list">
+                                        {forgedGoal.milestones.map((ms, msi) => (
+                                          <li key={ms.id}><span className="gf-co-dot">{msi + 1}</span>{ms.title}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ) : null}
+                                  {forgedGoal.daily_tasks?.length ? (
+                                    <div>
+                                      <div className="gf-co-plan-h">Your first tasks</div>
+                                      <ul className="gf-co-plan-list">
+                                        {forgedGoal.daily_tasks.slice(0, 3).map(t => (
+                                          <li key={t.id}><span className="gf-co-tick"><Icon name="check" size={11} stroke={3} /></span>{t.description}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : null}
+                              <div className="gf-co-plan-foot">
+                                <Link to="/dashboard" className="gf-btn gf-btn-accent">Open Dashboard <Icon name="arrowRight" size={14} /></Link>
+                                {/* Prototype's second footer button (gf-coach.jsx PlanCard). Real
+                                    minimal behavior: focus the composer to continue the conversation. */}
+                                <button className="gf-btn gf-btn-soft" onClick={() => taRef.current?.focus()}>Refine plan</button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className={cx('gf-co-msg gf-co-assistant', isLast && 'gf-co-in')}>
+                            <div className="gf-co-plan">
+                              <div className="gf-co-plan-glow" />
+                              <div className="gf-co-plan-cap"><Icon name="spark" size={12} /> Plan forged</div>
+                              <h3 className="gf-co-plan-title">View this goal on your Dashboard</h3>
+                              <div className="gf-co-plan-foot">
+                                <Link to="/dashboard" className="gf-btn gf-btn-accent">Open Dashboard <Icon name="arrowRight" size={14} /></Link>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </Fragment>
                   )
                 })}
                 {isSending && <TypingDots />}
-                {(isCompleted || forgedGoal) && (
-                  <div className="gf-co-msg gf-co-assistant gf-co-in">
-                    <div className="gf-co-plan">
-                      <div className="gf-co-plan-glow" />
-                      <div className="gf-co-plan-cap"><Icon name="spark" size={12} /> Plan forged · your SMART goal</div>
-                      <h3 className="gf-co-plan-title">{forgedGoal?.smart_title ?? 'Your personalized goal has been forged.'}</h3>
-                      {forgedGoal?.smart_description && <p className="gf-co-plan-desc">{forgedGoal.smart_description}</p>}
-                      {forgedGoal && (forgedGoal.milestones?.length || forgedGoal.daily_tasks?.length) ? (
-                        <div className="gf-co-plan-grid">
-                          {forgedGoal.milestones?.length ? (
-                            <div>
-                              <div className="gf-co-plan-h">Sprint milestones</div>
-                              <ul className="gf-co-plan-list">
-                                {forgedGoal.milestones.map((ms, i) => (
-                                  <li key={ms.id}><span className="gf-co-dot">{i + 1}</span>{ms.title}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          ) : null}
-                          {forgedGoal.daily_tasks?.length ? (
-                            <div>
-                              <div className="gf-co-plan-h">Your first tasks</div>
-                              <ul className="gf-co-plan-list">
-                                {forgedGoal.daily_tasks.slice(0, 3).map(t => (
-                                  <li key={t.id}><span className="gf-co-tick"><Icon name="check" size={11} stroke={3} /></span>{t.description}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : null}
-                      <div className="gf-co-plan-foot">
-                        <Link to="/dashboard" className="gf-btn gf-btn-accent">Open Dashboard <Icon name="arrowRight" size={14} /></Link>
-                        {/* Prototype's second footer button (gf-coach.jsx PlanCard). Real
-                            minimal behavior: focus the composer to continue the conversation
-                            (safe no-op when the composer is hidden on completed sessions). */}
-                        <button className="gf-btn gf-btn-soft" onClick={() => taRef.current?.focus()}>Refine plan</button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>
 
-          {session && !isCompleted && (
+          {session && (
             <div className="gf-co-composer">
-              {draft === '' && answeredCount === 0 && (
+              {chips.length > 0 && (
                 <div className="gf-co-chips">
-                  {SUGGESTION_CHIPS.map(chip => (
+                  {chips.map(chip => (
                     <button
                       key={chip}
                       className="gf-co-chip"
@@ -364,7 +382,7 @@ export default function ChatPage() {
                   onMouseDown={e => e.preventDefault()}
                   onClick={() => { void handleSend() }}
                   aria-label="Send"
-                  disabled={!draft.trim() || isSending || isStarting}
+                  disabled={!draft.trim() || isSending || isCreating}
                 >
                   <Icon name="arrowUp" size={18} stroke={2.4} />
                 </button>
