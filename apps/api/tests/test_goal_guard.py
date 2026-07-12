@@ -32,6 +32,7 @@ async def test_support_goal_input_returns_422_with_support_message(client):
         resp = await client.post(f"/users/{TEST_USER_ID}/goals", json=RAW)
     assert resp.status_code == 422
     assert resp.json()["detail"]["message"] == SUPPORT_MESSAGE
+    assert resp.json()["detail"]["code"] == "content_deflected"
 
 
 @pytest.mark.asyncio

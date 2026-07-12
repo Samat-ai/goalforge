@@ -48,7 +48,7 @@ async def _seed_user_and_goal(db, user_id=TEST_USER_ID):
 async def test_apply_plan_edits_validation_matrix(db_session):
     goal, ms, open_task, done_task = await _seed_user_and_goal(db_session)
     # foreign user's goal
-    other_goal, _, other_task, _ = await _seed_user_and_goal(db_session, user_id=OTHER_USER_ID)
+    other_goal, other_ms, other_task, _ = await _seed_user_and_goal(db_session, user_id=OTHER_USER_ID)
 
     edits = [
         AIPlanEdit(target="task_description", target_id=str(open_task.id), new_value="Run 12 minutes"),   # valid
@@ -58,15 +58,39 @@ async def test_apply_plan_edits_validation_matrix(db_session):
         AIPlanEdit(target="goal_title", target_id=str(goal.id), new_value="x" * 201),                     # too long → drop
         AIPlanEdit(target="milestone_theme", target_id=str(ms.id), new_value="Speed over distance"),      # valid
         AIPlanEdit(target="goal_description", target_id=str(uuid.uuid4()), new_value="ghost"),            # unknown → drop
+        AIPlanEdit(target="milestone_theme", target_id=str(other_ms.id), new_value="Stolen theme"),       # foreign → drop
+        AIPlanEdit(target="goal_title", target_id=str(other_goal.id), new_value="Stolen title"),          # foreign → drop
     ]
     applied, dropped = await coach_service.apply_plan_edits(edits, TEST_USER_ID, db_session)
-    assert (applied, dropped) == (2, 5)
+    assert (applied, dropped) == (2, 7)
     await db_session.refresh(open_task)
     await db_session.refresh(ms)
     await db_session.refresh(other_task)
+    await db_session.refresh(other_ms)
+    await db_session.refresh(other_goal)
     assert open_task.description == "Run 12 minutes"
     assert ms.sprint_theme == "Speed over distance"
     assert other_task.description == "Run 10 minutes"  # untouched
+    assert other_ms.sprint_theme == "Build base"  # untouched
+    assert other_goal.smart_title == "Run 5K"  # untouched
+
+
+@pytest.mark.asyncio
+async def test_apply_plan_edits_applies_task_tip_goal_title_goal_description(db_session):
+    goal, ms, open_task, _ = await _seed_user_and_goal(db_session)
+
+    edits = [
+        AIPlanEdit(target="task_tip", target_id=str(open_task.id), new_value="Push the pace a little."),
+        AIPlanEdit(target="goal_title", target_id=str(goal.id), new_value="Run 5K Faster"),
+        AIPlanEdit(target="goal_description", target_id=str(goal.id), new_value="Run a 5K in under 30 minutes."),
+    ]
+    applied, dropped = await coach_service.apply_plan_edits(edits, TEST_USER_ID, db_session)
+    assert (applied, dropped) == (3, 0)
+    await db_session.refresh(open_task)
+    await db_session.refresh(goal)
+    assert open_task.tip == "Push the pace a little."
+    assert goal.smart_title == "Run 5K Faster"
+    assert goal.smart_description == "Run a 5K in under 30 minutes."
 
 
 @pytest.mark.asyncio

@@ -141,29 +141,29 @@ _AI_TIMEOUT = 30.0  # seconds per Gemini call attempt
 _SchemaT = TypeVar("_SchemaT", bound=BaseModel)
 
 
-async def _with_retry(make_coro, label: str):
+async def _with_retry(make_coro, label: str, *, attempts: int = 3, timeout: float = _AI_TIMEOUT):
     """
-    Call make_coro() up to 3 times with exponential backoff.
+    Call make_coro() up to `attempts` times with exponential backoff.
 
     Retries on: APIError, JSONDecodeError, ValidationError, TimeoutError.
     Raises AIGenerationError on final failure.
     """
     last_exc: Exception | None = None
-    for attempt in range(1, 4):  # attempts 1, 2, 3
+    for attempt in range(1, attempts + 1):
         try:
-            return await asyncio.wait_for(make_coro(), timeout=_AI_TIMEOUT)
+            return await asyncio.wait_for(make_coro(), timeout=timeout)
         except (genai_errors.APIError, json.JSONDecodeError, ValidationError, asyncio.TimeoutError) as exc:
             last_exc = exc
-            if attempt < 3:
+            if attempt < attempts:
                 delay = _RETRY_DELAYS[attempt - 1]
                 logger.warning(
-                    "AI %s attempt %d/3 failed (%s: %s). Retrying in %ds…",
-                    label, attempt, type(exc).__name__, exc, delay,
+                    "AI %s attempt %d/%d failed (%s: %s). Retrying in %ds…",
+                    label, attempt, attempts, type(exc).__name__, exc, delay,
                 )
                 await asyncio.sleep(delay)
-    logger.error("AI %s failed after 3 attempts. Last error: %s", label, last_exc)
+    logger.error("AI %s failed after %d attempts. Last error: %s", label, attempts, last_exc)
     raise AIGenerationError(
-        f"AI generation failed after 3 attempts. Last error: {type(last_exc).__name__}: {last_exc}"
+        f"AI generation failed after {attempts} attempts. Last error: {type(last_exc).__name__}: {last_exc}"
     )
 
 
@@ -174,12 +174,14 @@ async def _generate_structured(
     schema: type[_SchemaT],
     label: str,
     model: str = _MODEL,
+    attempts: int = 3,
+    timeout: float = _AI_TIMEOUT,
 ) -> _SchemaT:
     """
     Call Gemini with structured JSON output constrained to `schema`, with retry.
 
-    Returns a validated schema instance. Raises AIGenerationError after 3
-    failed attempts (APIError, JSONDecodeError, ValidationError, or timeout).
+    Returns a validated schema instance. Raises AIGenerationError after
+    `attempts` failed attempts (APIError, JSONDecodeError, ValidationError, or timeout).
     """
 
     async def _call() -> _SchemaT:
@@ -197,7 +199,7 @@ async def _generate_structured(
         logger.debug("Gemini raw response (%s): %s", label, raw_json)
         return schema.model_validate(json.loads(raw_json))
 
-    return await _with_retry(_call, label)
+    return await _with_retry(_call, label, attempts=attempts, timeout=timeout)
 
 
 # ---------------------------------------------------------------------------
@@ -365,6 +367,11 @@ async def classify_user_input(context_message: str, user_message: str) -> AIGuar
 
     Fail-open is the CALLER's job: callers catch AIGenerationError, log, and
     proceed — if Gemini is down the main call fails anyway.
+
+    Runs synchronously in front of POST /goals's 202 and every chat turn
+    (which holds a FOR UPDATE row lock), so it uses a single 8s attempt
+    instead of the usual 3x30s ladder — a guard that can't answer fast
+    should fail open fast, not hold the lock for ~93s.
     """
     payload = (
         "Coach's last message:\n"
@@ -378,6 +385,8 @@ async def classify_user_input(context_message: str, user_message: str) -> AIGuar
         schema=AIGuardVerdict,
         label="classify_user_input",
         model=settings.guard_model,
+        attempts=1,
+        timeout=8.0,
     )
 
 
