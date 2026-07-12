@@ -1043,92 +1043,245 @@ html { scroll-behavior: smooth; }
 .gf-confirm-done-ic { width: 52px; height: 52px; display: grid; place-items: center; margin: 0 auto 16px; border-radius: 50%; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-line); }
 .gf-confirm-done .gf-confirm-body { margin-top: 8px; }
 
-/* ════════════════════ COACH (AI chatbox) ════════════════════ */
-/* renamed from prototype's `.gf-coach` — that name collides with the
-   AI-coach-recommendation card class already used on Analytics (see the
-   `.gf-coach` / `.gf-coach-cap` / `.gf-coach-body` rules above); this rule is
-   purely the Chat page's own width/centering shell. */
-.gf-chat { max-width: 820px; margin: 0 auto; width: 100%; }
-.gf-co-shell { display: flex; flex-direction: column; height: calc(100vh - 62px - 52px); min-height: 520px; }
-.gf-co-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 4px 2px 14px; border-bottom: 1px solid var(--border); }
-.gf-co-head-l { display: flex; align-items: center; gap: 11px; }
-.gf-co-head-title { font-family: var(--font-display); font-weight: 600; font-size: 17px; letter-spacing: -0.015em; }
+/* ════════════════════ COACH (AI chatbox) — chat-v2 port ════════════════════ */
+/* Verbatim transcription of design_handoff_goalforge/chat-v2/gf-coach-v2.css
+   sections 3-14 (§1 TOKENS + §2 BASE skipped — this app's tokens already live
+   in the TOKENS section above; never redefine --accent etc. here). Only
+   sanctioned deviation: the §3 shell height, marked host-adapted below.
+   One rule pulled forward from §2 (BASE) because it styles buttons that only
+   exist in §3-6 below, not shared base scaffolding: the generic `.gf-root
+   :focus-visible` rule above already covers everything else, and
+   `.gf-co-input:focus-visible` is already declared at L258. */
+.gf-co-newchat:focus-visible, .gf-co-send:focus-visible, .gf-co-drawer-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--accent); }
+
+/* ══════════════════ 3. CHAT SHELL (two-pane card) — NEW ══════════════════ */
+.gf-co-wrap { max-width: 1120px; margin: 0 auto; padding: 22px 20px; width: 100%; }
+.gf-co-shell {
+  display: grid;
+  grid-template-columns: 264px 1fr;
+  height: calc(100dvh - 169px); /* host-adapted: package used calc(100dvh - 44px) (demo host). Real chrome above this shell: .gf-header-in 62px + its 1px border-bottom + .gf-main padding 26px top / 80px bottom = 169px total, so the shell exactly fills the viewport below the header with no page-level scrollbar. */
+  min-height: 540px;
+  background: linear-gradient(180deg, var(--card-2), var(--card));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+/* right pane holds header + feed + composer */
+.gf-co-pane { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+/* collapsed rail (desktop) — single-pane; expand via the header toggle */
+.gf-co-shell.is-railcollapsed { grid-template-columns: 1fr; }
+.gf-co-shell.is-railcollapsed > .gf-co-rail { display: none; }
+
+/* ══════════════════ 4. SESSION RAIL — NEW ══════════════════ */
+.gf-co-rail {
+  display: flex; flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+  background: color-mix(in oklab, var(--bg) 40%, transparent);
+}
+.gf-co-rail-head { padding: 8px 10px; }
+/* sidebar collapse toggle row (ChatGPT / Vapi “panel” icon) */
+.gf-co-rail-top { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+.gf-co-railtoggle { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; color: var(--text-mute); transition: color .15s ease, background .15s ease; }
+.gf-co-railtoggle:hover { color: var(--text); background: color-mix(in oklab, var(--text) 6%, transparent); }
+/* Claude-style: filled circular accent badge + accent text on transparent */
+.gf-co-newchat {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  min-height: 44px; padding: 0 10px; border-radius: 11px;
+  font-family: var(--font-body); font-size: 14px; font-weight: 600;
+  color: var(--accent-ink); background: none;
+  transition: background .16s ease;
+}
+.gf-co-newchat:hover { background: color-mix(in oklab, var(--text) 6%, transparent); }
+.gf-co-newchat-ic { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--accent); box-shadow: 0 3px 10px -3px var(--accent); }
+
+/* time-bucket group header (Today / Yesterday / …) — replaces per-row timestamps */
+.gf-co-rail-cap {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-mute);
+  padding: 10px 12px 6px;
+}
+.gf-co-rail-group + .gf-co-rail-group .gf-co-rail-cap { margin-top: 4px; }
+.gf-co-rail-list {
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: 0 8px 14px; display: flex; flex-direction: column; gap: 2px;
+}
+
+/* a session row */
+.gf-co-rail-item {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  width: 100%; min-height: 46px; padding: 8px 8px 8px 12px;
+  border-radius: 11px; text-align: left; color: var(--text-dim);
+  border: 1px solid transparent;
+  transition: background .16s ease, color .16s ease, border-color .16s ease;
+}
+.gf-co-rail-item:hover { background: color-mix(in oklab, var(--text) 5%, transparent); color: var(--text); }
+/* calmer neutral active state (Claude/Grok) — no accent border noise in a long list */
+.gf-co-rail-item.is-active { background: color-mix(in oklab, var(--text) 8%, transparent); border-color: transparent; color: var(--text); }
+.gf-co-rail-item.is-active .gf-co-rail-title { font-weight: 600; }
+.gf-co-rail-main { flex: 1; min-width: 0; }
+.gf-co-rail-title {
+  font-size: 13.5px; font-weight: 500; line-height: 1.35;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gf-co-rail-title.is-fallback { color: var(--text-mute); font-style: italic; }
+
+/* hover-reveal delete trigger */
+.gf-co-rail-del {
+  flex-shrink: 0; width: 30px; height: 30px; display: grid; place-items: center;
+  border-radius: 8px; color: var(--text-mute); opacity: 0;
+  transition: opacity .15s ease, background .15s ease, color .15s ease;
+}
+.gf-co-rail-item:hover .gf-co-rail-del,
+.gf-co-rail-item:focus-within .gf-co-rail-del { opacity: 1; }
+.gf-co-rail-del:hover { background: color-mix(in oklab, var(--rose) 16%, transparent); color: var(--rose); }
+
+/* inline delete-confirm state (replaces row content) */
+.gf-co-rail-item.is-confirm { background: color-mix(in oklab, var(--rose) 10%, transparent); border-color: color-mix(in oklab, var(--rose) 30%, transparent); cursor: default; }
+.gf-co-rail-confirm { display: flex; align-items: center; gap: 8px; width: 100%; }
+.gf-co-rail-confirm-t { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gf-co-rail-cbtn { flex-shrink: 0; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--border-hi); color: var(--text-dim); transition: all .15s ease; }
+.gf-co-rail-cbtn:hover { color: var(--text); background: color-mix(in oklab, var(--text) 6%, transparent); }
+.gf-co-rail-cbtn.is-danger { color: var(--rose); border-color: color-mix(in oklab, var(--rose) 40%, transparent); background: color-mix(in oklab, var(--rose) 12%, transparent); }
+.gf-co-rail-cbtn.is-danger:hover { background: color-mix(in oklab, var(--rose) 22%, transparent); }
+
+/* rail empty state (first-ever visit) */
+.gf-co-rail-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 34px 22px; color: var(--text-mute); }
+.gf-co-rail-empty-ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--text-mute); background: color-mix(in oklab, var(--text) 6%, transparent); border: 1px solid var(--border); }
+.gf-co-rail-empty-t { font-size: 13px; font-weight: 600; color: var(--text-dim); }
+.gf-co-rail-empty-s { font-family: var(--font-mono); font-size: 10.5px; line-height: 1.5; }
+
+/* ══════════════════ 5. MOBILE DRAWER — NEW ══════════════════ */
+.gf-co-scrim {
+  position: fixed; inset: 0; z-index: 60;
+  background: color-mix(in oklab, var(--bg) 45%, rgba(0,0,0,0.55));
+  backdrop-filter: blur(3px);
+  animation: gfCoFade .2s ease;
+}
+@keyframes gfCoFade { from { opacity: 0; } to { opacity: 1; } }
+.gf-co-drawer {
+  position: fixed; top: 0; left: 0; bottom: 0; z-index: 61;
+  width: min(300px, 84vw); display: flex; flex-direction: column;
+  background: linear-gradient(180deg, var(--card-2), var(--card));
+  border-right: 1px solid var(--border-hi); box-shadow: var(--shadow-hi);
+  animation: gfCoSlide .28s cubic-bezier(.2,.7,.2,1);
+}
+@keyframes gfCoSlide { from { transform: translateX(-100%); } to { transform: none; } }
+.gf-co-drawer .gf-co-rail { border-right: none; background: none; flex: 1; }
+.gf-co-drawer-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 12px 4px 16px; }
+.gf-co-drawer-title { font-family: var(--font-display); font-weight: 600; font-size: 15px; }
+.gf-co-drawer-x { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; color: var(--text-mute); transition: color .15s, background .15s; }
+.gf-co-drawer-x:hover { color: var(--text); background: color-mix(in oklab, var(--text) 6%, transparent); }
+
+/* drawer trigger in header (hidden on desktop) */
+.gf-co-drawer-btn {
+  display: none; flex-shrink: 0; width: 40px; height: 40px;
+  place-items: center; border-radius: 11px; color: var(--text-dim);
+  border: 1px solid var(--border); background: var(--card);
+  transition: color .18s, background .18s;
+}
+.gf-co-drawer-btn:hover { color: var(--text); background: var(--card-hi); }
+/* desktop-only expand button, shown in the header when the rail is collapsed */
+.gf-co-collapse-btn {
+  display: grid; flex-shrink: 0; width: 40px; height: 40px; place-items: center;
+  border-radius: 11px; color: var(--text-dim); border: 1px solid var(--border);
+  background: var(--card); transition: color .18s, background .18s;
+}
+.gf-co-collapse-btn:hover { color: var(--text); background: var(--card-hi); }
+@media (max-width: 900px) { .gf-co-collapse-btn { display: none; } }
+
+/* ══════════════════ 6. CHAT HEADER (reworked) — NEW ══════════════════ */
+.gf-co-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.gf-co-head-l { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.gf-co-head-txt { min-width: 0; }
+.gf-co-head-title {
+  font-family: var(--font-display); font-weight: 600; font-size: 16px;
+  letter-spacing: -0.015em; line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 52vw;
+}
+.gf-co-head-title.is-fallback { color: var(--text-dim); font-style: italic; }
 .gf-co-head-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); margin-top: 1px; }
-.gf-co-prog { display: flex; gap: 5px; }
-.gf-co-prog-seg { width: 26px; height: 5px; border-radius: 99px; background: var(--ring-track); transition: background .4s ease; }
-.gf-co-prog-seg.is-done { background: var(--accent); }
-.gf-co-prog-seg.is-cur { background: color-mix(in oklab, var(--accent) 45%, transparent); animation: coPulse 1.6s ease-in-out infinite; }
-@keyframes coPulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
 
-.gf-co-feed { flex: 1; overflow-y: auto; padding: 22px 2px; scroll-behavior: smooth; }
-.gf-co-thread { display: flex; flex-direction: column; gap: 26px; }
+/* CANON: Solly avatar 34px */
+.gf-co-av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; background: transparent; overflow: visible; }
+.gf-co-solly { width: 32px; height: 32px; object-fit: contain; animation: gfCoFloat 4.5s ease-in-out infinite; }
+@keyframes gfCoFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 
+/* ══════════════════ 7. FEED / THREAD — CANON ══════════════════ */
+.gf-co-feed { flex: 1; overflow-y: auto; padding: 22px clamp(16px, 3vw, 34px) 156px; scroll-behavior: smooth; min-height: 0; }
+.gf-co-thread { display: flex; flex-direction: column; gap: 26px; max-width: 720px; margin: 0 auto; }
+
+/* ══════════════════ 8. MESSAGE BUBBLES — CANON ══════════════════ */
 .gf-co-msg { display: flex; max-width: 100%; }
 .gf-co-assistant { flex-direction: column; align-items: stretch; gap: 4px; }
 .gf-co-user { justify-content: flex-end; }
-.gf-co-av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; background: var(--card-hi); border: 1px solid var(--border); overflow: hidden; }
-.gf-co-av-done { background: color-mix(in oklab, var(--ring-2) 16%, transparent); border-color: color-mix(in oklab, var(--ring-2) 45%, transparent); color: var(--ring-2); }
-/* Solly mascot in chat (replaces geometric ball) */
-.gf-co-av:has(.gf-co-solly) { background: transparent; border: none; overflow: visible; }
-.gf-co-solly { width: 32px; height: 32px; object-fit: contain; animation: floaty 4.5s ease-in-out infinite; }
-.gf-co-solly-lg { position: relative; width: min(clamp(130px, 22vw, 185px), 22vh); aspect-ratio: 1; }
-.gf-co-solly-lg .solly-rest, .gf-co-solly-lg .solly-clip { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 16px 38px color-mix(in oklab, var(--accent) 32%, transparent)); transition: opacity .4s ease; }
-.gf-co-solly-lg .solly-rest { animation: sollyFloat 5s ease-in-out infinite; will-change: transform; backface-visibility: hidden; }
-.gf-co-solly-lg .solly-clip { opacity: 0; }
-.gf-root[data-motion="subtle"] .gf-co-solly, .gf-root[data-motion="subtle"] .gf-co-solly-lg .solly-rest { animation: none; }
-/* Waving hand on the dashboard greeting (replaces geometric ball) */
-.gf-greet-wave { width: 34px; height: 34px; object-fit: contain; transform-origin: 72% 78%; animation: gfWave 2.8s ease-in-out 0.4s 1 both; }
-@keyframes gfWave { 0%, 62%, 100% { transform: rotate(0); } 70% { transform: rotate(15deg); } 78% { transform: rotate(-8deg); } 86% { transform: rotate(11deg); } 94% { transform: rotate(-5deg); } }
-.gf-root[data-motion="subtle"] .gf-greet-wave { animation: none; }
 /* assistant: plain text straight on the background (Claude/ChatGPT style) */
 .gf-co-text { color: var(--text); font-size: 15px; line-height: 1.75; max-width: 100%; }
 .gf-co-text em { color: var(--text-dim); font-style: italic; }
-/* streaming reveal: each word softly fades in, no caret */
-.gf-co-word { animation: coWordIn .34s ease both; }
-@keyframes coWordIn { from { opacity: 0; } to { opacity: 1; } }
 /* user: subtle rounded-rectangle bubble */
-.gf-co-userbub { background: var(--card-hi); color: var(--text); padding: 12px 16px; border-radius: 16px; max-width: min(78%, 540px); border: 1px solid var(--border); font-size: 14.5px; line-height: 1.6; }
-[data-theme="light"] .gf-co-userbub { background: var(--card-2); }
+.gf-co-userbub { background: var(--card-hi); color: var(--text); padding: 12px 16px; border-radius: 16px; max-width: min(88%, 620px); border: 1px solid var(--border); font-size: 14.5px; line-height: 1.6; }
+.gf-root[data-theme="light"] .gf-co-userbub { background: var(--card-2); }
 .gf-co-actions { display: flex; gap: 4px; margin-top: 2px; opacity: 0; transition: opacity .2s ease; }
 .gf-co-msg:hover .gf-co-actions { opacity: 1; }
 .gf-co-act { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; color: var(--text-mute); transition: background .15s ease, color .15s ease; }
 .gf-co-act:hover { background: color-mix(in oklab, var(--text) 7%, transparent); color: var(--text-dim); }
+.gf-co-in { animation: gfCoIn .4s cubic-bezier(.16,1,.3,1) both; }
+@keyframes gfCoIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* streaming reveal: each word softly fades in sequentially (phasing, no caret) */
+.gf-co-word { animation: gfCoWordIn .42s ease both; }
+@keyframes gfCoWordIn { from { opacity: 0; } to { opacity: 1; } }
+/* error + retry row (calm, per Obvious reference) */
+.gf-co-error { display: flex; align-items: center; gap: 11px; padding: 11px 13px; border-radius: 12px; border: 1px solid var(--border-hi); background: color-mix(in oklab, var(--text) 3%, transparent); animation: gfCoIn .4s cubic-bezier(.16,1,.3,1) both; }
+.gf-co-error-ic { color: var(--rose); flex-shrink: 0; }
+.gf-co-error-t { flex: 1; font-size: 13px; color: var(--text-dim); }
+.gf-co-retry { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; height: 30px; padding: 0 12px; border-radius: 8px; font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; color: var(--text); background: var(--card); border: 1px solid var(--border-hi); transition: background .15s ease, border-color .15s ease, transform .12s ease; }
+.gf-co-retry:hover { background: var(--card-hi); border-color: var(--text-mute); transform: translateY(-1px); }
 
-.gf-co-in { animation: coIn .4s cubic-bezier(.16,1,.3,1) both; }
-@keyframes coIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-
-/* thinking: minimal, small, rotates between subtle patterns */
+/* ══════════════════ 9. TYPING INDICATOR — CANON ══════════════════ */
 .gf-co-think { min-height: 20px; align-items: flex-start; }
-/* 1 — shimmer text (Claude-style light sweep) */
-.gf-think-shimmer { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: 0.05em; background: linear-gradient(90deg, var(--text-mute) 30%, var(--text) 50%, var(--text-mute) 70%); background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; animation: thinkShimmer 1.6s linear infinite; }
-@keyframes thinkShimmer { from { background-position: 130% 0; } to { background-position: -130% 0; } }
-/* 2 — single breathing dot + label */
+.gf-think-shimmer { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: 0.05em; background: linear-gradient(90deg, var(--text-mute) 30%, var(--text) 50%, var(--text-mute) 70%); background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; animation: gfThinkShimmer 1.6s linear infinite; }
+@keyframes gfThinkShimmer { from { background-position: 130% 0; } to { background-position: -130% 0; } }
 .gf-think-pulse { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12.5px; letter-spacing: 0.05em; color: var(--text-mute); }
-.gf-think-pulse i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: thinkPulse 1.2s ease-in-out infinite; }
-@keyframes thinkPulse { 0%, 100% { transform: scale(0.55); opacity: 0.4; } 50% { transform: scale(1); opacity: 1; } }
-/* 3 — tiny wave of dots */
+.gf-think-pulse i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: gfThinkPulse 1.2s ease-in-out infinite; }
+@keyframes gfThinkPulse { 0%, 100% { transform: scale(0.55); opacity: 0.4; } 50% { transform: scale(1); opacity: 1; } }
 .gf-think-wave { display: inline-flex; align-items: center; gap: 4px; }
-.gf-think-wave i { width: 4px; height: 4px; border-radius: 50%; background: var(--text-mute); animation: thinkWave 1.25s ease-in-out infinite; }
+.gf-think-wave i { width: 4px; height: 4px; border-radius: 50%; background: var(--text-mute); animation: gfThinkWave 1.25s ease-in-out infinite; }
 .gf-think-wave i:nth-child(2) { animation-delay: .16s; }
 .gf-think-wave i:nth-child(3) { animation-delay: .32s; }
-@keyframes thinkWave { 0%, 100% { transform: translateY(0); opacity: 0.3; } 40% { transform: translateY(-3px); opacity: 0.95; } }
+@keyframes gfThinkWave { 0%, 100% { transform: translateY(0); opacity: 0.3; } 40% { transform: translateY(-3px); opacity: 0.95; } }
 
-/* empty state */
-.gf-co-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 10px 18px; max-width: 560px; margin: 0 auto; height: 100%; justify-content: center; }
-.gf-co-empty-av { margin-bottom: 8px; }
-.gf-co-empty-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(26px, 3.4vw, 33px); letter-spacing: -0.025em; margin-bottom: 10px; }
-.gf-root[data-font="editorial"] .gf-co-empty-title { font-weight: 400; }
-.gf-co-empty-sub { font-size: 16px; line-height: 1.6; color: var(--text-dim); margin-bottom: 20px; max-width: 480px; }
-.gf-co-starters { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; width: 100%; margin-bottom: 14px; }
-.gf-co-starter { display: flex; align-items: center; gap: 9px; text-align: left; padding: 15px 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); font-size: 15px; transition: all .18s ease; }
-.gf-co-starter:hover { border-color: var(--accent-line); color: var(--text); transform: translateY(-1px); background: var(--card-hi); }
-.gf-co-starter svg { color: var(--accent); flex-shrink: 0; }
-.gf-co-startbtn { width: 100%; white-space: nowrap; font-size: 15.5px; padding-top: 14px; padding-bottom: 14px; }
+/* ══════════════════ 10. NEW-CHAT EMPTY STATE ══════════════════ */
+/* Reworked to the leading-app pattern (Claude / Grok / Linear / Lovable):
+   greeting + the REAL composer, centered vertically, with starter pills below.
+   No separate bottom composer in this state; sending creates the session. */
+.gf-co-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 24px 18px; max-width: 680px; margin: 0 auto; height: 100%; justify-content: center; }
+.gf-co-empty-av { margin-top: 0; margin-bottom: -4px; }
+.gf-co-empty .gf-co-solly-lg { width: clamp(120px, 18vw, 168px); }
+.gf-co-empty-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(26px, 3.4vw, 34px); letter-spacing: -0.025em; margin-bottom: 22px; }
+.gf-co-empty-composer { width: 100%; }
+.gf-co-starters { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; margin-top: 18px; }
+.gf-co-starter { display: inline-flex; align-items: center; gap: 8px; padding: 10px 15px; border-radius: 99px; border: 1px solid var(--border-hi); background: var(--card); color: var(--text-dim); font-size: 13.5px; font-weight: 500; white-space: nowrap; transition: all .16s ease; }
+.gf-co-starter:hover { color: var(--text); border-color: var(--accent-line); transform: translateY(-1px); background: var(--card-hi); }
+.gf-co-starter svg { flex-shrink: 0; }
+/* large idle Solly */
+.gf-co-solly-lg { position: relative; width: min(clamp(130px, 22vw, 185px), 22vh); aspect-ratio: 1; }
+.gf-co-solly-lg .solly-rest, .gf-co-solly-lg .solly-clip { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 16px 38px color-mix(in oklab, var(--accent) 32%, transparent)); transition: opacity .4s ease; }
+.gf-co-solly-lg .solly-rest { animation: gfSollyFloat 5s ease-in-out infinite; will-change: transform; backface-visibility: hidden; }
+.gf-co-solly-lg .solly-clip { opacity: 0; }
+@keyframes gfSollyFloat { 0%,100% { transform: translate3d(0,0,0); } 50% { transform: translate3d(0,-7px,0); } }
 
-/* composer */
-.gf-co-composer { padding-top: 12px; }
+/* ══════════════════ 11. COMPOSER + CHIPS — CANON ══════════════════ */
+/* composer floats over the feed so messages scroll behind it (fade mask, not a solid block) */
+.gf-co-composer { position: absolute; left: 0; right: 0; bottom: 0; padding: 28px clamp(16px, 3vw, 34px) 16px; background: linear-gradient(to top, var(--card) 50%, color-mix(in oklab, var(--card) 55%, transparent) 76%, transparent); pointer-events: none; }
+.gf-co-composer-in { max-width: 720px; margin: 0 auto; pointer-events: auto; }
+.gf-co-composer.is-hero { position: static; padding: 0; background: none; }
 .gf-co-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 11px; }
-.gf-co-chip { padding: 8px 13px; border-radius: 99px; border: 1px solid var(--accent-line); background: var(--accent-soft); color: var(--accent-ink); font-size: 12.5px; font-weight: 500; transition: all .16s ease; animation: coIn .3s cubic-bezier(.16,1,.3,1) both; }
+.gf-co-chip { padding: 8px 13px; border-radius: 99px; border: 1px solid var(--accent-line); background: var(--accent-soft); color: var(--accent-ink); font-size: 12.5px; font-weight: 500; transition: all .16s ease; animation: gfCoIn .3s cubic-bezier(.16,1,.3,1) both; }
 .gf-co-chip:hover { transform: translateY(-1px); background: color-mix(in oklab, var(--accent) 22%, transparent); }
 .gf-co-inputbar { display: flex; align-items: flex-end; gap: 9px; padding: 9px 9px 9px 16px; border-radius: 22px; border: 1px solid var(--border-hi); background: var(--card); box-shadow: var(--shadow); transition: border-color .2s ease, box-shadow .2s ease; }
 .gf-co-inputbar:focus-within { border-color: var(--accent-line); }
@@ -1142,20 +1295,115 @@ html { scroll-behavior: smooth; }
 .gf-co-hint { text-align: center; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-mute); margin-top: 9px; }
 .gf-co-hint kbd { font-family: var(--font-mono); font-size: 10px; padding: 1px 5px; border-radius: 5px; border: 1px solid var(--border-hi); background: var(--card-hi); color: var(--text-dim); }
 
-/* plan card */
-.gf-co-plan { position: relative; overflow: hidden; border-radius: 16px; border: 1px solid color-mix(in oklab, var(--ring-2) 32%, transparent); background: linear-gradient(180deg, color-mix(in oklab, var(--ring-2) 8%, var(--card)), var(--card)); padding: 18px; margin-top: 2px; }
+/* ══════════════════ 12. PLAN CARD — REFINED (reference pass) ══════════════════ */
+/* Document/"artifact"-style card (à la Obvious's report card / Notion): clean raised
+   surface, a forged-badge header band, a milestone timeline, and a footer action bar.
+   No saturated green wash or glow blob — color is restrained to the forged badge,
+   the accent milestone numbers, and the green task ticks. */
+.gf-co-plan { position: relative; overflow: hidden; border-radius: 18px; border: 1px solid var(--border-hi); background: var(--card-hi); box-shadow: var(--shadow); margin-top: 4px; }
+.gf-root[data-theme="light"] .gf-co-plan { background: var(--card-2); }
+
+/* header band */
+.gf-co-plan-top { display: flex; align-items: center; gap: 11px; padding: 13px 18px; border-bottom: 1px solid var(--border); }
+.gf-co-plan-badge { flex-shrink: 0; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: var(--ring-2); background: color-mix(in oklab, var(--ring-2) 14%, transparent); border: 1px solid color-mix(in oklab, var(--ring-2) 30%, transparent); }
+.gf-co-plan-eyebrow { font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ring-2); white-space: nowrap; }
+
+/* body */
+.gf-co-plan-body { padding: 15px 18px 18px; }
+.gf-co-plan-title { font-family: var(--font-display); font-weight: 600; font-size: 20px; letter-spacing: -0.02em; line-height: 1.25; margin-bottom: 8px; }
+.gf-co-plan-desc { font-size: 13.5px; line-height: 1.65; color: var(--text-dim); }
+.gf-co-plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px; }
+.gf-co-plan-h { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-mute); margin-bottom: 15px; }
+.gf-co-plan-h b { display: grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px; background: color-mix(in oklab, var(--text) 8%, transparent); color: var(--text-dim); font-size: 9.5px; font-weight: 600; }
+
+/* milestones — connected vertical timeline */
+.gf-co-plan-timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 15px; }
+.gf-co-plan-timeline li { position: relative; display: flex; gap: 11px; align-items: flex-start; font-size: 12.5px; line-height: 1.45; color: var(--text-dim); }
+.gf-co-plan-timeline li:not(:last-child)::before { content: ''; position: absolute; left: 9px; top: 21px; bottom: -15px; width: 1.5px; background: var(--border-hi); }
+.gf-co-plan-num { position: relative; z-index: 1; flex-shrink: 0; width: 19px; height: 19px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; color: var(--accent-ink); background: var(--accent-soft); border: 1px solid var(--accent-line); }
+
+/* first tasks — check ticks */
+.gf-co-plan-tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 13px; }
+.gf-co-plan-tasks li { display: flex; gap: 11px; align-items: flex-start; font-size: 12.5px; line-height: 1.45; color: var(--text-dim); }
+.gf-co-plan-tick { flex-shrink: 0; width: 19px; height: 19px; border-radius: 6px; display: grid; place-items: center; color: var(--ring-2); background: color-mix(in oklab, var(--ring-2) 14%, transparent); border: 1px solid color-mix(in oklab, var(--ring-2) 28%, transparent); }
+
+/* footer action bar — right-aligned: small icon-only enter primary + small ghost secondary */
+.gf-co-plan-foot { display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--border); background: color-mix(in oklab, var(--bg) 26%, transparent); }
+.gf-co-plan-foot .gf-btn { height: 34px; padding: 0 13px; border-radius: 9px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+/* primary: accent button with the enter glyph in a translucent keycap chip */
+.gf-co-plan-foot .gf-btn-accent { width: 38px; height: 34px; padding: 0; box-shadow: inset 0 1px 0 rgba(255,255,255,0.22); }
+.gf-co-plan-foot .gf-btn-accent:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.28); }
+.gf-co-plan-kbd { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: rgba(255,255,255,0.20); color: #fff; }
+/* secondary: small outlined */
+.gf-co-plan-foot .gf-btn-soft { background: var(--card); border: 1px solid var(--border-hi); color: var(--text); }
+.gf-co-plan-foot .gf-btn-soft:hover { background: var(--card-hi); border-color: var(--text-mute); transform: none; }
+
+/* ══════════════════ 13. RESTING-SOLLY MOTIF (daily-cap) — NEW, calm ══════════════════ */
+/* Deliberately NOT alarm-styled: it is an ordinary coach bubble with a small
+   resting Solly + a "zzz" beside the text. No red, no border, no card. */
+.gf-co-rest { display: flex; align-items: flex-start; gap: 12px; }
+.gf-co-rest-av { flex-shrink: 0; width: 44px; height: 44px; position: relative; }
+.gf-co-rest-av img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 6px 14px color-mix(in oklab, var(--gold) 26%, transparent)); animation: gfCoRestBreathe 3.6s ease-in-out infinite; }
+@keyframes gfCoRestBreathe { 0%,100% { transform: scale(1) translateY(0); } 50% { transform: scale(1.03) translateY(-2px); } }
+.gf-co-rest-z { position: absolute; top: -4px; right: -6px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--gold); animation: gfCoZ 3.6s ease-in-out infinite; }
+@keyframes gfCoZ { 0%,100% { opacity: .3; transform: translateY(2px); } 50% { opacity: 1; transform: translateY(-2px); } }
+
+/* ══════════════════ 14. RESPONSIVE + TOUCH + REDUCED MOTION ══════════════════ */
+@media (max-width: 900px) {
+  .gf-co-wrap { padding: 0; }
+  .gf-co-shell { grid-template-columns: 1fr; height: 100dvh; min-height: 0; border-radius: 0; border-left: none; border-right: none; }
+  .gf-co-shell > .gf-co-rail { display: none; }   /* hide ONLY the desktop rail — the drawer keeps its own */
+  .gf-co-drawer-btn { display: grid; }          /* header gets the drawer trigger */
+  .gf-co-head { padding: 12px 16px; padding-top: max(12px, env(safe-area-inset-top)); }
+  .gf-co-head-title { max-width: 60vw; }
+  /* floating composer clears the home indicator; feed clears the composer */
+  .gf-co-composer { padding: 26px 16px calc(14px + env(safe-area-inset-bottom)); }
+  .gf-co-feed { padding: 18px 16px 150px; }
+  .gf-co-empty-av { margin-top: 8px; }
+  /* drawer honours the notch/home-indicator too */
+  .gf-co-drawer-top { padding-top: max(14px, env(safe-area-inset-top)); }
+  .gf-co-rail-list { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+}
+@media (min-width: 901px) {
+  .gf-co-drawer, .gf-co-scrim { display: none; }  /* drawer is mobile-only */
+}
+@media (max-width: 560px) {
+  .gf-co-plan-grid { grid-template-columns: 1fr; gap: 14px; }
+  .gf-co-userbub { max-width: 86%; }             /* bubbles use more of the narrow row */
+  .gf-co-empty-title { margin-bottom: 18px; }
+  .gf-co-starter { font-size: 13px; padding: 9px 13px; }
+}
+
+/* Touch: guarantee >=44px hit areas on touch devices (per-component) */
+@media (pointer: coarse) {
+  .gf-co-rail-del { opacity: 1; width: 40px; height: 40px; }
+  .gf-co-rail-cbtn { width: 40px; height: 40px; }
+  .gf-co-act { width: 40px; height: 40px; }
+  .gf-co-drawer-x { width: 44px; height: 44px; }
+  .gf-co-send { width: 44px; height: 44px; }
+  .gf-co-rail-item { min-height: 52px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gf-root *, .gf-root *::before, .gf-root *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
+
+/* ──────── kept from v1 (PR #169 port; not redeclared by the chat-v2 package
+   because it reworked/dropped these — but ChatPage.tsx's markup still uses
+   them until Task 4 rewires it). Delete this sub-block once Task 4 lands. ──────── */
+/* renamed from prototype's `.gf-coach` — that name collides with the
+   AI-coach-recommendation card class already used on Analytics (see the
+   `.gf-coach` / `.gf-coach-cap` / `.gf-coach-body` rules above); this rule is
+   purely the Chat page's own width/centering shell. */
+.gf-chat { max-width: 820px; margin: 0 auto; width: 100%; }
+.gf-co-startbtn { width: 100%; white-space: nowrap; font-size: 15.5px; padding-top: 14px; padding-bottom: 14px; }
+.gf-co-empty-sub { font-size: 16px; line-height: 1.6; color: var(--text-dim); margin-bottom: 20px; max-width: 480px; }
 .gf-co-plan-glow { position: absolute; top: -50px; right: -30px; width: 180px; height: 140px; border-radius: 50%; background: radial-gradient(circle, color-mix(in oklab, var(--ring-2) 22%, transparent), transparent 70%); pointer-events: none; }
 .gf-co-plan-cap { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ring-2); margin-bottom: 8px; }
-.gf-co-plan-title { font-family: var(--font-display); font-weight: 600; font-size: 21px; letter-spacing: -0.02em; margin-bottom: 8px; }
-.gf-root[data-font="editorial"] .gf-co-plan-title { font-weight: 400; font-size: 25px; }
-.gf-co-plan-desc { font-size: 13.5px; line-height: 1.65; color: var(--text-dim); margin-bottom: 18px; }
-.gf-co-plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
-.gf-co-plan-h { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-mute); margin-bottom: 10px; }
 .gf-co-plan-list { list-style: none; display: flex; flex-direction: column; gap: 9px; }
 .gf-co-plan-list li { display: flex; align-items: flex-start; gap: 9px; font-size: 12.5px; line-height: 1.4; color: var(--text-dim); }
 .gf-co-dot { flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-size: 9.5px; color: var(--accent-ink); background: var(--accent-soft); border: 1px solid var(--accent-line); }
 .gf-co-tick { flex-shrink: 0; width: 18px; height: 18px; border-radius: 6px; display: grid; place-items: center; color: var(--ring-2); background: color-mix(in oklab, var(--ring-2) 15%, transparent); }
-.gf-co-plan-foot { display: flex; gap: 9px; flex-wrap: wrap; }
 
 /* ════════════════════ MOBILE NAV (hamburger) ════════════════════ */
 .gf-burger { display: none; width: 42px; height: 42px; border-radius: 11px; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; align-items: center; justify-content: center; flex-direction: column; gap: 5px; transition: background .18s, color .18s; }
