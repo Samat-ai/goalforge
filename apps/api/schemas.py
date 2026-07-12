@@ -249,6 +249,7 @@ class CoachSessionListItem(BaseModel):
     id: uuid.UUID
     title: str | None
     updated_at: datetime
+    preview: str | None = None
 
 
 class PaginatedCoachSessionsResponse(BaseModel):

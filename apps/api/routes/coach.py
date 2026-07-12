@@ -27,6 +27,7 @@ from rate_limiting import _user_key, rate_limit
 from schemas import (
     CoachMessageCreate,
     CoachSendMessageResponse,
+    CoachSessionListItem,
     CoachSessionResponse,
     PaginatedCoachSessionsResponse,
 )
@@ -114,7 +115,27 @@ async def list_coach_sessions(
             .limit(limit).offset(offset)
         )
     ).scalars().all()
-    return PaginatedCoachSessionsResponse(items=items, total=total, limit=limit, offset=offset)
+
+    # preview = first user message per session, batched (rail title fallback)
+    session_ids = [s.id for s in items]
+    previews: dict[uuid.UUID, str] = {}
+    if session_ids:
+        rows = (
+            await db.execute(
+                select(CoachMessage.session_id, CoachMessage.content)
+                .where(CoachMessage.session_id.in_(session_ids), CoachMessage.role == "user")
+                .order_by(CoachMessage.session_id, CoachMessage.created_at)
+            )
+        ).all()
+        for sid, content in rows:
+            previews.setdefault(sid, content[:80])
+    return PaginatedCoachSessionsResponse(
+        items=[
+            CoachSessionListItem(id=s.id, title=s.title, updated_at=s.updated_at, preview=previews.get(s.id))
+            for s in items
+        ],
+        total=total, limit=limit, offset=offset,
+    )
 
 
 @router.get(
