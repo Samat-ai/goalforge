@@ -95,6 +95,13 @@ Every branch in `trigger_reminders` (and any future sender) must have all four:
   guard decision**: active guard (`classify_user_input`) for conversational/
   creation inputs, `_HARDENING_RULES` for embedded stored text. *(Motivated by
   the chat-agent harness — PR 1, 2026-07-11.)*
+- **Never `Optional[list[Model]]` in a response schema.** google-genai converts
+  `list[X] | None` to `{"nullable": true, "type": "ARRAY"}` — the `items`
+  definition is dropped and Gemini rejects every request with
+  `400 INVALID_ARGUMENT (…items: missing field)`. Use
+  `list[X] = Field(default_factory=list)`; treat empty as absent. Scalar
+  `str | None` fields are fine. *(Incident: `AICoachTurnV2.edits` broke all
+  coach replies post-merge — fixed in PR #196.)*
 
 ### API surface policy
 - **No endpoint without a consumer.** Ship the frontend caller (or cron/job
