@@ -42,9 +42,9 @@
       "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
     },
     {
-      "name": "Coach",
-      "short_name": "Coach",
-      "url": "/coach",
+      "name": "Chat",
+      "short_name": "Chat",
+      "url": "/chat",
       "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
     }
   ]
