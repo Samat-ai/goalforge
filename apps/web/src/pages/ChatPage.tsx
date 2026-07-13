@@ -12,7 +12,7 @@
 // The send lifecycle here is PR 1 parity (plain instant replies): the word-stream /
 // stop / error-retry mechanics land in Task 5 — `generating` is wired false and the
 // package's stop branch stays dormant until then.
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { useUser } from '@clerk/react'
 import { Link } from 'react-router-dom'
@@ -323,6 +323,8 @@ export default function ChatPage() {
 
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  // stable identity: the drawer's focus-trap effect must not re-fire on ChatPage re-renders
+  const closeDrawer = useCallback(() => setDrawerOpen(false), [])
   const [railOpen, setRailOpen] = useState(true)
   const [draft, setDraft] = useState('')
   const feedRef = useRef<HTMLDivElement | null>(null)
@@ -484,7 +486,7 @@ export default function ChatPage() {
           the .gf-root-scoped :focus-visible rules are restated for .gf-co-drawer
           in the chat CSS block (host-adapted). */}
       {createPortal(
-        <CoachDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} railProps={railProps} />,
+        <CoachDrawer open={drawerOpen} onClose={closeDrawer} railProps={railProps} />,
         document.body,
       )}
     </div>

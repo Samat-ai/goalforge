@@ -22,9 +22,16 @@ export interface CoachDrawerProps {
 export default function CoachDrawer({ open, onClose, railProps }: CoachDrawerProps) {
   const panelRef = useRef<HTMLDivElement | null>(null)
 
+  // The trap effect must re-run ONLY on open/close. Depending on `onClose`
+  // identity re-fires it on every parent re-render (parent state churn while
+  // the drawer is open), re-stealing focus to the first control mid-interaction
+  // — route the callback through a ref so the effect can depend on `open` alone.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => { onCloseRef.current = onClose }, [onClose])
+
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseRef.current() }
     document.addEventListener('keydown', onKey)
     // focus first control + trap Tab inside the panel
     const panel = panelRef.current
@@ -49,7 +56,7 @@ export default function CoachDrawer({ open, onClose, railProps }: CoachDrawerPro
       document.removeEventListener('keydown', onKey)
       panel?.removeEventListener('keydown', onTab)
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
   return (
