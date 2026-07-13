@@ -74,7 +74,9 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/stars"     element={<LogsPage />} />
-            <Route path="/coach"     element={<ChatPage />} />
+            <Route path="/chat"      element={<ChatPage />} />
+            {/* legacy path — the coach became plain "Chat" in the nav; keep old links alive */}
+            <Route path="/coach"     element={<Navigate to="/chat" replace />} />
             <Route path="/settings"  element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<div className="p-8 text-center">404 - Page Not Found</div>} />

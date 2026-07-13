@@ -55,7 +55,15 @@ export function useSendCoachMessageMutation(userId: string) {
   const qc = useQueryClient()
   const mutation = useMutation({
     mutationFn: async ({ sessionId, content }: { sessionId: string; content: string }) => {
-      const { data } = await api.post<CoachSendMessageResponse>(`/coach/sessions/${sessionId}/messages`, { content })
+      // A turn can run guard + responder + a synchronous goal forge — far past
+      // the global 10s axios timeout. Timing out client-side while the server
+      // finishes anyway shows a bogus error row, and Retry then forges the
+      // goal a second time.
+      const { data } = await api.post<CoachSendMessageResponse>(
+        `/coach/sessions/${sessionId}/messages`,
+        { content },
+        { timeout: 120_000 },
+      )
       return data
     },
     onMutate: async ({ sessionId, content }) => {
