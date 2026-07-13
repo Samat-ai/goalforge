@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BUCKET_ORDER, CAP_MESSAGE, bucketOf, fallbackTitle, isCapMessage, relTime } from '../coachView'
+import { BUCKET_ORDER, CAP_MESSAGE, bucketOf, fallbackTitle, isCapMessage, relTime, splitWords } from '../coachView'
 
 // Fixed epoch — bucketOf/relTime take `now` as an explicit param (purity gate), so no
 // vi.setSystemTime is needed; every case below anchors to this constant directly.
@@ -71,6 +71,28 @@ describe('relTime', () => {
 
   it('shows "yesterday" for a 26-hour-old timestamp', () => {
     expect(relTime(new Date(NOW - 26 * 3_600_000).toISOString(), NOW)).toBe('yesterday')
+  })
+})
+
+describe('splitWords', () => {
+  it('chunks words with their trailing whitespace attached', () => {
+    expect(splitWords('Love it — pace, not pressure.'))
+      .toEqual(['Love ', 'it ', '— ', 'pace, ', 'not ', 'pressure.'])
+  })
+
+  it('keeps multi-space and newline runs inside a chunk so the reveal reassembles verbatim', () => {
+    const s = 'line one\n\nline two  spaced'
+    expect(splitWords(s)).toEqual(['line ', 'one\n\n', 'line ', 'two  ', 'spaced'])
+    expect(splitWords(s).join('')).toBe(s)
+  })
+
+  it('returns a single chunk for a single word', () => {
+    expect(splitWords('hello')).toEqual(['hello'])
+  })
+
+  it('returns [] for empty and whitespace-only strings (callers skip the reveal)', () => {
+    expect(splitWords('')).toEqual([])
+    expect(splitWords('   ')).toEqual([])
   })
 })
 

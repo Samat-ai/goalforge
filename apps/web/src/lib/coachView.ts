@@ -65,6 +65,16 @@ export function relTime(iso: string, now: number): string {
   return `${Math.round(d / 7)}w ago`
 }
 
+// Word-chunks for the send-reveal stream (package gf-coach-v2.jsx startStream line 558
+// / CoachMsg line 222): each chunk is a word plus its trailing whitespace, so the reveal
+// reassembles the text verbatim (spaces, newlines included) as chunks fade in. Returns
+// [] for empty/whitespace-only content — the package's `|| [full]` fallback would tick
+// one invisible whitespace chunk; callers skip the reveal instead (same visual outcome,
+// no dead interval).
+export function splitWords(text: string): string[] {
+  return text.match(/\S+\s*/g) ?? []
+}
+
 // Source of truth: apps/api/services/coach_service.py::CAP_MESSAGE — copied verbatim.
 // Cap detection keys off exact content equality with this string; drift here silently
 // degrades the resting-Solly cap moment (header "Resting until tomorrow" + rest bubble)

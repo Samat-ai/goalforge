@@ -7,11 +7,15 @@
 // / useDeleteCoachSessionMutation) with the plan's Mandated Adaptations:
 //   • no dangerouslySetInnerHTML — safe renderItalics() React renderer (Adaptation 1)
 //   • no render-body Date.now() — keyed <HeaderSub> with lazy useState (Adaptation 2)
+//   • stop never desyncs the thread — the server persists the turn (Adaptation 3)
+//   • send failure renders the inline error+retry row, no toast (Adaptation 4)
 //   • cap detection via isCapMessage() content equality (Adaptation 5)
 //   • plan cards hydrate from the goals list query, not the send result (Adaptation 6)
-// The send lifecycle here is PR 1 parity (plain instant replies): the word-stream /
-// stop / error-retry mechanics land in Task 5 — `generating` is wired false and the
-// package's stop branch stays dormant until then.
+// Send lifecycle (package startStream 554-570 / stop 591-605 / error row 650-656):
+// after a send resolves, the newest coach reply reveals word-by-word (48ms/word) via
+// a `stream` mask over content that is ALREADY committed to the query cache — so
+// stopping mid-reveal, reduced motion, or a session switch always land on the full
+// server truth. Plan-card (`forged_goal_id`) and daily-cap replies pop complete.
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { useUser } from '@clerk/react'
@@ -31,8 +35,8 @@ import {
   useDeleteCoachSessionMutation,
   useSendCoachMessageMutation,
 } from '../hooks'
-import { fallbackTitle, isCapMessage, relTime } from '../lib/coachView'
-import type { CoachSession, Goal } from '../lib/types'
+import { fallbackTitle, isCapMessage, relTime, splitWords } from '../lib/coachView'
+import type { CoachMessage, CoachSession, Goal } from '../lib/types'
 
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
 const e2eUserId = import.meta.env.VITE_E2E_USER_ID ?? 'user_e2e'
@@ -103,15 +107,20 @@ function PlanCard({ goal, onRefine }: { goal: Goal; onRefine: () => void }) {
   )
 }
 
-// Package CoachMsg (lines 204-232) incl. the rest-variant cap bubble (207-220).
-// The action row keeps PRODUCTION behavior (copy → clipboard, good → transient
-// ack) inside the package markup — the package's MsgActions is inert (plan
-// "Deviations & notes": production behavior wins).
-function CoachMsg({ content, animate, rest, goal, onRefine }: {
+// Package CoachMsg (lines 204-232) incl. the rest-variant cap bubble (207-220)
+// and the word-reveal branch (221-231): while this message is streaming
+// (streamN != null) the text renders as the first N word-chunks — raw, exactly
+// like the package (italics apply on commit) — and the plan card + action row
+// stay hidden until the reveal commits. The action row keeps PRODUCTION
+// behavior (copy → clipboard, good → transient ack) inside the package markup —
+// the package's MsgActions is inert (plan "Deviations & notes": production
+// behavior wins).
+function CoachMsg({ content, animate, rest, goal, streamN, onRefine }: {
   content: string
   animate: boolean
   rest: boolean
   goal: Goal | null
+  streamN: number | null
   onRefine: () => void
 }) {
   const [acked, setAcked] = useState<'copy' | 'good' | null>(null)
@@ -147,11 +156,18 @@ function CoachMsg({ content, animate, rest, goal, onRefine }: {
       </div>
     )
   }
+  const streaming = streamN != null
   return (
     <div className={cx('gf-co-msg gf-co-assistant', animate && 'gf-co-in')}>
-      <div className="gf-co-text">{renderItalics(content)}</div>
-      {goal && <PlanCard goal={goal} onRefine={onRefine} />}
-      {actions}
+      {streaming
+        ? (
+          <div className="gf-co-text">
+            {splitWords(content).slice(0, streamN).map((w, idx) => <span key={idx} className="gf-co-word">{w}</span>)}
+          </div>
+        )
+        : <div className="gf-co-text">{renderItalics(content)}</div>}
+      {goal && !streaming && <PlanCard goal={goal} onRefine={onRefine} />}
+      {!streaming && actions}
     </div>
   )
 }
@@ -327,8 +343,34 @@ export default function ChatPage() {
   const closeDrawer = useCallback(() => setDrawerOpen(false), [])
   const [railOpen, setRailOpen] = useState(true)
   const [draft, setDraft] = useState('')
+  // ── Send lifecycle (package lines 554-605 + Mandated Adaptations 3-4) ──
+  // Word-reveal mask over the newest live coach reply: {server session id,
+  // server message id, words shown}. Keyed off the SEND RESPONSE's ids — never
+  // render-time state — so the mask only ever applies to that exact message,
+  // and only while the user is still viewing that session (render gate below).
+  const [stream, setStream] = useState<{ sessionId: string; messageId: string; n: number } | null>(null)
+  // Message ids that own(ed) their reveal — their container entrance (gf-co-in)
+  // never plays/replays once the mask drops (package streamedRef, line 519).
+  // Immutable state Set, not a ref: it is read during render (react-hooks/refs).
+  const [streamedIds, setStreamedIds] = useState<ReadonlySet<string>>(() => new Set())
+  // Send failure, session-scoped (Mandated Adaptation 4): the error row renders
+  // only inside the session the send failed in; Retry re-sends `content` as a
+  // brand-new request (backend rolled the failed turn back server-side, the
+  // hook rolled back the optimistic bubble).
+  const [sendError, setSendError] = useState<{ sessionId: string; content: string } | null>(null)
+  const streamIvRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
+  // Stop pressed while the request is still in flight (Mandated Adaptation 3 —
+  // the server persists the turn regardless, so Stop never aborts the request):
+  // the reply commits instantly on arrival, with no reveal.
+  const skipRevealRef = useRef(false)
+  // Bumped on every user-initiated session switch (select / new-chat / delete
+  // of the active session): a send that resolves under a stale token commits
+  // straight to cache with no reveal — no zombie interval ticking behind a view
+  // the user already left (package generation token, lines 517 + 574).
+  const genTokenRef = useRef(0)
   const feedRef = useRef<HTMLDivElement | null>(null)
   const taRef = useRef<HTMLTextAreaElement | null>(null)
+  const generating = isSending || stream != null
 
   const isLoading = isListLoading || isSessionLoading
   const messages = useMemo(() => session?.messages ?? [], [session?.messages])
@@ -336,26 +378,43 @@ export default function ChatPage() {
 
   useEffect(() => { document.title = 'Chat — GoalForge' }, [])
 
+  // the reveal interval must not outlive the page
+  useEffect(() => () => clearInterval(streamIvRef.current), [])
+
+  // package feed-scroll effect (lines 532-534): also re-pins on every stream
+  // tick so the growing reply stays glued to the bottom
   useEffect(() => {
     const f = feedRef.current
     if (f) f.scrollTo({ top: f.scrollHeight, behavior: 'smooth' })
-  }, [currentSessionId, messages.length, isSending])
+  }, [currentSessionId, messages.length, isSending, stream])
 
   // last coach turn's chips drive the composer chip row (0-4 chips) — package
-  // memo (line 527); its `typing || stream` gate maps to isSending at this
-  // task's parity level (Task 5 adds the stream gate).
+  // memo (line 527): hidden while the reply is in flight OR still revealing
+  // (chips pop only after the stream commits; `typing || stream` ⇢ isSending/stream).
   const chips = useMemo(() => {
-    if (!session || isSending) return []
+    if (!session || isSending || stream) return []
     const last = session.messages[session.messages.length - 1]
     return last && last.role === 'coach' && last.chips ? last.chips : []
-  }, [session, isSending])
+  }, [session, isSending, stream])
 
   // Daily-cap state: the header sub swaps to "Resting until tomorrow" when the
   // latest coach turn is the backend cap line (Mandated Adaptation 5).
   const lastCoach = useMemo(() => [...messages].reverse().find(m => m.role === 'coach'), [messages])
   const capped = !!lastCoach && isCapMessage(lastCoach.content)
 
+  // Kill an active word-reveal: drop the mask (the message's full server
+  // content is already in the cache underneath) and stop the interval.
+  function cancelReveal() {
+    if (streamIvRef.current !== undefined) {
+      clearInterval(streamIvRef.current)
+      streamIvRef.current = undefined
+    }
+    setStream(null)
+  }
+
   function selectSession(id: string) {
+    genTokenRef.current += 1
+    cancelReveal()
     setActiveSessionId(id)
     setConfirmId(null)
     setDrawerOpen(false)
@@ -363,6 +422,8 @@ export default function ChatPage() {
   }
 
   function newChat() {
+    genTokenRef.current += 1
+    cancelReveal()
     setActiveSessionId(null)
     setConfirmId(null)
     setDrawerOpen(false)
@@ -375,34 +436,112 @@ export default function ChatPage() {
     // invalidation reconciles afterwards.
     if (id === currentSessionId) {
       const remaining = sessions.filter(s => s.id !== id)
+      genTokenRef.current += 1
+      cancelReveal()
       setActiveSessionId(remaining[0]?.id ?? null)
     }
+    // a pending error row for the deleted session can never render again — drop it
+    setSendError(prev => (prev && prev.sessionId === id ? null : prev))
     setConfirmId(null)
     remove(id).catch(() => toast.error('Could not delete the chat. Please try again.'))
   }
 
-  async function handleSend(text: string) {
-    if (!userId || isSending || isCreating) return
-    const content = text.trim()
-    if (!content) return
-    // Clear the composer immediately — the message optimistically appears in
-    // the thread (useSendCoachMessageMutation.onMutate); restore on failure.
-    setDraft('')
-    try {
+  // Word-by-word reveal of a just-arrived live reply (package startStream,
+  // lines 554-570; 48ms/word — the code value wins over NOTES' ~26ms). The full
+  // content is already committed to the query cache — `stream` only masks it,
+  // so stopping or finishing always lands on server truth (Adaptation 3).
+  // Plan-card (`forged_goal_id`) and daily-cap replies pop complete with the
+  // normal entrance instead: the package only ever streams plain live replies —
+  // its rest branch structurally cannot stream (sanctioned inference).
+  function beginReveal(sessionId: string, message: CoachMessage) {
+    const skip = skipRevealRef.current
+    skipRevealRef.current = false
+    if (message.forged_goal_id || isCapMessage(message.content)) return
+    // From here this message owns its reveal — suppress the gf-co-in container
+    // entrance now and on every future render (no replay once the mask drops).
+    setStreamedIds(prev => new Set(prev).add(message.id))
+    if (skip) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const words = splitWords(message.content)
+    if (words.length === 0) return
+    setStream({ sessionId, messageId: message.id, n: 0 })
+    let shown = 0
+    streamIvRef.current = setInterval(() => {
+      shown += 1
+      // final tick commits (mask drops → full text, italics, plan card, actions)
+      if (shown >= words.length) cancelReveal()
+      else setStream({ sessionId, messageId: message.id, n: shown })
+    }, 48)
+  }
+
+  // Full send cycle: create-if-needed → send → reveal. Never touches the draft —
+  // handleSend clears it up-front for composer sends, and Retry re-sends stored
+  // content while the user may already be typing something new.
+  async function performSend(sessionId: string | null, content: string) {
+    skipRevealRef.current = false
+    const token = genTokenRef.current
+    let sid = sessionId
+    if (!sid) {
       // Lazy create (PR 1): sending from the new-chat empty state creates the
-      // session first, then sends into it.
-      let sid = currentSessionId
-      if (!sid) {
+      // session first, then sends into it. Failing HERE leaves no thread to
+      // host the error row, so this path keeps the draft-restore + toast.
+      try {
         const created = await create()
         setActiveSessionId(created.id)
         sid = created.id
+      } catch {
+        setDraft(content)
+        toast.error('Could not start the chat. Please try again.')
+        return
       }
-      await send({ sessionId: sid, content })
-    } catch {
-      // PR 1 parity — Task 5 replaces this with the inline error+retry row.
-      setDraft(content)
-      toast.error('Coach message failed. Please retry.')
     }
+    try {
+      const data = await send({ sessionId: sid, content })
+      // clear a resolved failure for THIS session only — an unrelated
+      // session's pending error row must survive
+      setSendError(prev => (prev && prev.sessionId === sid ? null : prev))
+      // stale token = the user switched sessions mid-flight: the reply is
+      // already committed to cache; skip the reveal so no stream ever runs
+      // behind a view the user left
+      if (genTokenRef.current === token) {
+        const reply = data.session.messages[data.session.messages.length - 1]
+        if (reply && reply.role === 'coach') beginReveal(data.session.id, reply)
+      }
+    } catch {
+      // Mandated Adaptation 4: the hook already rolled the optimistic bubble
+      // back (and the backend rolled back the turn); the inline error row owns
+      // recovery — no toast, and the draft stays cleared.
+      setSendError({ sessionId: sid, content })
+    }
+  }
+
+  function handleSend(text: string) {
+    if (!userId || generating || isCreating) return
+    const content = text.trim()
+    if (!content) return
+    // Clear the composer immediately — the message optimistically appears in
+    // the thread (useSendCoachMessageMutation.onMutate).
+    setDraft('')
+    void performSend(currentSessionId, content)
+  }
+
+  // Stop (Mandated Adaptation 3): the server persists the turn regardless, so
+  // Stop never aborts the request — it only suppresses the reveal theater.
+  function stop() {
+    if (isSending) {
+      skipRevealRef.current = true
+      return
+    }
+    // Mid-reveal: dropping the mask commits the FULL server text at once (the
+    // package's partial-text freeze would contradict server truth).
+    cancelReveal()
+  }
+
+  function retry() {
+    if (!sendError || !userId || generating || isCreating) return
+    const { sessionId, content } = sendError
+    setSendError(null)
+    void performSend(sessionId, content)
   }
 
   const railProps: CoachRailProps = {
@@ -417,13 +556,11 @@ export default function ChatPage() {
   const composerProps: ComposerProps = {
     draft,
     setDraft,
-    onSend: t => { void handleSend(t) },
+    onSend: handleSend,
     chips,
     onChip: c => setDraft(c),
-    // Stop/stream lifecycle is Task 5's — until then the send button never
-    // morphs to stop; handleSend guards double-sends while a reply is in flight.
-    generating: false,
-    onStop: () => undefined,
+    generating,
+    onStop: stop,
     taRef,
   }
 
@@ -455,18 +592,33 @@ export default function ChatPage() {
                     }
                     // goal deleted (or not on the list yet) ⇒ no card, just the text
                     const goal = m.forged_goal_id ? goalsById.get(m.forged_goal_id) ?? null : null
+                    // stream mask only for the exact server message, and only
+                    // while the user is still viewing the session it landed in
+                    const streamN = stream && stream.sessionId === currentSessionId && stream.messageId === m.id
+                      ? stream.n
+                      : null
                     return (
                       <CoachMsg
                         key={m.id}
                         content={m.content}
-                        animate={isLast}
+                        animate={isLast && !streamedIds.has(m.id)}
                         rest={isCapMessage(m.content)}
                         goal={goal}
+                        streamN={streamN}
                         onRefine={() => taRef.current?.focus()}
                       />
                     )
                   })}
                   {isSending && <TypingDots />}
+                  {/* package error row (lines 650-656), session-scoped local state
+                      instead of session.error (Mandated Adaptation 4) */}
+                  {sendError && sendError.sessionId === currentSessionId && !generating && (
+                    <div className="gf-co-error">
+                      <Icon name="alert" size={16} className="gf-co-error-ic" />
+                      <span className="gf-co-error-t">Something went wrong. Try again.</span>
+                      <button className="gf-co-retry" onClick={retry}><Icon name="retry" size={13} /> Retry</button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <NewChatEmpty composerProps={composerProps} onStarter={label => setDraft(label)} />
