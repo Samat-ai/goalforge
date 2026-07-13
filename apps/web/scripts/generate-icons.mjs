@@ -47,3 +47,23 @@ for (const size of SIZES) {
     .toFile(outPath)
   console.log(`  ✓ icon-${size}.png`)
 }
+
+// Browser-tab favicons get rounded corners (transparent outside the mask).
+// Only these — the PWA/apple-touch icons above must stay full-bleed squares
+// because Android maskable crops and iOS apply their own corner masks.
+const RADIUS_RATIO = 115 / 512 // the logo's own rounded-rect radius
+for (const size of [96, 192]) {
+  const r = Math.round(size * RADIUS_RATIO)
+  const mask = Buffer.from(
+    `<svg width="${size}" height="${size}"><rect width="${size}" height="${size}" rx="${r}" fill="#fff"/></svg>`,
+  )
+  const outPath = join(ICONS_DIR, `favicon-${size}.png`)
+  await sharp(SRC_PATH)
+    .extract(ART_BOX)
+    .flatten({ background: SKY })
+    .resize(size, size)
+    .composite([{ input: mask, blend: 'dest-in' }])
+    .png()
+    .toFile(outPath)
+  console.log(`  ✓ favicon-${size}.png`)
+}
