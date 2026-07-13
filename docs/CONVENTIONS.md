@@ -147,6 +147,19 @@ Every branch in `trigger_reminders` (and any future sender) must have all four:
   (ESLint-enforced) — compute in effects or lazy state initializers.
 - SVG gradient/filter ids: `useId()`, never `Math.random()`.
 
+### Overlays & fixed position
+- **Any `position: fixed` overlay (drawer, modal, scrim) must `createPortal`
+  to `document.body`** (or `.gf-root` — see `SettingsPage`'s confirm modal),
+  never render inline in the page tree. `PageSwitcher`'s `.gf-xfade` wrapper
+  sets `will-change: transform` unconditionally on every page, which makes it
+  a CSS containing block for `position: fixed` descendants — an unportaled
+  fixed element pins to that wrapper's box instead of the viewport. A
+  portaled subtree also falls outside `.gf-root`'s font/color/`:focus-visible`
+  inheritance — restate those rules for it. *(Incident: `ChatPage`'s mobile
+  `CoachDrawer` had to portal for exactly this reason — chat-v2 port PR 2;
+  `SettingsPage`'s delete-confirm modal already portaled for the same
+  underlying reason without it ever being written down.)*
+
 ---
 
 ## 4. Testing
