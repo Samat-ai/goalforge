@@ -290,6 +290,17 @@ async def test_multiple_sessions_allowed_and_ordered_by_activity(client):
 
 
 @pytest.mark.asyncio
+async def test_session_list_includes_preview(client):
+    session = await _start_session(client)
+    listing = (await client.get(f"/users/{TEST_USER_ID}/coach/sessions?limit=20&offset=0")).json()
+    assert listing["items"][0]["preview"] is None  # greeting only, no user message yet
+
+    await client.post(f"/coach/sessions/{session['id']}/messages", json={"content": "help me get promoted next cycle"})
+    listing = (await client.get(f"/users/{TEST_USER_ID}/coach/sessions?limit=20&offset=0")).json()
+    assert listing["items"][0]["preview"] == "help me get promoted next cycle"
+
+
+@pytest.mark.asyncio
 async def test_legacy_completed_session_accepts_messages(client, db_session):
     # pre-v2 sessions have is_completed=True; the old 409 gate is gone
     session = CoachSession(id=uuid.uuid4(), user_id=TEST_USER_ID, is_completed=True)

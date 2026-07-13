@@ -179,6 +179,7 @@ export interface CoachSession {
 export interface CoachSessionListItem {
   id: string
   title: string | null
+  preview: string | null
   updated_at: string
 }
 

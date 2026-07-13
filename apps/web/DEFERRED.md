@@ -56,6 +56,21 @@ extras. Zero-consumer rule families were deleted in Task 9.
   the latest coach message) plus inline plan cards on `forged_goal_id`, on
   the new coach v2 session pipeline. Does not touch the separate header-chrome
   item (section 2 table — already re-slotted/active, unaffected by this PR).
+- ~~**Chat v2 design port — 3 items PR 1's final review deferred**~~ — SHIPPED
+  (chat-v2 port PR 2, 2026-07-13): (1) `DELETE /coach/sessions/{id}` now has a
+  UI consumer — the session rail's inline trash → 2-step confirm
+  (`CoachRail.tsx`); (2) legacy-title fallback (session with `title IS NULL` →
+  first user message, else "Intake session") is `fallbackTitle()` in
+  `src/lib/coachView.ts`, fed by a new `preview` field on
+  `GET /users/{id}/coach/sessions`; (3) plan cards now hydrate the full
+  refined `PlanCard` from the goals list query (`queryKeys.goals`, limit 100)
+  instead of PR 1's compact fallback — goal not found (deleted) ⇒ no card,
+  message text only. Also shipped in the same PR: session rail with time
+  buckets, mobile drawer, hero empty state, floating composer, word-reveal
+  streaming with stop, per-session error+retry rows, resting-Solly daily-cap
+  moment. This PR did NOT touch the header-chrome item (section 2 table) —
+  that row is AppShell-wide chrome (equipped-title badge, first-name
+  greeting), unrelated to ChatPage's own session header.
 - ~~**Onboarding has no step persistence**~~ — FIXED (PR #168): wizard progress
   persists to sessionStorage; cleared on skip/finish.
 
