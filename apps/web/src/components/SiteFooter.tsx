@@ -14,6 +14,8 @@ export default function SiteFooter() {
             <a href="/#stages">Stages</a>
             <Link to="/about">About</Link>
             <Link to="/faq">FAQ</Link>
+            <Link to="/privacy">Privacy</Link>
+            <Link to="/terms">Terms</Link>
             <a href="/#cta">Get started</a>
           </div>
         </div>
