@@ -650,7 +650,7 @@ export default function ChatPage() {
                     <div className="gf-co-error">
                       <Icon name="alert" size={16} className="gf-co-error-ic" />
                       <span className="gf-co-error-t">Something went wrong. Try again.</span>
-                      <button className="gf-co-retry" onClick={retry}><Icon name="retry" size={13} /> Retry</button>
+                      <button className="gf-co-retry" onClick={retry} disabled={busyElsewhere}><Icon name="retry" size={13} /> Retry</button>
                     </div>
                   )}
                 </div>

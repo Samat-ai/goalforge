@@ -1408,6 +1408,13 @@ html { scroll-behavior: smooth; }
   .gf-root *, .gf-root *::before, .gf-root *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
 
+/* ──────── kept from v1 (PR #169 coach block; not part of the chat-v2 package) ────────
+   .gf-greet-wave lives on DashboardPage (greeting hand), not the chat page — it was
+   housed in the old coach CSS block and must survive the chat-v2 swap. */
+.gf-greet-wave { width: 34px; height: 34px; object-fit: contain; transform-origin: 72% 78%; animation: gfWave 2.8s ease-in-out 0.4s 1 both; }
+@keyframes gfWave { 0%, 62%, 100% { transform: rotate(0); } 70% { transform: rotate(15deg); } 78% { transform: rotate(-8deg); } 86% { transform: rotate(11deg); } 94% { transform: rotate(-5deg); } }
+.gf-root[data-motion="subtle"] .gf-greet-wave { animation: none; }
+
 /* ════════════════════ MOBILE NAV (hamburger) ════════════════════ */
 .gf-burger { display: none; width: 42px; height: 42px; border-radius: 11px; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; align-items: center; justify-content: center; flex-direction: column; gap: 5px; transition: background .18s, color .18s; }
 .gf-burger:hover { color: var(--text); background: var(--card-hi); }
