@@ -17,7 +17,7 @@ const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'grid' },
   { id: 'analytics', label: 'Analytics', icon: 'chart' },
   { id: 'stars', label: 'Logs', icon: 'spark' },
-  { id: 'coach', label: 'Chat', icon: 'chat' },
+  { id: 'chat', label: 'Chat', icon: 'chat' },
   { id: 'settings', label: 'Settings', icon: 'gear' },
 ] as const
 

@@ -411,7 +411,7 @@ async function installCoachMocks(page: Page, state: CoachMockState) {
   })
 }
 
-// Seed onboarding-complete (OnboardingGuard would bounce /coach → /onboarding) and
+// Seed onboarding-complete (OnboardingGuard would bounce /chat → /onboarding) and
 // force reduced motion so word-reveal streaming never runs (see file header).
 test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
@@ -423,7 +423,7 @@ test.beforeEach(async ({ page }) => {
 test('rail renders time buckets and rows; null-title row shows the italic preview fallback', async ({ page }) => {
   const state = buildCoachState()
   await installCoachMocks(page, state)
-  await page.goto('/coach')
+  await page.goto('/chat')
 
   // Bucket headers in BUCKET_ORDER; array form pins count + order + text at once.
   await expect(page.locator('.gf-co-rail-cap')).toHaveText(['Today', 'Yesterday', 'Previous 7 days'])
@@ -445,7 +445,7 @@ test('rail renders time buckets and rows; null-title row shows the italic previe
 test('selecting a rail session loads that thread', async ({ page }) => {
   const state = buildCoachState()
   await installCoachMocks(page, state)
-  await page.goto('/coach')
+  await page.goto('/chat')
 
   // Most recent session (s-today) auto-selects — wait for its thread first.
   await expect(page.getByText('I want to train for a marathon')).toBeVisible()
@@ -465,7 +465,7 @@ test('selecting a rail session loads that thread', async ({ page }) => {
 test('new chat shows the hero empty state; a starter pill fills the draft without sending', async ({ page }) => {
   const state = buildCoachState()
   await installCoachMocks(page, state)
-  await page.goto('/coach')
+  await page.goto('/chat')
 
   await page.getByRole('button', { name: 'New chat' }).click()
 
@@ -487,7 +487,7 @@ test('new chat shows the hero empty state; a starter pill fills the draft withou
 test('sending from the hero creates a session, then renders the thread', async ({ page }) => {
   const state = buildCoachState()
   await installCoachMocks(page, state)
-  await page.goto('/coach')
+  await page.goto('/chat')
 
   await page.getByRole('button', { name: 'New chat' }).click()
   await page.getByLabel('Message Solly').fill('I want to run a marathon')
@@ -510,7 +510,7 @@ test('sending from the hero creates a session, then renders the thread', async (
 test('chips from the last coach message fill the draft without sending', async ({ page }) => {
   const state = buildCoachState()
   await installCoachMocks(page, state)
-  await page.goto('/coach')
+  await page.goto('/chat')
 
   // s-today auto-selects; its last coach message carries two chips, rendered
   // inside the composer above the input bar.
@@ -527,7 +527,7 @@ test('chips from the last coach message fill the draft without sending', async (
 test('plan card hydrates from the goals list and its kbd button navigates to the dashboard', async ({ page }) => {
   const state = buildCoachState()
   await installCoachMocks(page, state)
-  await page.goto('/coach')
+  await page.goto('/chat')
 
   // The forged_goal_id message hydrates the card from GET /goals — the title
   // exists ONLY in the goals mock, never in any message content.
@@ -542,7 +542,7 @@ test('plan card hydrates from the goals list and its kbd button navigates to the
 test('delete flow: inline confirm fires DELETE; deleting the active session falls back to the next one', async ({ page }) => {
   const state = buildCoachState()
   await installCoachMocks(page, state)
-  await page.goto('/coach')
+  await page.goto('/chat')
 
   // Active thread = s-today.
   await expect(page.getByText('I want to train for a marathon')).toBeVisible()
@@ -566,7 +566,7 @@ test('failed send shows the error row; Retry re-sends the same content', async (
   const state = buildCoachState()
   state.failNextSends = 1 // first POST /messages → 500, second → 200
   await installCoachMocks(page, state)
-  await page.goto('/coach')
+  await page.goto('/chat')
 
   await expect(page.getByText('I want to train for a marathon')).toBeVisible()
   await page.getByLabel('Message Solly').fill('fail me')
@@ -594,7 +594,7 @@ test.describe('mobile (390×844)', () => {
   test('drawer button opens the session drawer; Escape closes it', async ({ page }) => {
     const state = buildCoachState()
     await installCoachMocks(page, state)
-    await page.goto('/coach')
+    await page.goto('/chat')
 
     // Desktop rail is hidden at this width; the header shows the drawer trigger.
     const drawerBtn = page.getByRole('button', { name: 'Open conversations' })

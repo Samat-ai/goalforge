@@ -411,7 +411,8 @@ export default function ChatPage() {
   const chips = useMemo(() => {
     if (!session || sendingHere || streamingHere) return []
     const last = session.messages[session.messages.length - 1]
-    return last && last.role === 'coach' && last.chips ? last.chips : []
+    // cap at 3 — the model may return 4, and the row must stay a single line
+    return last && last.role === 'coach' && last.chips ? last.chips.slice(0, 3) : []
   }, [session, sendingHere, streamingHere])
 
   // Daily-cap state: the header sub swaps to "Resting until tomorrow" when the
@@ -639,7 +640,12 @@ export default function ChatPage() {
                         rest={isCapMessage(m.content)}
                         goal={goal}
                         streamN={streamN}
-                        onRefine={() => taRef.current?.focus()}
+                        onRefine={() => {
+                          // visible reaction, not just a focus ring: seed the ask
+                          // so the user only has to describe the change
+                          setDraft(d => d || "Let's refine this plan: ")
+                          taRef.current?.focus()
+                        }}
                       />
                     )
                   })}
