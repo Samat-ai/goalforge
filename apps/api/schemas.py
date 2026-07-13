@@ -442,7 +442,9 @@ class AICoachTurnV2(BaseModel):
     intent: Literal["chat", "forge_goal", "edit_plan"]
     chips: list[str] = Field(default_factory=list, description="0-4 short next-message suggestions from the user's perspective")
     forge_brief: str | None = Field(None, description="Distilled goal description; required when intent=forge_goal")
-    edits: list[AIPlanEdit] | None = Field(None, description="Proposed edits; required when intent=edit_plan")
+    # Plain list, NOT `| None`: google-genai drops the array `items` when
+    # converting an Optional[list[...]] union, and Gemini 400s the request.
+    edits: list[AIPlanEdit] = Field(default_factory=list, description="Proposed edits; required when intent=edit_plan")
     session_title: str | None = Field(None, max_length=120, description="Set once when the session is untitled")
 
 

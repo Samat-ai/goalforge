@@ -20,7 +20,7 @@ def test_guard_verdict_accepts_known_verdicts():
 def test_coach_turn_v2_chat_minimal():
     turn = AICoachTurnV2(reply="Tell me more.", intent="chat", chips=[])
     assert turn.forge_brief is None
-    assert turn.edits is None
+    assert turn.edits == []
     assert turn.session_title is None
 
 
