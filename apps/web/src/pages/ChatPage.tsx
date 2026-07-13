@@ -227,6 +227,10 @@ interface ComposerProps {
   chips: string[]
   onChip: (c: string) => void
   generating: boolean
+  // another session's turn is in flight: sends are blocked globally, but this
+  // session must NOT render a Stop button for a turn that isn't its own —
+  // the send arrow just disables until the other turn settles
+  busyElsewhere: boolean
   onStop: () => void
   // Lifted out of the package's internal ref so PlanCard's "Refine" can focus
   // the composer from outside (host adaptation; markup unchanged).
@@ -237,7 +241,7 @@ interface ComposerProps {
 // Package Composer (lines 452-476): floating over the feed in thread view,
 // static `is-hero` inside the empty state. Chips render inside
 // .gf-co-composer-in, above the input bar.
-function Composer({ draft, setDraft, onSend, chips, onChip, generating, onStop, taRef, hero }: ComposerProps) {
+function Composer({ draft, setDraft, onSend, chips, onChip, generating, busyElsewhere, onStop, taRef, hero }: ComposerProps) {
   const grow = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setDraft(e.target.value)
     const el = e.target
@@ -245,7 +249,7 @@ function Composer({ draft, setDraft, onSend, chips, onChip, generating, onStop, 
     el.style.height = Math.min(el.scrollHeight, 160) + 'px'
   }
   const send = () => {
-    if (!draft.trim() || generating) return
+    if (!draft.trim() || generating || busyElsewhere) return
     onSend(draft.trim())
     if (taRef.current) taRef.current.style.height = 'auto'
   }
@@ -272,7 +276,7 @@ function Composer({ draft, setDraft, onSend, chips, onChip, generating, onStop, 
             className={cx('gf-co-send', (generating || draft.trim()) && 'is-on')}
             onClick={generating ? onStop : send}
             aria-label={generating ? 'Stop generating' : 'Send message'}
-            disabled={!generating && !draft.trim()}
+            disabled={busyElsewhere || (!generating && !draft.trim())}
           >
             <Icon name={generating ? 'stop' : 'arrowUp'} size={generating ? 15 : 18} stroke={2.4} />
           </button>
@@ -353,11 +357,18 @@ export default function ChatPage() {
   // never plays/replays once the mask drops (package streamedRef, line 519).
   // Immutable state Set, not a ref: it is read during render (react-hooks/refs).
   const [streamedIds, setStreamedIds] = useState<ReadonlySet<string>>(() => new Set())
-  // Send failure, session-scoped (Mandated Adaptation 4): the error row renders
-  // only inside the session the send failed in; Retry re-sends `content` as a
-  // brand-new request (backend rolled the failed turn back server-side, the
-  // hook rolled back the optimistic bubble).
-  const [sendError, setSendError] = useState<{ sessionId: string; content: string } | null>(null)
+  // Send failures, keyed by session id (Mandated Adaptation 4): each session's
+  // error row renders only inside that session, and one session's failure can
+  // never clobber another's pending row (single-slot state lost the older
+  // failure's content). Retry re-sends the stored content as a brand-new
+  // request (backend rolled the failed turn back server-side, the hook rolled
+  // back the optimistic bubble).
+  const [sendErrors, setSendErrors] = useState<Record<string, string>>({})
+  // Which session the in-flight send belongs to: "Thinking" dots, chip hiding,
+  // and the Stop button must not leak into OTHER sessions the user switches to
+  // while a send is in flight (they'd get an interactive Stop for a turn that
+  // isn't theirs). Sends stay globally serialized — see handleSend.
+  const [sendingSessionId, setSendingSessionId] = useState<string | null>(null)
   const streamIvRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
   // Stop pressed while the request is still in flight (Mandated Adaptation 3 —
   // the server persists the turn regardless, so Stop never aborts the request):
@@ -370,7 +381,13 @@ export default function ChatPage() {
   const genTokenRef = useRef(0)
   const feedRef = useRef<HTMLDivElement | null>(null)
   const taRef = useRef<HTMLTextAreaElement | null>(null)
-  const generating = isSending || stream != null
+  // Scoped to the VIEWED session: drives the Stop button, Thinking dots, and
+  // chip hiding. `busyElsewhere` still disables sending (one generation at a
+  // time, package semantics) without rendering another session's indicators.
+  const sendingHere = isSending && sendingSessionId === currentSessionId
+  const streamingHere = stream != null && stream.sessionId === currentSessionId
+  const generating = sendingHere || streamingHere
+  const busyElsewhere = (isSending || stream != null) && !generating
 
   const isLoading = isListLoading || isSessionLoading
   const messages = useMemo(() => session?.messages ?? [], [session?.messages])
@@ -386,16 +403,16 @@ export default function ChatPage() {
   useEffect(() => {
     const f = feedRef.current
     if (f) f.scrollTo({ top: f.scrollHeight, behavior: 'smooth' })
-  }, [currentSessionId, messages.length, isSending, stream])
+  }, [currentSessionId, messages.length, sendingHere, stream])
 
   // last coach turn's chips drive the composer chip row (0-4 chips) — package
-  // memo (line 527): hidden while the reply is in flight OR still revealing
-  // (chips pop only after the stream commits; `typing || stream` ⇢ isSending/stream).
+  // memo (line 527): hidden while THIS session's reply is in flight or still
+  // revealing (chips pop only after the stream commits).
   const chips = useMemo(() => {
-    if (!session || isSending || stream) return []
+    if (!session || sendingHere || streamingHere) return []
     const last = session.messages[session.messages.length - 1]
     return last && last.role === 'coach' && last.chips ? last.chips : []
-  }, [session, isSending, stream])
+  }, [session, sendingHere, streamingHere])
 
   // Daily-cap state: the header sub swaps to "Resting until tomorrow" when the
   // latest coach turn is the backend cap line (Mandated Adaptation 5).
@@ -441,7 +458,12 @@ export default function ChatPage() {
       setActiveSessionId(remaining[0]?.id ?? null)
     }
     // a pending error row for the deleted session can never render again — drop it
-    setSendError(prev => (prev && prev.sessionId === id ? null : prev))
+    setSendErrors(prev => {
+      if (!(id in prev)) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
     setConfirmId(null)
     remove(id).catch(() => toast.error('Could not delete the chat. Please try again.'))
   }
@@ -495,11 +517,17 @@ export default function ChatPage() {
         return
       }
     }
+    setSendingSessionId(sid)
     try {
       const data = await send({ sessionId: sid, content })
       // clear a resolved failure for THIS session only — an unrelated
       // session's pending error row must survive
-      setSendError(prev => (prev && prev.sessionId === sid ? null : prev))
+      setSendErrors(prev => {
+        if (!(sid in prev)) return prev
+        const next = { ...prev }
+        delete next[sid]
+        return next
+      })
       // stale token = the user switched sessions mid-flight: the reply is
       // already committed to cache; skip the reveal so no stream ever runs
       // behind a view the user left
@@ -511,12 +539,17 @@ export default function ChatPage() {
       // Mandated Adaptation 4: the hook already rolled the optimistic bubble
       // back (and the backend rolled back the turn); the inline error row owns
       // recovery — no toast, and the draft stays cleared.
-      setSendError({ sessionId: sid, content })
+      setSendErrors(prev => ({ ...prev, [sid]: content }))
+    } finally {
+      setSendingSessionId(null)
     }
   }
 
   function handleSend(text: string) {
-    if (!userId || generating || isCreating) return
+    // global single-generation guard (package semantics): sends are blocked
+    // while ANY session's turn is in flight or revealing, even though only the
+    // owning session renders indicators
+    if (!userId || isSending || stream != null || isCreating) return
     const content = text.trim()
     if (!content) return
     // Clear the composer immediately — the message optimistically appears in
@@ -538,10 +571,10 @@ export default function ChatPage() {
   }
 
   function retry() {
-    if (!sendError || !userId || generating || isCreating) return
-    const { sessionId, content } = sendError
-    setSendError(null)
-    void performSend(sessionId, content)
+    if (!userId || isSending || stream != null || isCreating || !currentSessionId) return
+    const content = sendErrors[currentSessionId]
+    if (!content) return
+    void performSend(currentSessionId, content)
   }
 
   const railProps: CoachRailProps = {
@@ -560,6 +593,7 @@ export default function ChatPage() {
     chips,
     onChip: c => setDraft(c),
     generating,
+    busyElsewhere,
     onStop: stop,
     taRef,
   }
@@ -609,10 +643,10 @@ export default function ChatPage() {
                       />
                     )
                   })}
-                  {isSending && <TypingDots />}
-                  {/* package error row (lines 650-656), session-scoped local state
+                  {sendingHere && <TypingDots />}
+                  {/* package error row (lines 650-656), session-keyed local state
                       instead of session.error (Mandated Adaptation 4) */}
-                  {sendError && sendError.sessionId === currentSessionId && !generating && (
+                  {currentSessionId && sendErrors[currentSessionId] && !generating && (
                     <div className="gf-co-error">
                       <Icon name="alert" size={16} className="gf-co-error-ic" />
                       <span className="gf-co-error-t">Something went wrong. Try again.</span>
