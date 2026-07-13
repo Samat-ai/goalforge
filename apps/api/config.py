@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     dev_email_override: str | None = None  # if set, all emails route here (dev/testing only)
     vapid_private_key: str = ""
     vapid_subject: str = ""
+    guard_model: str = "gemini-2.5-flash-lite"  # AI input-guard classifier model
+    coach_daily_message_limit: int = 20  # coach user-messages per user per day
     db_pool_size: int = 10
     db_max_overflow: int = 20
     db_pool_timeout: int = 30

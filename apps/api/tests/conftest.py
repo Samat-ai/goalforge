@@ -49,7 +49,7 @@ from auth import get_current_user_email, get_current_user_id
 from database import Base, get_db
 from main import app
 from models import DailyTask, Goal, Milestone
-from schemas import AIMilestoneConfig, AIGoalOutput, AITaskOutput
+from schemas import AICoachTurnV2, AIGuardVerdict, AIMilestoneConfig, AIGoalOutput, AITaskOutput
 from services.goal_service import PLACEHOLDER_MILESTONE_TITLE
 from utils import user_today
 
@@ -225,10 +225,13 @@ async def client(engine):
 
     with (
         patch("routes.goals._generate_goal_async", new=_mock_generate_goal_async),
+        patch("routes.goals.classify_user_input", new=AsyncMock(return_value=AIGuardVerdict(verdict="allow", category="on_topic"))),
         patch("routes.milestones.generate_sprint_tasks", new=AsyncMock(return_value=mock_tasks)),
         patch("services.task_service._pre_generate_sprint", new=AsyncMock()),
         patch("routes.tasks.regenerate_single_task", new=AsyncMock(return_value=mock_regen)),
         patch("services.reward_service.roll_reward", return_value="standard"),  # always standard in tests
+        patch("routes.coach.classify_user_input", new=AsyncMock(return_value=AIGuardVerdict(verdict="allow", category="on_topic"))),
+        patch("routes.coach.generate_coach_reply", new=AsyncMock(return_value=AICoachTurnV2(reply="Noted. What outcome do you want in 90 days?", intent="chat", chips=["Get fit", "Ship my project"]))),
     ):
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
@@ -306,10 +309,13 @@ async def other_client(engine):
 
     with (
         patch("routes.goals._generate_goal_async", new=_mock_generate_goal_async),
+        patch("routes.goals.classify_user_input", new=AsyncMock(return_value=AIGuardVerdict(verdict="allow", category="on_topic"))),
         patch("routes.milestones.generate_sprint_tasks", new=AsyncMock(return_value=mock_tasks)),
         patch("services.task_service._pre_generate_sprint", new=AsyncMock()),
         patch("routes.tasks.regenerate_single_task", new=AsyncMock(return_value=mock_regen)),
         patch("services.reward_service.roll_reward", return_value="standard"),  # always standard in tests
+        patch("routes.coach.classify_user_input", new=AsyncMock(return_value=AIGuardVerdict(verdict="allow", category="on_topic"))),
+        patch("routes.coach.generate_coach_reply", new=AsyncMock(return_value=AICoachTurnV2(reply="Noted. What outcome do you want in 90 days?", intent="chat", chips=["Get fit", "Ship my project"]))),
     ):
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"

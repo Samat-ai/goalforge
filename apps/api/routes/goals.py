@@ -1,5 +1,7 @@
 """Goal CRUD routes."""
 
+import logging
+import random
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -8,15 +10,20 @@ from sqlalchemy import func, select, update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from ai_utils import classify_user_input
 from auth import get_current_user_email, get_current_user_id
 from database import get_db
 from deps import _ensure_owner, _load_goal_with_ownership, get_or_create_user, load_full_goal
+from exceptions import AIGenerationError
 from models import Goal, Milestone, User
+from services import coach_service
 from services.goal_service import _generate_goal_async, PLACEHOLDER_MILESTONE_TITLE
 from services.rescue_service import _execute_rescue_sprint
 from rate_limiting import _user_key, rate_limit
 from schemas import GoalCreate, GoalResponse, GoalStatusUpdate, PaginatedGoalsResponse
 from utils import user_today
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -38,6 +45,28 @@ async def create_goal(
     db: AsyncSession = Depends(get_db),
 ):
     _ensure_owner(user_id, current_user_id)
+
+    # AI-input guard: same classifier as chat. Deflect/support → 422 before any
+    # placeholder rows or background work exist. Fail-open on guard outage.
+    try:
+        verdict = await classify_user_input(
+            "The user is creating a new goal to work toward.", payload.raw_input,
+        )
+    except AIGenerationError:
+        logger.warning("goal-create guard fail-open for user %s", current_user_id)
+        verdict = None
+    if verdict is not None and verdict.verdict != "allow":
+        message = (
+            coach_service.SUPPORT_MESSAGE
+            if verdict.verdict == "support"
+            else random.choice(coach_service.DEFLECTIONS)
+        )
+        logger.info("goal-create %s user=%s category=%s", verdict.verdict, current_user_id, verdict.category)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "content_deflected", "message": message},
+        )
+
     user = await get_or_create_user(user_id, current_user_email, db)
     user_timezone = user.timezone  # capture before session closes
 

@@ -39,6 +39,16 @@ export function useGoalMutations(userId: string, onJackpot?: (drop: RewardDrop) 
       updateGoals(goals => [data, ...goals])
       qc.invalidateQueries({ queryKey: queryKeys.goals(userId) })
     },
+    onError: (err: unknown) => {
+      // Prefer the AI-input guard's in-character deflection message when present;
+      // otherwise stay silent here — GoalCreation's own catch already shows a
+      // generic inline "Could not create goal" status for all other failures.
+      const detail = (err as { response?: { data?: { detail?: { code?: string; message?: string } } } })
+        ?.response?.data?.detail
+      if (detail?.code === 'content_deflected' && detail.message) {
+        toast.error(detail.message)
+      }
+    },
   })
 
   // ── Complete Task (mutateAsync internally; toast deferred to onSuccess) ──

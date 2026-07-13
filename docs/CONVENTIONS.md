@@ -91,6 +91,10 @@ Every branch in `trigger_reminders` (and any future sender) must have all four:
   `_client.aio.models.generate_content` directly.
 - `temperature=1.0`, `response_mime_type="application/json"`,
   `response_schema=<Pydantic model>` — set inside the helper; don't override.
+- **Any new surface that feeds user text into a Gemini call needs an explicit
+  guard decision**: active guard (`classify_user_input`) for conversational/
+  creation inputs, `_HARDENING_RULES` for embedded stored text. *(Motivated by
+  the chat-agent harness — PR 1, 2026-07-11.)*
 
 ### API surface policy
 - **No endpoint without a consumer.** Ship the frontend caller (or cron/job

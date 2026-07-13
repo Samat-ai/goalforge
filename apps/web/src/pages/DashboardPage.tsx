@@ -135,7 +135,15 @@ function GoalCreation({ value, onChange, onCreate }: GoalCreationProps) {
       onChange('')
       setStatus('done')
       setTimeout(() => setStatus('idle'), 1100)
-    } catch {
+    } catch (err) {
+      // Deflected input already shows Solly's in-character toast (useGoalMutations
+      // onError) — skip the generic inline error so the user doesn't see both.
+      const code = (err as { response?: { data?: { detail?: { code?: string } } } })
+        ?.response?.data?.detail?.code
+      if (code === 'content_deflected') {
+        setStatus('idle')
+        return
+      }
       setStatus('error')
       setTimeout(() => setStatus('idle'), 1500)
     }

@@ -221,6 +221,8 @@ class CoachMessageResponse(BaseModel):
     session_id: uuid.UUID
     role: Literal["coach", "user"]
     content: str
+    chips: list[str] | None = None
+    forged_goal_id: uuid.UUID | None = None
     created_at: datetime
 
 
@@ -229,9 +231,8 @@ class CoachSessionResponse(BaseModel):
 
     id: uuid.UUID
     user_id: str
-    stage: int
+    title: str | None = None
     is_completed: bool
-    forged_goal_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime
     messages: list[CoachMessageResponse] = []
@@ -240,6 +241,21 @@ class CoachSessionResponse(BaseModel):
 class CoachSendMessageResponse(BaseModel):
     session: CoachSessionResponse
     forged_goal: GoalResponse | None = None
+
+
+class CoachSessionListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    title: str | None
+    updated_at: datetime
+
+
+class PaginatedCoachSessionsResponse(BaseModel):
+    items: list[CoachSessionListItem]
+    total: int
+    limit: int
+    offset: int
 
 
 # ---------------------------------------------------------------------------
@@ -405,6 +421,30 @@ class AISprintOutput(BaseModel):
     )
 
 
+class AIGuardVerdict(BaseModel):
+    """Input-guard classifier output. Applies to chat messages and goal raw_input."""
+    verdict: Literal["allow", "deflect", "support"]
+    category: str = Field(..., max_length=40, description="Short lowercase tag, e.g. on_topic, injection, off_topic, harmful, self_harm")
+
+
+class AIPlanEdit(BaseModel):
+    """One plan edit proposed by the coach. target_id stays a string — the
+    service parses it and drops invalid ids instead of failing the turn."""
+    target: Literal["task_description", "task_tip", "milestone_theme", "goal_title", "goal_description"]
+    target_id: str
+    new_value: str = Field(..., min_length=1, max_length=500)
+
+
+class AICoachTurnV2(BaseModel):
+    """Router-responder output for one coach turn."""
+    reply: str = Field(..., min_length=1, max_length=900)
+    intent: Literal["chat", "forge_goal", "edit_plan"]
+    chips: list[str] = Field(default_factory=list, description="0-4 short next-message suggestions from the user's perspective")
+    forge_brief: str | None = Field(None, description="Distilled goal description; required when intent=forge_goal")
+    edits: list[AIPlanEdit] | None = Field(None, description="Proposed edits; required when intent=edit_plan")
+    session_title: str | None = Field(None, max_length=120, description="Set once when the session is untitled")
+
+
 class AIGoalOutput(BaseModel):
     """Strict schema that Gemini must populate — mirrors the Goal + first sprint tasks."""
     smart_title: str = Field(..., max_length=200, description="Concise, motivating SMART goal title (≤12 words)")
@@ -439,15 +479,6 @@ class AIWeeklyCoachOutput(BaseModel):
         min_length=20,
         max_length=800,
         description="Practical coaching recommendation for next week",
-    )
-
-
-class AICoachTurnOutput(BaseModel):
-    acknowledgement: str = Field(
-        ...,
-        min_length=10,
-        max_length=320,
-        description="Empathetic acknowledgement grounded in the user's latest answer",
     )
 
 

@@ -51,8 +51,11 @@ extras. Zero-consumer rule families were deleted in Task 9.
   real metrics or drop the band.
 - ~~**Landing mobile sign-in gap**~~ — FIXED (PR #168): burger menu now carries
   a "Sign in" m-link for signed-out visitors.
-- **Chat suggestion chips are static**: `src/pages/ChatPage.tsx` renders fixed
-  prototype chips, not AI-generated suggestions.
+- ~~**Chat suggestion chips are static**~~ — SHIPPED (chat-agent harness PR 1,
+  2026-07-11): `ChatPage.tsx` now renders AI-generated chips (up to 4, from
+  the latest coach message) plus inline plan cards on `forged_goal_id`, on
+  the new coach v2 session pipeline. Does not touch the separate header-chrome
+  item (section 2 table — already re-slotted/active, unaffected by this PR).
 - ~~**Onboarding has no step persistence**~~ — FIXED (PR #168): wizard progress
   persists to sessionStorage; cleared on skip/finish.
 

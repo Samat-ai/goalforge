@@ -8,5 +8,11 @@ export { useLatestWeeklyReflectionQuery, useCreateWeeklyReflectionMutation } fro
 export { useStarLogQuery } from './useStarLog'
 export { useShopRewardsQuery, useShopRewardMutations } from './useShopRewards'
 export { useBadgesQuery } from './useBadges'
-export { useCoachSessionQuery, useStartCoachSessionMutation, useSendCoachMessageMutation } from './useCoach'
+export {
+  useCoachSessionsQuery,
+  useCoachSessionQuery,
+  useCreateCoachSessionMutation,
+  useSendCoachMessageMutation,
+  useDeleteCoachSessionMutation,
+} from './useCoach'
 export { useOnlineStatus } from './useOnlineStatus'
