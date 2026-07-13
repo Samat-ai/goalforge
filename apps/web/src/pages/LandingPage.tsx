@@ -679,7 +679,9 @@ export default function LandingPage() {
     return saved === 'dark' ? 'dark' : 'light'
   })
 
-  useEffect(() => { document.title = "Solly — your goal-getting buddy · GoalForge" }, [])
+  // Keep in sync with index.html <title> — this is the title Google indexes
+  // for goalforge.me, so brand first and short enough for a phone SERP.
+  useEffect(() => { document.title = 'GoalForge · AI goal tracker' }, [])
 
   // prototype: html { scroll-behavior: smooth } — the app's scroller is <body>
   useEffect(() => {
