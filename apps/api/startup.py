@@ -1,3 +1,4 @@
+import os
 import sys
 import logging
 from config import settings
@@ -11,7 +12,20 @@ def validate_startup() -> None:
     # Required for basic operation
     if not getattr(settings, 'database_url', None):
         errors.append("DATABASE_URL — app cannot connect to database")
-    if not getattr(settings, 'gemini_api_key', None):
+    if getattr(settings, 'google_genai_use_vertexai', False):
+        if not getattr(settings, 'google_cloud_project', None):
+            errors.append("GOOGLE_CLOUD_PROJECT — required when GOOGLE_GENAI_USE_VERTEXAI=true")
+        creds = getattr(settings, 'google_application_credentials', None)
+        if creds and not os.path.isfile(creds):
+            errors.append(
+                f"GOOGLE_APPLICATION_CREDENTIALS — file not found at '{creds}' "
+                "(check the path / docker volume mount)"
+            )
+        elif not creds and not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+            errors.append(
+                "GOOGLE_APPLICATION_CREDENTIALS — required when GOOGLE_GENAI_USE_VERTEXAI=true"
+            )
+    elif not getattr(settings, 'gemini_api_key', None):
         errors.append("GEMINI_API_KEY — AI features will be unavailable")
     if not getattr(settings, 'clerk_jwks_url', None):
         errors.append("CLERK_JWKS_URL — authentication will fail for all users")

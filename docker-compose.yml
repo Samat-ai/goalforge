@@ -24,6 +24,10 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     env_file: ./apps/api/.env
+    # Service-account key for Vertex AI billing mode (gitignored; folder may be
+    # empty when running on the AI Studio API key — the mount is harmless then).
+    volumes:
+      - ./apps/api/secrets:/app/secrets:ro
     depends_on:
       - db
 

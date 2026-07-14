@@ -13,6 +13,7 @@ retry/timeout/parse/validate live in exactly one place. Do not call
 import asyncio
 import json
 import logging
+import os
 from datetime import date, timedelta
 from typing import TypeVar
 
@@ -37,9 +38,25 @@ from schemas import (
 
 logger = logging.getLogger(__name__)
 
-# Initialise the client once at module load (reads GEMINI_API_KEY from env via
-# settings, but the SDK also honours the GOOGLE_API_KEY env var natively).
-_client = genai.Client(api_key=settings.gemini_api_key)
+# Initialise the client once at module load. Two mutually exclusive auth modes:
+#   Vertex AI (GOOGLE_GENAI_USE_VERTEXAI=true) — bills the GCP project, needed
+#     because AI Studio API-key billing bypasses cloud credits entirely.
+#   AI Studio (default) — plain API key, free tier / direct card billing.
+if settings.google_genai_use_vertexai:
+    # google-auth reads GOOGLE_APPLICATION_CREDENTIALS from os.environ only;
+    # pydantic-settings parses .env without exporting, so bridge it here for
+    # bare-uvicorn runs (docker env_file exports it natively).
+    if settings.google_application_credentials:
+        os.environ.setdefault(
+            "GOOGLE_APPLICATION_CREDENTIALS", settings.google_application_credentials
+        )
+    _client = genai.Client(
+        vertexai=True,
+        project=settings.google_cloud_project,
+        location=settings.google_cloud_location,
+    )
+else:
+    _client = genai.Client(api_key=settings.gemini_api_key)
 
 _MODEL = "gemini-2.5-flash"
 

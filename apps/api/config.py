@@ -6,6 +6,13 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/goalforge"
     gemini_api_key: str = ""
+    # Vertex AI mode: bill Gemini through a GCP project (uses cloud credits)
+    # instead of an AI Studio API key. When true, google_cloud_project and a
+    # service-account key (google_application_credentials path) are required.
+    google_genai_use_vertexai: bool = False
+    google_cloud_project: str = ""
+    google_cloud_location: str = "global"
+    google_application_credentials: str = ""  # path to service-account JSON
     debug: bool = False
     clerk_secret_key: str = ""
     clerk_jwks_url: str = ""
