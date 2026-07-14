@@ -22,7 +22,7 @@ import { useUser } from '@clerk/react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Icon } from '../components/gf/Ui'
-import { cx } from '../components/gf/util'
+import { cx, gfHideTip, gfTip } from '../components/gf/util'
 import CoachRail, { type CoachRailProps } from '../components/gf/CoachRail'
 import CoachDrawer from '../components/gf/CoachDrawer'
 import SollyIdle from '../components/SollyIdle'
@@ -252,11 +252,13 @@ interface ComposerProps {
 function Composer({ draft, setDraft, onSend, chips, onChip, generating, busyElsewhere, onStop, taRef, usage, hero }: ComposerProps) {
   // Daily-cap ring around the send button — hidden until half the allowance is
   // used (progressive disclosure), amber at <=3 left. See coachView.usageRing.
+  // Hover detail uses the same gfTip floating tooltip as the Analytics heatmap
+  // (values are numeric/formatted, safe for its innerHTML).
   const ring = usage ? usageRing(usage.used, usage.limit) : null
   const remaining = usage ? usage.limit - Math.min(usage.used, usage.limit) : 0
-  const usageTitle = usage && ring?.visible
-    ? `${remaining} of ${usage.limit} messages left today · resets ${resetTimeLabel(usage.resets_at)}`
-    : undefined
+  const usageTip = usage && ring?.visible
+    ? `<b>${remaining}/${usage.limit}</b> messages left<span>resets ${resetTimeLabel(usage.resets_at)}</span>`
+    : null
   const grow = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setDraft(e.target.value)
     const el = e.target
@@ -287,7 +289,11 @@ function Composer({ draft, setDraft, onSend, chips, onChip, generating, busyElse
             onChange={grow}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
           />
-          <span className="gf-co-send-wrap" title={usageTitle}>
+          <span
+            className="gf-co-send-wrap"
+            onMouseMove={usageTip ? (e) => gfTip(e, usageTip) : undefined}
+            onMouseLeave={usageTip ? gfHideTip : undefined}
+          >
             {ring && (
               <svg
                 className={cx('gf-co-ring', ring.visible && 'is-on', ring.warn && 'is-warn')}
