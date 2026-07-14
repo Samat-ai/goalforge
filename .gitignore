@@ -10,6 +10,7 @@ __pycache__/
 # Secrets
 .env
 .env.*
+apps/api/secrets/
 
 # IDEs and Tools
 .idea/
