@@ -1304,6 +1304,15 @@ html { scroll-behavior: smooth; }
 .gf-co-inputbar:focus-within { border-color: var(--accent-line); }
 .gf-co-input { flex: 1; min-width: 0; border: none; outline: none; background: none; resize: none; color: var(--text); font-family: var(--font-body); font-size: 14.5px; line-height: 1.5; padding: 9px 0; max-height: 160px; }
 .gf-co-input::placeholder { color: var(--text-mute); }
+/* daily-cap usage ring: absolutely positioned just outside the send circle,
+   invisible until `.is-on` (>=50% of the allowance used), amber when `.is-warn` */
+.gf-co-send-wrap { position: relative; flex-shrink: 0; display: grid; place-items: center; }
+.gf-co-ring { position: absolute; inset: -4px; width: calc(100% + 8px); height: calc(100% + 8px); transform: rotate(-90deg); pointer-events: none; opacity: 0; transition: opacity .35s ease; }
+.gf-co-ring.is-on { opacity: 1; }
+.gf-co-ring circle { fill: none; stroke-width: 2.5; }
+.gf-co-ring-track { stroke: color-mix(in oklab, var(--text) 10%, transparent); }
+.gf-co-ring-fill { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .4s ease, stroke .3s ease; }
+.gf-co-ring.is-warn .gf-co-ring-fill { stroke: var(--gold); }
 .gf-co-send { flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: var(--text-mute); background: color-mix(in oklab, var(--text) 8%, transparent); transition: all .18s cubic-bezier(.34,1.5,.5,1); }
 .gf-co-send.is-on { color: #fff; background: var(--accent); box-shadow: 0 4px 14px -3px var(--accent); }
 .gf-co-send.is-on:hover { transform: scale(1.08); }

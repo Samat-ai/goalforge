@@ -190,7 +190,14 @@ export interface PaginatedCoachSessions {
   offset: number
 }
 
+export interface CoachUsage {
+  used: number
+  limit: number
+  resets_at: string // UTC instant of the user-local midnight reset
+}
+
 export interface CoachSendMessageResponse {
   session: CoachSession
   forged_goal: Goal | null
+  usage: CoachUsage
 }

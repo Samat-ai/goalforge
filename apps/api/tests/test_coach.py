@@ -326,3 +326,48 @@ async def test_degenerate_forge_intent_degrades_to_chat(client):
     assert data["forged_goal"] is None
     assert data["session"]["messages"][-1]["content"] == "Ready when you are."
     assert data["session"]["messages"][-1]["forged_goal_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_usage_endpoint_reports_and_send_increments(client, monkeypatch):
+    from datetime import datetime, timezone
+
+    from config import settings as live_settings
+    monkeypatch.setattr(live_settings, "coach_daily_message_limit", 5)
+
+    resp = await client.get(f"/users/{TEST_USER_ID}/coach/usage")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["used"] == 0
+    assert body["limit"] == 5
+    # test user tz is UTC -> resets at next UTC midnight, i.e. within 24h from now
+    resets_at = datetime.fromisoformat(body["resets_at"].replace("Z", "+00:00"))
+    delta = (resets_at - datetime.now(timezone.utc)).total_seconds()
+    assert 0 < delta <= 86_400
+
+    session = await _start_session(client)
+    send = await client.post(f"/coach/sessions/{session['id']}/messages", json={"content": "hello"})
+    assert send.status_code == 200
+    assert send.json()["usage"] == {"used": 1, "limit": 5, "resets_at": send.json()["usage"]["resets_at"]}
+
+    resp2 = await client.get(f"/users/{TEST_USER_ID}/coach/usage")
+    assert resp2.json()["used"] == 1
+
+
+@pytest.mark.asyncio
+async def test_usage_clamped_at_cap_and_ownership(client, monkeypatch):
+    from config import settings as live_settings
+    monkeypatch.setattr(live_settings, "coach_daily_message_limit", 1)
+
+    session = await _start_session(client)
+    first = await client.post(f"/coach/sessions/{session['id']}/messages", json={"content": "one"})
+    assert first.json()["usage"]["used"] == 1
+
+    # over-cap send persists the message but usage stays clamped to the limit
+    second = await client.post(f"/coach/sessions/{session['id']}/messages", json={"content": "two"})
+    from services.coach_service import CAP_MESSAGE
+    assert second.json()["session"]["messages"][-1]["content"] == CAP_MESSAGE
+    assert second.json()["usage"] == {"used": 1, "limit": 1, "resets_at": second.json()["usage"]["resets_at"]}
+
+    other = await client.get("/users/someone_else/coach/usage")
+    assert other.status_code == 403

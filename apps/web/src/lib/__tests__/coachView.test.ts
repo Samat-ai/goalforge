@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BUCKET_ORDER, CAP_MESSAGE, bucketOf, fallbackTitle, isCapMessage, relTime, splitWords } from '../coachView'
+import { BUCKET_ORDER, CAP_MESSAGE, bucketOf, fallbackTitle, isCapMessage, relTime, splitWords, usageRing } from '../coachView'
 
 // Fixed epoch — bucketOf/relTime take `now` as an explicit param (purity gate), so no
 // vi.setSystemTime is needed; every case below anchors to this constant directly.
@@ -114,5 +114,34 @@ describe('CAP_MESSAGE / isCapMessage', () => {
   it('is false for a near-miss (trailing whitespace or edited text)', () => {
     expect(isCapMessage(CAP_MESSAGE + ' ')).toBe(false)
     expect(isCapMessage(CAP_MESSAGE.slice(0, -1))).toBe(false)
+  })
+})
+
+describe('usageRing', () => {
+  it('is hidden below half the allowance', () => {
+    expect(usageRing(0, 20).visible).toBe(false)
+    expect(usageRing(9, 20).visible).toBe(false)
+  })
+
+  it('becomes visible at exactly half', () => {
+    const ring = usageRing(10, 20)
+    expect(ring.visible).toBe(true)
+    expect(ring.fraction).toBe(0.5)
+    expect(ring.warn).toBe(false)
+  })
+
+  it('warns at 3 or fewer remaining', () => {
+    expect(usageRing(16, 20).warn).toBe(false)
+    expect(usageRing(17, 20).warn).toBe(true)
+    expect(usageRing(20, 20)).toEqual({ visible: true, fraction: 0, warn: true })
+  })
+
+  it('clamps out-of-range input (over-cap sends are persisted server-side)', () => {
+    expect(usageRing(25, 20)).toEqual({ visible: true, fraction: 0, warn: true })
+    expect(usageRing(-1, 20).fraction).toBe(1)
+  })
+
+  it('degrades safely for a nonsense limit', () => {
+    expect(usageRing(5, 0)).toEqual({ visible: false, fraction: 1, warn: false })
   })
 })

@@ -29,9 +29,11 @@ from schemas import (
     CoachSendMessageResponse,
     CoachSessionListItem,
     CoachSessionResponse,
+    CoachUsageResponse,
     PaginatedCoachSessionsResponse,
 )
 from services import coach_service
+from utils import next_local_midnight_utc
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +58,23 @@ async def _load_session(session_id: uuid.UUID, db: AsyncSession, *, for_update: 
     if session is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Coach session not found")
     return session
+
+
+def _usage_response(used: int, tz_name: str) -> CoachUsageResponse:
+    """Snapshot of today's cap usage. `used` is clamped for display: over-cap
+    messages are persisted (honest transcript) so the raw count can exceed
+    the limit."""
+    limit = settings.coach_daily_message_limit
+    return CoachUsageResponse(
+        used=min(max(used, 0), limit),
+        limit=limit,
+        resets_at=next_local_midnight_utc(tz_name),
+    )
+
+
+async def _user_tz(user_id: str, db: AsyncSession) -> str:
+    user_row = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    return user_row.timezone if user_row else "UTC"
 
 
 def _coach_message(session_id: uuid.UUID, content: str, *, chips: list[str] | None = None,
@@ -139,6 +158,22 @@ async def list_coach_sessions(
 
 
 @router.get(
+    "/users/{user_id}/coach/usage",
+    response_model=CoachUsageResponse,
+    summary="Today's coach message usage against the daily cap",
+)
+async def get_coach_usage(
+    user_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    _ensure_owner(user_id, current_user_id)
+    tz_name = await _user_tz(user_id, db)
+    used = await coach_service.count_user_messages_today(user_id, tz_name, db)
+    return _usage_response(used, tz_name)
+
+
+@router.get(
     "/coach/sessions/{session_id}",
     response_model=CoachSessionResponse,
     summary="Get a coach session with its full transcript",
@@ -184,8 +219,7 @@ async def send_coach_message(
     session = await _load_session(session_id, db, for_update=True)
     _ensure_owner(session.user_id, current_user_id)
 
-    user_row = (await db.execute(select(User).where(User.id == current_user_id))).scalar_one_or_none()
-    tz_name = user_row.timezone if user_row else "UTC"
+    tz_name = await _user_tz(current_user_id, db)
 
     # [1] daily cap — checked before this message is stored, so the limit is
     # "N user messages get coached per day"; over-cap messages are still
@@ -199,12 +233,15 @@ async def send_coach_message(
     await db.flush()
     session.updated_at = datetime.now(timezone.utc)
 
+    # every persisted user message counts, including over-cap/deflected ones
+    usage = _usage_response(used_today + 1, tz_name)
+
     if used_today >= settings.coach_daily_message_limit:
         db.add(_coach_message(session.id, coach_service.CAP_MESSAGE))
         await db.flush()
         await db.refresh(session, attribute_names=["messages"])  # identity map caches old collection; reload before response
         refreshed = await _load_session(session.id, db)
-        return CoachSendMessageResponse(session=refreshed, forged_goal=None)
+        return CoachSendMessageResponse(session=refreshed, forged_goal=None, usage=usage)
 
     # [2] guard — sees only the previous coach message + the new user message
     last_coach = next((m for m in reversed(session.messages) if m.role == "coach"), None)
@@ -223,14 +260,14 @@ async def send_coach_message(
         await db.flush()
         await db.refresh(session, attribute_names=["messages"])  # identity map caches old collection; reload before response
         refreshed = await _load_session(session.id, db)
-        return CoachSendMessageResponse(session=refreshed, forged_goal=None)
+        return CoachSendMessageResponse(session=refreshed, forged_goal=None, usage=usage)
     if verdict is not None and verdict.verdict == "support":
         logger.info("coach support-redirect user=%s category=%s", current_user_id, verdict.category)
         db.add(_coach_message(session.id, coach_service.SUPPORT_MESSAGE))
         await db.flush()
         await db.refresh(session, attribute_names=["messages"])  # identity map caches old collection; reload before response
         refreshed = await _load_session(session.id, db)
-        return CoachSendMessageResponse(session=refreshed, forged_goal=None)
+        return CoachSendMessageResponse(session=refreshed, forged_goal=None, usage=usage)
 
     # [3] responder
     context_block = await coach_service.build_user_context(current_user_id, session, db)
@@ -282,4 +319,4 @@ async def send_coach_message(
     await db.refresh(session, attribute_names=["messages"])  # identity map caches old collection; reload before response
     refreshed = await _load_session(session.id, db)
     forged_goal = await load_full_goal(forged_goal_id, db) if forged_goal_id else None
-    return CoachSendMessageResponse(session=refreshed, forged_goal=forged_goal)
+    return CoachSendMessageResponse(session=refreshed, forged_goal=forged_goal, usage=usage)

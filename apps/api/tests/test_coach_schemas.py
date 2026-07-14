@@ -7,7 +7,7 @@ from schemas import AICoachTurnV2, AIGuardVerdict, AIPlanEdit
 
 def test_settings_have_guard_defaults():
     assert settings.guard_model == "gemini-2.5-flash-lite"
-    assert settings.coach_daily_message_limit == 20
+    assert settings.coach_daily_message_limit == 30  # bumped from 20 in PR #203
 
 
 def test_guard_verdict_accepts_known_verdicts():

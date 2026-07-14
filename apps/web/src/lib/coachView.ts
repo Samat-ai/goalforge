@@ -85,3 +85,30 @@ export const CAP_MESSAGE =
 export function isCapMessage(content: string): boolean {
   return content === CAP_MESSAGE
 }
+
+// Daily-cap usage ring on the send button (progressive disclosure, Claude-app
+// style): invisible for the first half of the allowance, then a depleting ring;
+// `warn` recolors it when 3 or fewer messages remain. Pure math — `used` comes
+// clamped from the server but is re-clamped here defensively.
+export interface UsageRing {
+  visible: boolean
+  fraction: number // remaining/limit, 0..1 — drives stroke-dashoffset
+  warn: boolean
+}
+
+export function usageRing(used: number, limit: number): UsageRing {
+  if (limit <= 0) return { visible: false, fraction: 1, warn: false }
+  const clamped = Math.min(Math.max(used, 0), limit)
+  const remaining = limit - clamped
+  return {
+    visible: clamped >= limit / 2,
+    fraction: remaining / limit,
+    warn: remaining <= 3,
+  }
+}
+
+/** Local wall-clock label for the cap reset instant, e.g. "12:00 AM". Formats a
+ * fixed ISO instant — not a Date.now() read, so it is render-safe. */
+export function resetTimeLabel(iso: string): string {
+  return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(iso))
+}

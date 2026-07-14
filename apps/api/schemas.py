@@ -238,9 +238,16 @@ class CoachSessionResponse(BaseModel):
     messages: list[CoachMessageResponse] = []
 
 
+class CoachUsageResponse(BaseModel):
+    used: int  # user messages counted against today's cap, clamped to `limit`
+    limit: int
+    resets_at: datetime  # next midnight in the user's timezone, as UTC instant
+
+
 class CoachSendMessageResponse(BaseModel):
     session: CoachSessionResponse
     forged_goal: GoalResponse | None = None
+    usage: CoachUsageResponse
 
 
 class CoachSessionListItem(BaseModel):
