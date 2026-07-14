@@ -11,6 +11,7 @@ export { useBadgesQuery } from './useBadges'
 export {
   useCoachSessionsQuery,
   useCoachSessionQuery,
+  useCoachUsageQuery,
   useCreateCoachSessionMutation,
   useSendCoachMessageMutation,
   useDeleteCoachSessionMutation,

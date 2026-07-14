@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '../lib/api'
 import { queryKeys } from '../lib/queryKeys'
-import type { CoachSendMessageResponse, CoachSession, PaginatedCoachSessions } from '../lib/types'
+import type { CoachSendMessageResponse, CoachSession, CoachUsage, PaginatedCoachSessions } from '../lib/types'
 
 export function useCoachSessionsQuery(userId: string | undefined) {
   const query = useQuery({
@@ -34,6 +34,19 @@ export function useCoachSessionQuery(userId: string | undefined, sessionId: stri
     session: query.data ?? null,
     isLoading: !!sessionId && query.isLoading,
   }
+}
+
+export function useCoachUsageQuery(userId: string | undefined) {
+  const query = useQuery({
+    queryKey: queryKeys.coachUsage(userId ?? ''),
+    queryFn: async () => {
+      const { data } = await api.get<CoachUsage>(`/users/${userId}/coach/usage`)
+      return data
+    },
+    enabled: !!userId,
+    staleTime: 60_000,
+  })
+  return { usage: query.data ?? null }
 }
 
 export function useCreateCoachSessionMutation(userId: string) {
@@ -93,6 +106,8 @@ export function useSendCoachMessageMutation(userId: string) {
     },
     onSuccess: (data, { sessionId }) => {
       qc.setQueryData(queryKeys.coachSession(sessionId), data.session)
+      // every send response carries a fresh usage snapshot — no refetch needed
+      qc.setQueryData(queryKeys.coachUsage(userId), data.usage)
       // Ordering + titles in the rail; goals because edit turns are invisible
       // to the client — always refresh. Chat never calls useGoalMutations:
       // Dashboard stays the authoritative goal-cache owner.

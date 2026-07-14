@@ -31,12 +31,16 @@ import {
   useAllGoalsQuery,
   useCoachSessionQuery,
   useCoachSessionsQuery,
+  useCoachUsageQuery,
   useCreateCoachSessionMutation,
   useDeleteCoachSessionMutation,
   useSendCoachMessageMutation,
 } from '../hooks'
-import { fallbackTitle, isCapMessage, relTime, splitWords } from '../lib/coachView'
-import type { CoachMessage, CoachSession, Goal } from '../lib/types'
+import { fallbackTitle, isCapMessage, relTime, resetTimeLabel, splitWords, usageRing } from '../lib/coachView'
+import type { CoachMessage, CoachSession, CoachUsage, Goal } from '../lib/types'
+
+// circumference of the usage ring circle (r=21 in a 44×44 viewBox)
+const RING_C = 2 * Math.PI * 21
 
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
 const e2eUserId = import.meta.env.VITE_E2E_USER_ID ?? 'user_e2e'
@@ -190,9 +194,10 @@ function HeaderSub({ updatedAt }: { updatedAt: string }) {
 
 // Package ChatHeader (lines 434-450): collapse/expand + drawer triggers, Solly
 // avatar, session title via fallbackTitle, status subline.
-function ChatHeader({ session, capped, railOpen, onOpenDrawer, onExpand }: {
+function ChatHeader({ session, capped, resetLabel, railOpen, onOpenDrawer, onExpand }: {
   session: CoachSession | null
   capped: boolean
+  resetLabel: string | null
   railOpen: boolean
   onOpenDrawer: () => void
   onExpand: () => void
@@ -211,7 +216,9 @@ function ChatHeader({ session, capped, railOpen, onOpenDrawer, onExpand }: {
           <div className={cx('gf-co-head-title', info.fallback && 'is-fallback')}>{info.text}</div>
           <div className="gf-co-head-sub">
             {session
-              ? (capped ? 'Resting until tomorrow' : <HeaderSub key={session.updated_at} updatedAt={session.updated_at} />)
+              ? (capped
+                  ? `Resting until tomorrow${resetLabel ? ` · back at ${resetLabel}` : ''}`
+                  : <HeaderSub key={session.updated_at} updatedAt={session.updated_at} />)
               : 'AI goal coach'}
           </div>
         </div>
@@ -235,13 +242,21 @@ interface ComposerProps {
   // Lifted out of the package's internal ref so PlanCard's "Refine" can focus
   // the composer from outside (host adaptation; markup unchanged).
   taRef: RefObject<HTMLTextAreaElement | null>
+  usage: CoachUsage | null
   hero?: boolean
 }
 
 // Package Composer (lines 452-476): floating over the feed in thread view,
 // static `is-hero` inside the empty state. Chips render inside
 // .gf-co-composer-in, above the input bar.
-function Composer({ draft, setDraft, onSend, chips, onChip, generating, busyElsewhere, onStop, taRef, hero }: ComposerProps) {
+function Composer({ draft, setDraft, onSend, chips, onChip, generating, busyElsewhere, onStop, taRef, usage, hero }: ComposerProps) {
+  // Daily-cap ring around the send button — hidden until half the allowance is
+  // used (progressive disclosure), amber at <=3 left. See coachView.usageRing.
+  const ring = usage ? usageRing(usage.used, usage.limit) : null
+  const remaining = usage ? usage.limit - Math.min(usage.used, usage.limit) : 0
+  const usageTitle = usage && ring?.visible
+    ? `${remaining} of ${usage.limit} messages left today · resets ${resetTimeLabel(usage.resets_at)}`
+    : undefined
   const grow = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setDraft(e.target.value)
     const el = e.target
@@ -272,14 +287,31 @@ function Composer({ draft, setDraft, onSend, chips, onChip, generating, busyElse
             onChange={grow}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
           />
-          <button
-            className={cx('gf-co-send', (generating || draft.trim()) && 'is-on')}
-            onClick={generating ? onStop : send}
-            aria-label={generating ? 'Stop generating' : 'Send message'}
-            disabled={busyElsewhere || (!generating && !draft.trim())}
-          >
-            <Icon name={generating ? 'stop' : 'arrowUp'} size={generating ? 15 : 18} stroke={2.4} />
-          </button>
+          <span className="gf-co-send-wrap" title={usageTitle}>
+            {ring && (
+              <svg
+                className={cx('gf-co-ring', ring.visible && 'is-on', ring.warn && 'is-warn')}
+                viewBox="0 0 44 44"
+                aria-hidden="true"
+              >
+                <circle className="gf-co-ring-track" cx="22" cy="22" r="21" />
+                <circle
+                  className="gf-co-ring-fill"
+                  cx="22" cy="22" r="21"
+                  strokeDasharray={RING_C}
+                  strokeDashoffset={RING_C * (1 - ring.fraction)}
+                />
+              </svg>
+            )}
+            <button
+              className={cx('gf-co-send', (generating || draft.trim()) && 'is-on')}
+              onClick={generating ? onStop : send}
+              aria-label={generating ? 'Stop generating' : 'Send message'}
+              disabled={busyElsewhere || (!generating && !draft.trim())}
+            >
+              <Icon name={generating ? 'stop' : 'arrowUp'} size={generating ? 15 : 18} stroke={2.4} />
+            </button>
+          </span>
         </div>
         {!hero && <div className="gf-co-hint">Press <kbd>Enter</kbd> to send · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line</div>}
       </div>
@@ -336,6 +368,7 @@ export default function ChatPage() {
   const { session, isLoading: isSessionLoading } = useCoachSessionQuery(userId, currentSessionId)
   const { create, isCreating } = useCreateCoachSessionMutation(userId ?? '')
   const { send, isSending } = useSendCoachMessageMutation(userId ?? '')
+  const { usage } = useCoachUsageQuery(userId)
   const { remove } = useDeleteCoachSessionMutation(userId ?? '')
   // Plan-card hydration source (Mandated Adaptation 6) — same query key +
   // limit-100 fetch Analytics uses, so the caches are shared.
@@ -597,6 +630,7 @@ export default function ChatPage() {
     busyElsewhere,
     onStop: stop,
     taRef,
+    usage,
   }
 
   return (
@@ -613,6 +647,7 @@ export default function ChatPage() {
             <ChatHeader
               session={session}
               capped={capped}
+              resetLabel={usage ? resetTimeLabel(usage.resets_at) : null}
               railOpen={railOpen}
               onOpenDrawer={() => setDrawerOpen(true)}
               onExpand={() => setRailOpen(true)}

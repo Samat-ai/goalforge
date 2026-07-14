@@ -231,6 +231,9 @@ function buildCoachState() {
     counts: { createSession: 0, sendMessage: 0, deleteSession: 0 },
     // consumed by the send handler: each unit makes one POST /messages fail with 500
     failNextSends: 0,
+    // daily-cap usage: GET /coach/usage reads it, successful sends increment it
+    usedToday: 0,
+    usageLimit: 20,
   }
 }
 type CoachMockState = ReturnType<typeof buildCoachState>
@@ -282,6 +285,19 @@ async function installCoachMocks(page: Page, state: CoachMockState) {
           'access-control-allow-headers': '*',
           'access-control-allow-methods': '*',
         },
+      })
+      return
+    }
+
+    if (method === 'GET' && pathname === `/users/${USER_ID}/coach/usage`) {
+      await route.fulfill({
+        status: 200,
+        headers: jsonHeaders(),
+        body: JSON.stringify({
+          used: Math.min(state.usedToday, state.usageLimit),
+          limit: state.usageLimit,
+          resets_at: new Date(Date.now() + 3_600_000).toISOString(),
+        }),
       })
       return
     }
@@ -349,10 +365,19 @@ async function installCoachMocks(page: Page, state: CoachMockState) {
         },
       )
       sess.updated_at = stamp
+      state.usedToday += 1
       await route.fulfill({
         status: 200,
         headers: jsonHeaders(),
-        body: JSON.stringify({ session: sess, forged_goal: null }),
+        body: JSON.stringify({
+          session: sess,
+          forged_goal: null,
+          usage: {
+            used: Math.min(state.usedToday, state.usageLimit),
+            limit: state.usageLimit,
+            resets_at: new Date(Date.now() + 3_600_000).toISOString(),
+          },
+        }),
       })
       return
     }
@@ -460,6 +485,24 @@ test('selecting a rail session loads that thread', async ({ page }) => {
   // Header title falls back to the truncated preview (same fallback pipeline).
   await expect(page.locator('.gf-co-head-title')).toHaveText(PREVIEW_TRUNCATED)
   await expect(page.locator('.gf-co-head-title')).toHaveClass(/is-fallback/)
+})
+
+test('usage ring hidden below half the daily allowance, revealed once crossed', async ({ page }) => {
+  const state = buildCoachState()
+  state.usedToday = 9 // next send crosses the 50% disclosure threshold (10/20)
+  await installCoachMocks(page, state)
+  await page.goto('/chat')
+
+  await expect(page.getByText('I want to train for a marathon')).toBeVisible()
+  // usage loaded (ring element renders) but stays below the disclosure threshold
+  await expect(page.locator('.gf-co-ring')).toHaveCount(1)
+  await expect(page.locator('.gf-co-ring')).not.toHaveClass(/is-on/)
+
+  await page.locator('.gf-co-input').fill('one more message')
+  await page.getByRole('button', { name: 'Send message' }).click()
+
+  // send response carries usage {used: 10} -> ring fades in
+  await expect(page.locator('.gf-co-ring.is-on')).toHaveCount(1)
 })
 
 test('new chat shows the hero empty state; a starter pill fills the draft without sending', async ({ page }) => {
