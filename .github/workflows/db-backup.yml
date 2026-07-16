@@ -1,0 +1,71 @@
+# Nightly offsite database backup: pg_dump the production Heroku Postgres and
+# upload it to a private Cloudflare R2 bucket (goalforge-backups). Replaces the
+# retired droplet's local backup cron (2026-07-16 cutover).
+#
+# - DATABASE_URL is fetched live each run via the Heroku CLI, so Heroku's
+#   occasional credential rotations can't silently break the backup.
+# - Retention is enforced by an R2 lifecycle rule on the bucket (30 days),
+#   not by this workflow.
+# - A failing run on main triggers GitHub's failure-notification email.
+# - Restore: gunzip -c goalforge-<date>.sql.gz | psql "$DATABASE_URL?sslmode=require"
+#   (into a freshly heroku pg:reset database; OWNER errors are harmless).
+# Note GitHub pauses schedules after 60 days without repo activity.
+name: db-backup
+
+on:
+  schedule:
+    - cron: "10 4 * * *" # daily 04:10 UTC — same slot as the old droplet cron
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install postgresql-client-17
+        # Heroku PG is 17.x; pg_dump must be >= the server major version and
+        # the runner's default client is older, so pin from the PGDG repo.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq curl ca-certificates
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Dump database
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: |
+          curl -fsS https://cli-assets.heroku.com/install.sh | sh
+          DB_URL=$(heroku config:get DATABASE_URL -a goalforge-api)
+          test -n "$DB_URL"
+          STAMP=$(date -u +%F)
+          pg_dump "${DB_URL}?sslmode=require" | gzip > "goalforge-${STAMP}.sql.gz"
+          # Refuse to upload an empty/broken dump (mirrors the old cron's guard).
+          test -s "goalforge-${STAMP}.sql.gz"
+          gunzip -t "goalforge-${STAMP}.sql.gz"
+          echo "STAMP=${STAMP}" >> "$GITHUB_ENV"
+          ls -la "goalforge-${STAMP}.sql.gz"
+
+      - name: Upload to R2
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx --yes wrangler@4 r2 object put \
+            "goalforge-backups/goalforge-${STAMP}.sql.gz" \
+            --file "goalforge-${STAMP}.sql.gz" --remote
+
+      - name: Verify upload
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx --yes wrangler@4 r2 object get \
+            "goalforge-backups/goalforge-${STAMP}.sql.gz" \
+            --file /tmp/verify.sql.gz --remote
+          gunzip -t /tmp/verify.sql.gz
+          echo "backup goalforge-${STAMP}.sql.gz verified in R2"
