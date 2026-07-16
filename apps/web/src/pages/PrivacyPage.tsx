@@ -49,8 +49,11 @@ export default function PrivacyPage() {
                 and what request triggered it) goes to Sentry so we can fix it.
                 We also count visits with Simple Analytics, a privacy-first
                 tool that uses no cookies and collects no personal data — we
-                see page counts, never who you are. No advertising trackers or
-                fingerprinting of any kind.
+                see page counts, never who you are. Cloudflare, which serves
+                the site, additionally measures page-load performance through
+                its cookieless Web Analytics — timing metrics only, no
+                cookies, no fingerprinting, no personal data. No advertising
+                trackers of any kind.
               </li>
             </ul>
           </section>
@@ -75,7 +78,8 @@ export default function PrivacyPage() {
               <li><strong>Clerk</strong> — authentication and account management.</li>
               <li><strong>Google (Gemini API)</strong> — AI plan and chat generation.</li>
               <li><strong>Resend</strong> — sending email digests and reminders.</li>
-              <li><strong>DigitalOcean</strong> — hosting and database infrastructure.</li>
+              <li><strong>Heroku</strong> — application hosting and database infrastructure.</li>
+              <li><strong>Cloudflare</strong> — serving the site (CDN/DNS), backup storage, and cookieless performance analytics.</li>
               <li><strong>Sentry</strong> — error monitoring, so crashes get noticed and fixed.</li>
               <li><strong>Simple Analytics</strong> — cookieless visit counting; no personal data.</li>
             </ul>
@@ -138,7 +142,7 @@ export default function PrivacyPage() {
             <p>
               Your data is kept for as long as your account exists. When you
               delete your account data, it is removed from the live database
-              immediately; routine database backups age out within 14 days.
+              immediately; routine database backups age out within 30 days.
             </p>
           </section>
 
