@@ -13,7 +13,7 @@ see git history if you ever need it.
 | Frontend (React/Vite) | Cloudflare Pages project `goalforge` | `goalforge.me`, `www` |
 | DNS | Cloudflare zone `goalforge.me` | — |
 | Cron | Heroku Scheduler (hourly `:10` → `POST /api/jobs/trigger-reminders`) | — |
-| Backups | GitHub Actions nightly (`.github/workflows/db-backup.yml`) → R2 bucket `goalforge-backups`, 30-day lifecycle | — |
+| Backups | GitHub Actions nightly (`.github/workflows/db-backup.yml`) → R2 bucket `goalforge-backups`, 30-day lifecycle; plus Heroku `pg:backups` daily 02:00 UTC (independent layer — survives the 60-day GH Actions schedule pause) | — |
 
 There is no reverse proxy: user routes are served with **no `/api` prefix**
 (`api.goalforge.me/users/...`); only the jobs router mounts its own
@@ -171,3 +171,11 @@ heroku pg:info -a goalforge-api            # DB status / connection count (cap 2
   scheduled workflows pause after 60 days without repo activity.
 - Sentry (errors only) on both apps, gated on `(VITE_)SENTRY_DSN`.
 - Simple Analytics on the frontend (SRI-pinned script tag in `index.html`).
+- Cloudflare Web Analytics (cookieless RUM / Core Web Vitals) on `goalforge.me`
+  via zone auto-injection — dashboard-only, no code in the repo. Disclosed in
+  `PrivacyPage.tsx`.
+- `heroku labs:enable log-runtime-metrics` is ON — dyno memory/CPU stats in the
+  log stream (watch for creep toward the 512MB R14 line).
+- GitHub repo security (enabled 2026-07-16): Dependabot alerts + security
+  updates, secret scanning + push protection. Dependabot opens dependency PRs
+  automatically — triage, don't blind-merge.
