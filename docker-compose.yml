@@ -40,26 +40,5 @@ services:
     depends_on:
       - api
 
-  # Reverse proxy for production: routes host :80/:443 to api/web over the
-  # compose network. Not needed for local dev (hit :8000/:5173 directly per
-  # README) — only matters once this stack runs on a real server. See
-  # docs/DEPLOYMENT.md. Swap `:80` for a real domain in Caddyfile to get
-  # automatic Let's Encrypt TLS with no other changes.
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - api
-      - web
-
 volumes:
   pgdata:
-  caddy_data:
-  caddy_config:
