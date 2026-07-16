@@ -53,5 +53,15 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Simple Analytics — cookieless, no personal data, ignores localhost.
+         SRI-pinned (script is v11, stable since 2023); if SA ships a new version
+         the hash mismatch silently stops analytics — recompute with:
+         curl -s https://scripts.simpleanalyticscdn.com/latest.js | openssl dgst -sha384 -binary | openssl base64 -A -->
+    <script
+      async
+      src="https://scripts.simpleanalyticscdn.com/latest.js"
+      integrity="sha384-6r8ANWkTbGeAoBOxTtwsJD6VBfqnKe+kD3q/w51t91jCOCSxtKcCN2erSIv/1GHO"
+      crossorigin="anonymous"
+    ></script>
   </body>
 </html>

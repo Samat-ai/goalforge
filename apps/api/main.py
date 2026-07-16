@@ -11,6 +11,7 @@ import uuid
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 
+import sentry_sdk
 from pythonjsonlogger import jsonlogger
 
 from fastapi import FastAPI, Request
@@ -64,6 +65,14 @@ def _configure_logging() -> None:
 
 _configure_logging()
 logger = logging.getLogger(__name__)
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.environment,
+        send_default_pii=False,
+        traces_sample_rate=0.0,  # errors only — keep the free quota for what matters
+    )
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

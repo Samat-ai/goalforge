@@ -17,7 +17,7 @@ export default function PrivacyPage() {
         <main className="container static-main">
           <section className="about-section">
             <h1>Privacy Policy</h1>
-            <p className="legal-updated">Last updated: July 13, 2026</p>
+            <p className="legal-updated">Last updated: July 16, 2026</p>
             <p>
               GoalForge (goalforge.me) is a goal-tracking app built by Samat
               Kerimkulov, a solo developer. This page explains what data
@@ -45,8 +45,12 @@ export default function PrivacyPage() {
               <li>
                 <strong>Technical basics.</strong> Standard server logs
                 (request paths, timestamps, IP addresses) kept for security and
-                debugging. We do not use third-party analytics, advertising
-                trackers, or fingerprinting of any kind.
+                debugging. When something crashes, an error report (the error
+                and what request triggered it) goes to Sentry so we can fix it.
+                We also count visits with Simple Analytics, a privacy-first
+                tool that uses no cookies and collects no personal data — we
+                see page counts, never who you are. No advertising trackers or
+                fingerprinting of any kind.
               </li>
             </ul>
           </section>
@@ -72,6 +76,8 @@ export default function PrivacyPage() {
               <li><strong>Google (Gemini API)</strong> — AI plan and chat generation.</li>
               <li><strong>Resend</strong> — sending email digests and reminders.</li>
               <li><strong>DigitalOcean</strong> — hosting and database infrastructure.</li>
+              <li><strong>Sentry</strong> — error monitoring, so crashes get noticed and fixed.</li>
+              <li><strong>Simple Analytics</strong> — cookieless visit counting; no personal data.</li>
             </ul>
           </section>
 
