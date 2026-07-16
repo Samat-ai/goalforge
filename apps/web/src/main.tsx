@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import * as Sentry from '@sentry/react'
 import { ClerkProvider } from '@clerk/react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from './lib/queryClient'
@@ -9,6 +10,15 @@ import App from './App.tsx'
 import { ConfettiProvider } from './components/ConfettiContext'
 import { ThemeProvider } from './lib/ThemeContext'
 import InstallPrompt from './components/InstallPrompt'
+
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: import.meta.env.MODE,
+    sendDefaultPii: false,
+  })
+}
 
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 const isE2EMode = import.meta.env.VITE_E2E_MODE === 'true'
