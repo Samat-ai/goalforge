@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -5,6 +6,25 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/goalforge"
+    # Heroku Postgres requires TLS but presents a self-signed cert, so the
+    # connection must be encrypted without certificate verification
+    # (sslmode=require semantics). Leave false for local/compose Postgres.
+    database_ssl_required: bool = False
+    # Optional path to a CA bundle. When set (and ssl_required), the cert IS
+    # verified against it — prefer this whenever the provider publishes a CA.
+    database_ca_file: str = ""
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _normalize_db_scheme(cls, v: str) -> str:
+        # Heroku injects DATABASE_URL as postgres:// (legacy scheme); SQLAlchemy
+        # needs the explicit asyncpg driver in the scheme.
+        if isinstance(v, str):
+            if v.startswith("postgres://"):
+                return v.replace("postgres://", "postgresql+asyncpg://", 1)
+            if v.startswith("postgresql://"):
+                return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
     gemini_api_key: str = ""
     # Vertex AI mode: bill Gemini through a GCP project (uses cloud credits)
     # instead of an AI Studio API key. When true, google_cloud_project and a

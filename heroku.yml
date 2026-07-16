@@ -1,0 +1,22 @@
+build:
+  docker:
+    web: apps/api/Dockerfile
+release:
+  image: web
+  command:
+    - alembic upgrade head
+run:
+  # --workers 1: single async worker fits the 512MB Basic dyno (~180MB) and one
+  # event loop handles our I/O-bound load fine; scale with workers 2 before a
+  # bigger dyno. --proxy-headers trusts Heroku's router for real client IPs
+  # (rate limiting keys on them); the router is the only ingress, so "*" is safe.
+  # GOOGLE_SA_JSON holds the Vertex service-account JSON (no mountable disk on
+  # Heroku); it's written to /tmp at boot, GOOGLE_APPLICATION_CREDENTIALS
+  # points there.
+  # forwarded-allow-ips: trust only private-network hops (Heroku's router
+  # reaches dynos from RFC1918 space). Heroku APPENDS the real client to
+  # X-Forwarded-For without stripping client-sent values, so trusting "*"
+  # would let clients spoof their IP (leftmost entry) and dodge IP-keyed
+  # rate limits; with this list uvicorn resolves the rightmost untrusted
+  # entry — the router-appended real client.
+  web: sh -c 'if [ -n "$GOOGLE_SA_JSON" ]; then printf "%s" "$GOOGLE_SA_JSON" > /tmp/vertex-sa.json; fi; exec uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"'
