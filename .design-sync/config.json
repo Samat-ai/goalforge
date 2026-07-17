@@ -1,0 +1,35 @@
+{
+  "projectId": "db73516a-144b-4954-a76f-a546ad6dde5f",
+  "shape": "package",
+  "readmeHeader": ".design-sync/conventions.md",
+  "pkg": "web",
+  "globalName": "GoalForge",
+  "entry": "apps/web/ds-sync.entry.mjs",
+  "buildCmd": "cd apps/web && npm run build && node -e \"const fs=require('fs');const p='dist/assets';const css=fs.readdirSync(p).filter(f=>f.endsWith('.css')).sort();fs.writeFileSync('dist/ds-styles.css',css.map(f=>fs.readFileSync(p+'/'+f,'utf8')).join('\\n'))\"",
+  "srcDir": "src",
+  "tsconfig": "tsconfig.app.json",
+  "cssEntry": "dist/ds-styles.css",
+  "extraFonts": ["../../.design-sync/fonts/goalforge-fonts.css"],
+  "componentSrcMap": {
+    "Icon": "src/components/gf/Ui.tsx",
+    "Reveal": "src/components/gf/Ui.tsx",
+    "Switcher": "src/components/gf/Ui.tsx",
+    "Ring": "src/components/gf/Ui.tsx",
+    "Flame": "src/components/gf/Ui.tsx",
+    "Sparkline": "src/components/gf/Ui.tsx",
+    "Mascot": "src/components/gf/Ui.tsx",
+    "Segmented": "src/components/gf/Ui.tsx",
+    "Toggle": "src/components/gf/Ui.tsx",
+    "Skeleton": "src/components/ui/Skeleton.tsx",
+    "GoalCardSkeleton": "src/components/ui/Skeleton.tsx",
+    "CoachPanelSkeleton": "src/components/ui/Skeleton.tsx",
+    "RewardModal": "src/components/RewardModal.tsx",
+    "CollectionModal": "src/components/CollectionModal.tsx"
+  },
+  "overrides": {
+    "Icon": { "cardMode": "column" },
+    "Mascot": { "cardMode": "column" },
+    "RewardModal": { "cardMode": "single", "primaryStory": "RareDrop", "viewport": "480x640" },
+    "CollectionModal": { "cardMode": "single", "viewport": "760x600" }
+  }
+}

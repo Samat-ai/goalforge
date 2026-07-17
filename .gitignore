@@ -29,3 +29,11 @@ design_handoff_goalforge/
 # committing it would re-expose Postgres on the droplet, undoing PR #180)
 docker-compose.override.yml
 .wrangler/
+
+# design-sync (claude.ai/design) — staged scripts + build output + machine state;
+# .design-sync/config.json, NOTES.md, conventions.md, previews/, overrides/ ARE committed
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
