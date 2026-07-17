@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { pickOneThing } from '../lib/pickOneThing'
 import type { Goal } from '../lib/types'
 
@@ -41,8 +42,12 @@ export default function FocusOverlay({ goals, completeTask, isOpen, onClose }: F
 
   if (!isOpen) return null
 
+  // Portaled to document.body: PageSwitcher's .gf-xfade wrapper sets
+  // will-change: transform, which would otherwise become the containing block
+  // for this fixed overlay and pin it to the page box instead of the viewport
+  // (docs/CONVENTIONS.md portal pattern).
   if (phase === 'done') {
-    return (
+    return createPortal(
       <div role="dialog" aria-modal="true" aria-label="Task complete" className="gf-overlay">
         <div className="gf-fov-done">
           <div className="gf-fov-done-star">⭐</div>
@@ -50,7 +55,8 @@ export default function FocusOverlay({ goals, completeTask, isOpen, onClose }: F
           <div className="gf-fov-done-msg">{doneMessage}</div>
           <button onClick={onClose} className="gf-fov-btn is-back">Back to Dashboard</button>
         </div>
-      </div>
+      </div>,
+      document.body,
     )
   }
 
@@ -67,8 +73,11 @@ export default function FocusOverlay({ goals, completeTask, isOpen, onClose }: F
     setPhase('done')
   }
 
-  return (
-    <div role="dialog" aria-modal="true" aria-label="Focus mode" className="gf-overlay">
+  return createPortal(
+    <div
+      role="dialog" aria-modal="true" aria-label="Focus mode" className="gf-overlay"
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}
+    >
       <button onClick={onClose} aria-label="Exit focus mode" className="gf-fov-close">✕ Exit Focus</button>
       <div className="gf-fov">
         <div>
@@ -82,6 +91,7 @@ export default function FocusOverlay({ goals, completeTask, isOpen, onClose }: F
           Mark Complete ⭐
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
