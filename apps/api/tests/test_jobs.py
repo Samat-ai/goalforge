@@ -5,8 +5,9 @@ from datetime import date, datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy import update as sql_update
 
-from models import DailyTask, NotificationLog, WebPushSubscription
+from models import DailyTask, Goal, NotificationLog, WebPushSubscription
 from tests.conftest import TEST_USER_ID, create_test_goal, utc_today
 
 
@@ -1018,3 +1019,198 @@ async def test_sunday_star_log_fallback_body_when_no_highlights(client, db_sessi
     mock_push.assert_called_once()
     call_kwargs = mock_push.call_args.kwargs
     assert "Quiet Orbit" in call_kwargs["body"]
+
+
+# ---------------------------------------------------------------------------
+# Auto-abandon stale goals (star lifecycle)
+# ---------------------------------------------------------------------------
+
+
+async def _backdate_goal_created_at(db_session, goal_id: str, days: int) -> None:
+    await db_session.execute(
+        sql_update(Goal)
+        .where(Goal.id == uuid.UUID(goal_id))
+        .values(created_at=datetime.now(timezone.utc) - timedelta(days=days))
+    )
+    await db_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_auto_abandon_stale_goal_with_no_completions(client, db_session):
+    """A goal with zero completions whose created_at is 35 days old gets abandoned."""
+    goal = await create_test_goal(client)
+    await _backdate_goal_created_at(db_session, goal["id"], 35)
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+    ):
+        class _Now:
+            hour = 3  # off reminder_hour so no digest/rescue noise
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.status_code == 200
+    assert resp.json()["auto_abandoned"] == 1
+    get_resp = await client.get(f"/goals/{goal['id']}")
+    assert get_resp.json()["status"] == "abandoned"
+
+
+@pytest.mark.asyncio
+async def test_auto_abandon_respects_recent_completion(client, db_session):
+    """An old goal with a completion 5 days ago is still active (activity resets the clock)."""
+    goal = await create_test_goal(client)
+    await _backdate_goal_created_at(db_session, goal["id"], 40)
+
+    db_session.add(DailyTask(
+        id=uuid.uuid4(),
+        goal_id=uuid.UUID(goal["id"]),
+        milestone_id=None,
+        description="Recent completion",
+        tip="tip",
+        assigned_date=utc_today() - timedelta(days=5),
+        is_completed=True,
+        completed_at=datetime.now(timezone.utc) - timedelta(days=5),
+    ))
+    await db_session.commit()
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+    ):
+        class _Now:
+            hour = 3
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.json()["auto_abandoned"] == 0
+    get_resp = await client.get(f"/goals/{goal['id']}")
+    assert get_resp.json()["status"] == "active"
+
+
+@pytest.mark.asyncio
+async def test_auto_abandon_skips_fresh_goal(client):
+    """A goal created today is untouched."""
+    goal = await create_test_goal(client)
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+    ):
+        class _Now:
+            hour = 3
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.json()["auto_abandoned"] == 0
+    get_resp = await client.get(f"/goals/{goal['id']}")
+    assert get_resp.json()["status"] == "active"
+
+
+@pytest.mark.asyncio
+async def test_auto_abandon_boundary_29_days_still_active(client, db_session):
+    """29 idle days is inside the 30-day grace window — goal stays active."""
+    goal = await create_test_goal(client)
+    await _backdate_goal_created_at(db_session, goal["id"], 29)
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+    ):
+        class _Now:
+            hour = 3
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.json()["auto_abandoned"] == 0
+    get_resp = await client.get(f"/goals/{goal['id']}")
+    assert get_resp.json()["status"] == "active"
+
+
+@pytest.mark.asyncio
+async def test_auto_abandon_immune_achieved_and_abandoned(client, db_session):
+    """Achieved and already-abandoned goals are never touched, however stale."""
+    achieved = await create_test_goal(client)
+    abandoned = await create_test_goal(client)
+
+    resp = await client.patch(f"/goals/{achieved['id']}", json={"status": "achieved"})
+    assert resp.status_code == 200
+    resp = await client.patch(f"/goals/{abandoned['id']}", json={"status": "abandoned"})
+    assert resp.status_code == 200
+
+    await _backdate_goal_created_at(db_session, achieved["id"], 40)
+    await _backdate_goal_created_at(db_session, abandoned["id"], 40)
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+    ):
+        class _Now:
+            hour = 3
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.json()["auto_abandoned"] == 0
+    assert (await client.get(f"/goals/{achieved['id']}")).json()["status"] == "achieved"
+    assert (await client.get(f"/goals/{abandoned['id']}")).json()["status"] == "abandoned"
+
+
+@pytest.mark.asyncio
+async def test_auto_abandon_idempotent(client, db_session):
+    """Second cron run finds nothing left to abandon."""
+    goal = await create_test_goal(client)
+    await _backdate_goal_created_at(db_session, goal["id"], 35)
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+    ):
+        class _Now:
+            hour = 3
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp1 = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+        resp2 = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp1.json()["auto_abandoned"] == 1
+    assert resp2.json()["auto_abandoned"] == 0
+
+
+@pytest.mark.asyncio
+async def test_auto_abandoned_goal_gets_no_rescue_email(client, db_session):
+    """Auto-abandon runs BEFORE notification selection — a freshly-faded goal
+    drops out of the same run's rescue email, even at the user's reminder hour."""
+    goal = await create_test_goal(client)
+    await _backdate_goal_created_at(db_session, goal["id"], 35)
+
+    with (
+        patch("routes.jobs.settings") as mock_settings,
+        patch("routes.jobs.user_now") as mock_user_now,
+        patch("routes.jobs.goal_is_rescue_mode", return_value=True),
+        patch("routes.jobs.send_rescue_email", new=AsyncMock()) as mock_rescue_email,
+        patch("routes.jobs.send_reminder_digest", new=AsyncMock()) as mock_digest,
+    ):
+        class _Now:
+            hour = 9  # user's reminder_hour — rescue WOULD fire if the goal survived
+
+        mock_user_now.return_value = _Now()
+        mock_settings.jobs_api_key = _TEST_JOBS_KEY
+        resp = await client.post("/api/jobs/trigger-reminders", headers=_JOBS_HEADERS)
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["auto_abandoned"] == 1
+    assert data["rescue_emails"] == 0
+    mock_rescue_email.assert_not_called()
+    mock_digest.assert_not_called()
