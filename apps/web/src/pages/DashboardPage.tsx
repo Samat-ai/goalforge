@@ -10,10 +10,12 @@ import { useUser } from '@clerk/react'
 import { Icon, Reveal, Segmented, Switcher } from '../components/gf/Ui'
 import { cx } from '../components/gf/util'
 import GoalCard from '../components/gf/GoalCard'
+import SollySuggestion from '../components/gf/SollySuggestion'
 import FocusOverlay from '../components/FocusOverlay'
 import EnergyModal from '../components/EnergyModal'
 import { toast } from 'sonner'
 import { pickOneThing } from '../lib/pickOneThing'
+import { pickSuggestion, readSnoozeState, writeSnooze } from '../lib/suggestions'
 import { todayStr } from '../lib/gamification'
 import { useEnergyResizeMutation, useTaskRestoreMutation } from '../hooks/useEnergyMutations'
 import { useBadgesQuery, useGoalsQuery, useGoalMutations, useProfileQuery } from '../hooks'
@@ -221,6 +223,11 @@ export default function DashboardPage() {
   const hasEnergyTarget = hasUnresizedToday(goals)
   const energyResize = useEnergyResizeMutation(userId ?? '')
   const taskRestore = useTaskRestoreMutation(userId ?? '')
+  // Solly proactive suggestion — mount-time clock snapshot + lazy localStorage
+  // read (ESLint purity rules; same precedent as the sessionStorage read above).
+  const [suggestNow] = useState(() => new Date())
+  const [snooze, setSnooze] = useState(() => readSnoozeState())
+  const suggestion = pickSuggestion(goals, suggestNow, snooze)
 
   const { data: rewards = [] } = useRewardsQuery(userId ?? '')
   const equipMutation = useEquipRewardMutation(userId ?? '')
@@ -282,6 +289,14 @@ export default function DashboardPage() {
         <div className="gf-page">
           <GreetingStrip goals={goals} />
           <GoalCreation value={addGoalText} onChange={setAddGoalText} onCreate={mutations.addGoal} />
+
+          {suggestion && (
+            <SollySuggestion
+              suggestion={suggestion}
+              onAct={() => (suggestion.type === 'energy' ? setEnergyOpen(true) : setFocusOpen(true))}
+              onDismiss={() => { writeSnooze(suggestion.type); setSnooze(readSnoozeState()) }}
+            />
+          )}
 
           <div className="gf-listhead">
             <Reveal as="h2" className="gf-h2" delay={40}>Your goals</Reveal>

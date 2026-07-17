@@ -62,7 +62,13 @@ function parseBalance(text: string): number {
 // These tests exercise the core loop, not the first-run wizard.
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('goalforge_onboarding_complete', 'true') } catch { /* ignore */ }
+    try {
+      localStorage.setItem('goalforge_onboarding_complete', 'true')
+      // Solly's suggestion banner is clock-gated (energy fires >= 14:00 local) —
+      // snooze both types so post-2pm CI runs don't shift the list-head layout.
+      localStorage.setItem('gf_suggest_snooze_energy', String(Date.now()))
+      localStorage.setItem('gf_suggest_snooze_focus', String(Date.now()))
+    } catch { /* ignore */ }
   })
 })
 
