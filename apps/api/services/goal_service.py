@@ -2,9 +2,9 @@
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import delete as sql_delete, update as sql_update
+from sqlalchemy import delete as sql_delete, func, select, update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_utils import generate_smart_goal
@@ -18,6 +18,48 @@ logger = logging.getLogger(__name__)
 # Sentinel title used on placeholder milestones created during Phase 1.
 # Used by retry_sprint_generation to detect initial-creation failures.
 PLACEHOLDER_MILESTONE_TITLE = "Generating your plan\u2026"
+
+# Star lifecycle: an active goal with no activity for this long has burned out
+# (frontend twin: FADED_IDLE_DAYS in apps/web/src/lib/goalView.ts \u2014 a fully-bright
+# star's habitStrength decays to ~0 after ~28 idle days, so 30 \u2248 "brightness 0").
+AUTO_ABANDON_DAYS = 30
+
+
+async def auto_abandon_stale_goals(db: AsyncSession, now: datetime | None = None) -> int:
+    """Set status='abandoned' on active goals with no activity for AUTO_ABANDON_DAYS.
+
+    Last activity = latest completed task's completed_at, else goal.created_at
+    (same definition as rescue_service.goal_is_rescue_mode). The bulk UPDATE
+    re-checks status='active' at write time \u2014 the set-based analog of the
+    per-row .with_for_update() convention \u2014 so a goal achieved between the
+    candidate SELECT and the UPDATE is skipped. Returns the number abandoned.
+    """
+    cutoff = (now or datetime.now(timezone.utc)) - timedelta(days=AUTO_ABANDON_DAYS)
+
+    last_done = (
+        select(DailyTask.goal_id, func.max(DailyTask.completed_at).label("last_done_at"))
+        .where(DailyTask.is_completed == True)  # noqa: E712
+        .group_by(DailyTask.goal_id)
+        .subquery()
+    )
+    stale_ids = (
+        select(Goal.id)
+        .outerjoin(last_done, last_done.c.goal_id == Goal.id)
+        .where(
+            Goal.status == "active",
+            func.coalesce(last_done.c.last_done_at, Goal.created_at) < cutoff,
+        )
+    )
+    result = await db.execute(
+        sql_update(Goal)
+        .where(Goal.id.in_(stale_ids), Goal.status == "active")
+        .values(status="abandoned")
+        .execution_options(synchronize_session=False)
+    )
+    abandoned = result.rowcount or 0
+    if abandoned:
+        logger.info("auto_abandon_stale_goals: %d goal(s) faded", abandoned)
+    return abandoned
 
 
 async def _generate_goal_async(

@@ -34,21 +34,22 @@ type Mutations = ReturnType<typeof useGoalMutations>
 const RESCUE_DISMISS_MS = 8 * 60 * 60 * 1000 // "show my full plan" hides the rescue card for 8h
 
 // ── PuffyStar (brightness-driven signature glyph) ───────────────────────────────
-function PuffyStar({ brightness = 0.8, size = 46 }: { brightness?: number; size?: number }) {
+function PuffyStar({ brightness = 0.8, size = 46, dying = false }: { brightness?: number; size?: number; dying?: boolean }) {
   // Prototype used Math.random() for the gradient id; useId is the ESLint-clean
   // equivalent (impure-function-in-render is banned project-wide).
   const uid = 'ps' + useId()
   const n = brightness
+  const glowRgb = dying ? '148,163,184' : '251,191,36'
   return (
-    <div className="gf-puffy" style={{ width: size, height: size }}>
-      <div className="gf-puffy-glow" style={{ background: `radial-gradient(circle, rgba(251,191,36,${0.12 + n * 0.3}) 30%, transparent 72%)` }} />
+    <div className={cx('gf-puffy', dying && 'is-dying')} style={{ width: size, height: size }}>
+      <div className="gf-puffy-glow" style={{ background: `radial-gradient(circle, rgba(${glowRgb},${0.04 + n * 0.38}) 30%, transparent 72%)` }} />
       <svg viewBox="0 0 100 100" width={size * 0.86} height={size * 0.86} style={{ position: 'relative', zIndex: 1, overflow: 'visible' }}>
         <defs>
           <radialGradient id={uid} cx="40%" cy="28%" r="70%">
             <stop offset="0%" stopColor="#FFFBEB" />
             <stop offset="30%" stopColor="#FDE047" />
             <stop offset="70%" stopColor="#F59E0B" />
-            <stop offset="100%" stopColor="#D97706" stopOpacity={0.25 + n * 0.7} />
+            <stop offset="100%" stopColor="#D97706" stopOpacity={0.12 + n * 0.83} />
           </radialGradient>
         </defs>
         <polygon points="50,12 59.9,36.2 86.1,38.3 66.2,55.3 72.4,80.7 50,67 27.6,80.7 33.8,55.3 13.9,38.3 40.1,36.2"
@@ -434,8 +435,12 @@ function TodayTab({
       {isAbandoned && (
         <div className="gf-nudge gf-nudge-muted">
           <div className="gf-nudge-body">
-            <div className="gf-nudge-kicker">Abandoned</div>
-            <div className="gf-nudge-title">Star faded — goal abandoned.</div>
+            <div className="gf-nudge-kicker">{view.isFaded ? 'Star faded' : 'Abandoned'}</div>
+            <div className="gf-nudge-title">
+              {view.isFaded
+                ? 'Your star faded while you were away — relight it anytime.'
+                : 'Star faded — goal abandoned.'}
+            </div>
           </div>
           <button className="gf-btn-pill" onClick={onAbandon}>Revive goal</button>
         </div>
@@ -444,16 +449,22 @@ function TodayTab({
 
       {isRescue && (
         <div>
-          <div className="gf-rescue-badge">✦ EASY MODE</div>
-          <div className="gf-rescue-title">Let&apos;s make today easy.</div>
+          <div className={cx('gf-rescue-badge', view.isDying && 'is-dying')}>
+            {view.isDying ? '✦ FADING STAR' : '✦ EASY MODE'}
+          </div>
+          <div className="gf-rescue-title">
+            {view.isDying ? 'Your star is about to go out.' : "Let's make today easy."}
+          </div>
           <div className="gf-rescue-sub">
-            It looks like you&apos;ve been busy. We paused your schedule and set up two quick wins for today — no pressure, no catching up.
+            {view.isDying
+              ? 'It has been quiet out here, and the light is down to a flicker. One tiny spark is all it takes — two two-minute wins, no catching up, no guilt.'
+              : "It looks like you've been busy. We paused your schedule and set up two quick wins for today — no pressure, no catching up."}
           </div>
           <button className="gf-btn-pill is-sprint" style={{ width: '100%', marginBottom: 10 }} onClick={() => void handleStartEasyMode()} disabled={triggeringRescue}>
-            {triggeringRescue ? 'Starting easy mode…' : 'Start Easy Mode (2 min)'}
+            {triggeringRescue ? 'Starting easy mode…' : view.isDying ? 'Relight this star (2 min)' : 'Start Easy Mode (2 min)'}
           </button>
           <button onClick={dismissRescue} className="gf-rescue-dismiss">
-            I&apos;m feeling good — show my full plan
+            {view.isDying ? 'Still glowing — show my full plan' : "I'm feeling good — show my full plan"}
           </button>
         </div>
       )}
@@ -558,7 +569,9 @@ function HistoryTab({ goal }: { goal: Goal }) {
   const [view, setView] = useState<'calendar' | 'streaks'>('streaks')
   const gv = toGoalView(goal)
   const b = gv.brightness
-  const bMsg = b < 0.3 ? 'Almost out — complete tasks to recharge' : b < 0.6 ? 'Fading — keep going' : 'Burning bright'
+  const bMsg = gv.isDying
+    ? 'Barely a spark — relight it before it goes dark'
+    : b < 0.3 ? 'Almost out — complete tasks to recharge' : b < 0.6 ? 'Fading — keep going' : 'Burning bright'
   return (
     <div className="gf-tabpane">
       <div>
@@ -643,9 +656,9 @@ export default function GoalCard({ goal, index = 0, defaultOpen = false, mutatio
   }
 
   return (
-    <Reveal className="gf-card gf-gc" delay={index * 70} style={{ boxShadow: ratio > 0 ? `0 0 ${14 + ratio * 16}px rgba(52,211,153,${(0.07 + ratio * 0.1).toFixed(2)})` : undefined }}>
+    <Reveal className={cx('gf-card gf-gc', goal.status === 'abandoned' && 'is-abandoned')} delay={index * 70} style={{ boxShadow: ratio > 0 ? `0 0 ${14 + ratio * 16}px rgba(52,211,153,${(0.07 + ratio * 0.1).toFixed(2)})` : undefined }}>
       <button className="gf-gc-head" onClick={() => setOpen(o => !o)} aria-expanded={open}>
-        <PuffyStar brightness={view.brightness} />
+        <PuffyStar brightness={view.brightness} dying={view.isDying} />
         <div className="gf-gc-mid">
           <div className="gf-gc-badges">
             {isGenerating

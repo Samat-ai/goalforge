@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { toGoalView } from '../goalView'
+import { daysSinceLastActivity, goalIsDying, toGoalView } from '../goalView'
 import { makeGoal, makeMilestone, makeTask } from './factories'
 
 const FIXED_NOW = new Date(2026, 6, 10, 12, 0, 0) // 2026-07-10
@@ -83,5 +83,84 @@ describe('toGoalView', () => {
       'active',
       'upcoming',
     ])
+  })
+})
+
+describe('daysSinceLastActivity', () => {
+  it('uses the latest completed day when completions exist', () => {
+    const goal = makeGoal({
+      created_at: '2026-06-01T00:00:00Z',
+      completed_days: ['2026-07-01', '2026-07-05'],
+    })
+    expect(daysSinceLastActivity(goal)).toBe(5)
+  })
+
+  it('falls back to created_at when there are no completions', () => {
+    const goal = makeGoal({ created_at: '2026-06-20T00:00:00Z', completed_days: [] })
+    expect(daysSinceLastActivity(goal)).toBe(20)
+  })
+
+  it('ignores future-dated completed days', () => {
+    const goal = makeGoal({
+      created_at: '2026-07-01T00:00:00Z',
+      completed_days: ['2026-07-15'],
+    })
+    expect(daysSinceLastActivity(goal)).toBe(9)
+  })
+})
+
+describe('goalIsDying / isFaded', () => {
+  it('marks a long-idle zero-completion goal as dying', () => {
+    const goal = makeGoal({ created_at: '2026-06-01T00:00:00Z', completed_days: [] })
+    expect(goalIsDying(goal)).toBe(true)
+    expect(toGoalView(goal).isDying).toBe(true)
+  })
+
+  it('marks a goal with one stale completion as dying (brightness ~0.006)', () => {
+    const goal = makeGoal({
+      created_at: '2026-06-01T00:00:00Z',
+      completed_days: ['2026-06-20'],
+    })
+    expect(goalIsDying(goal)).toBe(true)
+  })
+
+  it('gives brand-new goals a 7-day grace period', () => {
+    const goal = makeGoal({ created_at: '2026-07-08T00:00:00Z', completed_days: [] })
+    expect(goalIsDying(goal)).toBe(false)
+  })
+
+  it('does not mark goals whose brightness is above the floor', () => {
+    // 10 consecutive completions ending 8 idle days ago -> brightness ~0.27
+    const goal = makeGoal({
+      created_at: '2026-06-01T00:00:00Z',
+      completed_days: ['2026-06-23', '2026-06-24', '2026-06-25', '2026-06-26', '2026-06-27',
+        '2026-06-28', '2026-06-29', '2026-06-30', '2026-07-01', '2026-07-02'],
+    })
+    expect(goalIsDying(goal)).toBe(false)
+  })
+
+  it('never marks achieved or abandoned goals as dying', () => {
+    const base = { created_at: '2026-06-01T00:00:00Z', completed_days: [] as string[] }
+    expect(goalIsDying(makeGoal({ ...base, status: 'achieved' }))).toBe(false)
+    expect(goalIsDying(makeGoal({ ...base, status: 'abandoned' }))).toBe(false)
+  })
+
+  it('flags abandoned goals as faded only after 30 idle days', () => {
+    const faded = toGoalView(
+      makeGoal({ status: 'abandoned', created_at: '2026-06-01T00:00:00Z', completed_days: [] }),
+    )
+    expect(faded.isFaded).toBe(true)
+
+    const recent = toGoalView(
+      makeGoal({ status: 'abandoned', created_at: '2026-06-01T00:00:00Z', completed_days: ['2026-06-30'] }),
+    )
+    expect(recent.isFaded).toBe(false)
+  })
+
+  it('never flags active goals as faded', () => {
+    const view = toGoalView(
+      makeGoal({ status: 'active', created_at: '2026-06-01T00:00:00Z', completed_days: [] }),
+    )
+    expect(view.isFaded).toBe(false)
   })
 })

@@ -12,6 +12,7 @@ from config import settings
 from database import get_db
 from models import Goal, NotificationLog, User, WebPushSubscription
 from services.email_service import TaskDigestItem, send_reminder_digest, send_rescue_email
+from services.goal_service import auto_abandon_stale_goals
 from services.push_service import send_push_digest
 from services.rescue_service import goal_is_rescue_mode
 from services.star_log_service import get_or_create_star_log
@@ -58,6 +59,10 @@ async def _already_notified(
     dependencies=[Depends(_verify_api_key)],
 )
 async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
+    # Star lifecycle: fade burned-out goals FIRST so they drop out of this same
+    # run's rescue/digest selection (the users query joins on status='active').
+    auto_abandoned = await auto_abandon_stale_goals(db)
+
     # Load users with active goals, eagerly loading milestones + tasks for rescue detection
     result = await db.execute(
         select(User)
@@ -229,6 +234,7 @@ async def trigger_reminders(db: AsyncSession = Depends(get_db)) -> dict:
                 push_count += 1
 
     return {
+        "auto_abandoned": auto_abandoned,
         "rescue_emails": rescue_count,
         "digest_emails": digest_count,
         "push_notifications": push_count,
