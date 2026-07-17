@@ -70,6 +70,9 @@ UI-shape math inside components (that's what `lib/goalView.ts` etc. are for).
 - Money paths (star points): atomic SQL only —
   `UPDATE … SET x = x + N` (+ `WHERE x >= cost` guard for spends). Never
   read-modify-write. State transitions on milestones/tasks: `with_for_update()`.
+  Set-based status sweeps (cron over many rows) use the guarded-bulk-UPDATE
+  analog instead: `UPDATE … WHERE id IN (<candidates>) AND status='active'` —
+  the re-check at write time is the lock (PR #219, `auto_abandon_stale_goals`).
 
 ### Notifications — checklist for ANY new outbound message
 Every branch in `trigger_reminders` (and any future sender) must have all four:

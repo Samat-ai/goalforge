@@ -25,8 +25,8 @@ by decision. Do not delete in dead-code sweeps.
 
 | Feature | Where code lives | Keep/cut recommendation |
 |---|---|---|
-| ~~Focus mode overlay ("one thing" single-task mode)~~ | `src/components/FocusOverlay.tsx`, `src/lib/pickOneThing.ts` — **re-slotted 2026-07-07**: `◎ Focus` button in Dashboard list head (renders only when `pickOneThing` finds an actionable task) | Keep (active again) |
-| ~~Energy modal / low-energy task resize~~ | `src/components/EnergyModal.tsx` + `useEnergyMutations.ts` — **re-slotted 2026-07-07**: `⚡ Low energy` list-head button + sessionStorage deep-link read on Dashboard; restore chips on resized task rows in `GoalCard` | Keep (active again) |
+| ~~Focus mode overlay ("one thing" single-task mode)~~ | `src/components/FocusOverlay.tsx`, `src/lib/pickOneThing.ts` — **re-slotted 2026-07-07**: `◎ Focus` button in Dashboard list head (renders only when `pickOneThing` finds an actionable task); **organic trigger since PR #220**: `SollySuggestion` banner (conditions in `src/lib/suggestions.ts`) | Keep (active again) |
+| ~~Energy modal / low-energy task resize~~ | `src/components/EnergyModal.tsx` + `useEnergyMutations.ts` — **re-slotted 2026-07-07**: `⚡ Low energy` list-head button + sessionStorage deep-link read on Dashboard; restore chips on resized task rows in `GoalCard`; **organic trigger since PR #220**: `SollySuggestion` banner (conditions in `src/lib/suggestions.ts`) | Keep (active again) |
 | ~~Trophy Room / collection modal~~ | `src/components/CollectionModal.tsx` — **re-slotted 2026-07-07**: opened via `TrophyStrip` on Logs page; registry counts shared via `src/lib/collectibles.ts` | Keep (active again) |
 | Reward modal (jackpot drop) + badge confetti | `src/components/RewardModal.tsx`, `src/components/ConfettiContext.tsx` — **live**, wired in `DashboardPage.tsx` | Keep (active) |
 | Equipped reward themes (body class from purchased theme) | `src/hooks/useRewards.ts` (`useRewardsQuery` used by DashboardPage for jackpot equip; theme body-class effect not applied by `AppShell`) | **Cut theme effect** — conflicts with the locked prototype look; keep the hook (jackpot equip uses it) |

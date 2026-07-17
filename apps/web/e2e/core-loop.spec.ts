@@ -62,7 +62,13 @@ function parseBalance(text: string): number {
 // These tests exercise the core loop, not the first-run wizard.
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
-    try { localStorage.setItem('goalforge_onboarding_complete', 'true') } catch { /* ignore */ }
+    try {
+      localStorage.setItem('goalforge_onboarding_complete', 'true')
+      // Solly's suggestion banner is clock-gated (energy fires >= 14:00 local) —
+      // snooze both types so post-2pm CI runs don't shift the list-head layout.
+      localStorage.setItem('gf_suggest_snooze_energy', String(Date.now()))
+      localStorage.setItem('gf_suggest_snooze_focus', String(Date.now()))
+    } catch { /* ignore */ }
   })
 })
 
@@ -438,4 +444,105 @@ test('offline banner appears when network is lost and disappears when restored',
 
   // Banner should disappear (component returns null when online).
   await expect(page.getByRole('status')).not.toBeAttached()
+})
+
+test('focus and energy overlays center in the viewport on a long dashboard (portal regression)', async ({ page }) => {
+  // PageSwitcher's .gf-xfade wrapper sets will-change: transform, which makes it
+  // the containing block for position: fixed descendants. Un-portaled overlays
+  // therefore pinned to the page box — on a tall dashboard they rendered around
+  // the wrapper's midpoint, far outside the viewport. Both overlays must portal
+  // to document.body (docs/CONVENTIONS.md pattern) so they center in the viewport.
+  const userId = 'user_e2e'
+  const today = new Intl.DateTimeFormat('en-CA').format(new Date())
+  const createdAt = new Date().toISOString()
+
+  const manyTasks: TaskState[] = Array.from({ length: 16 }, (_, i) => ({
+    id: `long-task-${i + 1}`,
+    goal_id: 'goal-long',
+    milestone_id: 'mile-long',
+    description: `Long-list task ${i + 1}`,
+    tip: 'Keep the page tall.',
+    assigned_date: today,
+    position: i,
+    is_completed: false,
+    completed_at: null,
+    is_rescue_task: false,
+    original_description: null,
+    original_tip: null,
+  }))
+
+  const goal: GoalState = {
+    id: 'goal-long',
+    user_id: userId,
+    raw_input: 'portal regression goal',
+    smart_title: 'Portal Regression Goal',
+    smart_description: 'Overlay positioning check.',
+    goal_type: 'professional',
+    target_date: '2026-12-31',
+    milestones: [
+      {
+        id: 'mile-long',
+        goal_id: 'goal-long',
+        title: 'Sprint 1',
+        position: 0,
+        is_final: false,
+        sprint_theme: 'Foundation',
+        sprint_status: 'active',
+        is_completed: false,
+        completed_at: null,
+        created_at: createdAt,
+      },
+    ],
+    milestones_completed: 0,
+    milestones_total: 1,
+    status: 'active',
+    progress: 0,
+    created_at: createdAt,
+    daily_tasks: manyTasks,
+    completed_days: [],
+    rescue_mode: false,
+  }
+
+  await page.route('**/*', async route => {
+    const request = route.request()
+    const url = new URL(request.url())
+    if (url.port !== '8000') {
+      await route.continue()
+      return
+    }
+    const { pathname, searchParams } = url
+    if (request.method() === 'GET' && pathname === `/users/${userId}/goals`) {
+      await route.fulfill({
+        status: 200,
+        headers: jsonHeaders(),
+        body: JSON.stringify({
+          items: [goal],
+          total: 1,
+          limit: Number(searchParams.get('limit') ?? '20'),
+          offset: 0,
+        }),
+      })
+      return
+    }
+    if (request.method() === 'GET' && pathname === `/users/${userId}/profile`) {
+      await route.fulfill({ status: 200, headers: jsonHeaders(), body: JSON.stringify({ star_points: 0 }) })
+      return
+    }
+    // badges / rewards / anything else the dashboard touches
+    await route.fulfill({ status: 200, headers: jsonHeaders(), body: JSON.stringify([]) })
+  })
+
+  await page.goto('/dashboard')
+  await expect(page.getByText('Portal Regression Goal')).toBeVisible()
+  // First active card auto-expands (defaultOpen) — 16 tasks make the page several
+  // viewports tall. Scroll to the bottom before opening each overlay.
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+
+  await page.getByRole('button', { name: 'Focus', exact: true }).click()
+  await expect(page.locator('.gf-fov')).toBeInViewport({ ratio: 0.9 })
+  await page.getByRole('button', { name: 'Exit focus mode' }).click()
+
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+  await page.getByRole('button', { name: 'Low energy', exact: true }).click()
+  await expect(page.locator('.gf-energy')).toBeInViewport({ ratio: 0.9 })
 })
