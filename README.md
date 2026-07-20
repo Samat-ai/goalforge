@@ -104,7 +104,10 @@ npm run dev                 # → http://localhost:5173
 
 ## Architecture
 
-See [`CLAUDE.md`](.claude/CLAUDE.md) for detailed architecture docs, data model, API endpoints, and coding conventions.
+See [`docs/goalforge-professionalization-plan.md`](docs/goalforge-professionalization-plan.md) for:
+- a product roadmap focused on premium user value and retention
+- engineering optimization priorities for modularity, reuse, and maintainability
+- a phased execution plan (30/60/90 days) with success metrics
 
 ---
 
