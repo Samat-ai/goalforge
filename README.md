@@ -1,12 +1,12 @@
 <div align="center">
 
-<img src="https://github.com/user-attachments/assets/5f573d11-6996-4086-82cf-f82652287691" alt="GoalForge — Solly the star mascot" width="140" />
+<img src="https://github.com/user-attachments/assets/5f573d11-6996-4086-82cf-f82652287691" alt="GoalForge - Solly the star mascot" width="140" />
 
 # GoalForge
 
 ### Turn a sentence into a plan. Forge your goals into stars. ✦
 
-**Describe any goal in plain language — GoalForge's AI forges it into a SMART goal with milestones and a 7-day task plan. Finish tasks, earn star points, and watch your star evolve from a Speck into a Celestial.**
+**Describe any goal in plain language - GoalForge's AI forges it into a SMART goal with milestones and a 7-day task plan. Finish tasks, earn star points, and watch your star evolve from a Speck into a Celestial.**
 
 <br/>
 
@@ -32,7 +32,7 @@
 
 <div align="center">
   <img width="900" alt="GoalForge dashboard" src="https://github.com/user-attachments/assets/b6dae8e7-4fdf-4133-a2cb-a4fac067f206" />
-  <p><sub><i>The dashboard — your active goals, today's tasks, and your evolving star.</i></sub></p>
+  <p><sub><i>The dashboard - your active goals, today's tasks, and your evolving star.</i></sub></p>
 </div>
 
 <br/>
@@ -67,7 +67,7 @@ flowchart LR
 | 🛟 **Rescue mode** | Falling behind surfaces an "Easy Mode" re-plan instead of letting a goal go stale. |
 | 💬 **Coach chat** | Solly, a guided AI coach, turns a short conversation into a fully forged goal. |
 | 🏅 **Star Log & Analytics** | Collectible rewards, streaks, and progress trends over time. |
-| 🔔 **Web push** | Daily digest, streak-saver, and inactivity nudges — installable as a PWA. |
+| 🔔 **Web push** | Daily digest, streak-saver, and inactivity nudges - installable as a PWA. |
 
 <br/>
 
@@ -100,7 +100,7 @@ docker compose up --build
 > [!NOTE]
 > Point `DATABASE_URL` at the compose db service:
 > `postgresql+asyncpg://postgres:postgres@db:5432/goalforge`.
-> Postgres isn't published to the host by default — for direct `psql` access, add a
+> Postgres isn't published to the host by default - for direct `psql` access, add a
 > `docker-compose.override.yml` with `ports: ["5432:5432"]` on the `db` service.
 
 <br/>
@@ -108,7 +108,7 @@ docker compose up --build
 ## 🛠️ Manual setup (without Docker)
 
 <details>
-<summary><b>Backend</b> — FastAPI + PostgreSQL</summary>
+<summary><b>Backend</b> - FastAPI + PostgreSQL</summary>
 
 ```bash
 cd apps/api
@@ -121,7 +121,7 @@ uvicorn main:app --reload --port 8000
 </details>
 
 <details>
-<summary><b>Frontend</b> — React + Vite</summary>
+<summary><b>Frontend</b> - React + Vite</summary>
 
 ```bash
 cd apps/web
@@ -138,7 +138,7 @@ npm run dev                 # → http://localhost:5173
 
 | Doc | What's inside |
 |---|---|
-| [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) | Coding conventions & file-structure rules — each backed by the incident that motivated it. |
+| [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) | Coding conventions & file-structure rules - each backed by the incident that motivated it. |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Production topology (Heroku + Cloudflare Pages) and deploy runbook. |
 
 <br/>
@@ -147,16 +147,16 @@ npm run dev                 # → http://localhost:5173
 
 1. Fork the repo and branch off `main` as `feature/<short-description>`.
 2. Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `chore:`).
-3. Open a PR — CI and an automated Claude code review run on every pull request.
+3. Open a PR - CI and an automated Claude code review run on every pull request.
 
 <br/>
 
 ## 📄 License
 
-MIT © Kerimkulov Samat — see [`LICENSE`](LICENSE).
+MIT © Kerimkulov Samat - see [`LICENSE`](LICENSE).
 
 <br/>
 
 <div align="center">
-  <sub>Built with ✦ by <a href="https://github.com/Samat-ai">Samat</a> — if GoalForge sparks something, drop a ⭐</sub>
+  <sub>Built with ✦ by <a href="https://github.com/Samat-ai">Samat</a> - if GoalForge sparks something, drop a ⭐</sub>
 </div>
