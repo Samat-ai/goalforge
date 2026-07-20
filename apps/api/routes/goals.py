@@ -100,6 +100,10 @@ async def create_goal(
     await db.flush()
 
     # Phase 2: enqueue AI generation as a background task
+    # TODO: Replace BackgroundTasks with Celery when Redis is available:
+    # from apps.api.tasks.goal_tasks import generate_smart_goal_task
+    # generate_smart_goal_task.delay(str(goal.id), payload.raw_input)
+    # For now, keep BackgroundTasks as fallback:
     background_tasks.add_task(
         _generate_goal_async,
         goal_id=goal.id,
@@ -247,6 +251,10 @@ async def trigger_rescue_sprint(
     active_milestone.generation_started_at = datetime.now(timezone.utc)
     await db.commit()  # Must commit before background task — it opens its own session
 
+    # TODO: Replace BackgroundTasks with Celery when Redis is available:
+    # from apps.api.tasks.goal_tasks import execute_rescue_sprint_task
+    # execute_rescue_sprint_task.delay(str(goal_id), current_user_id)
+    # For now, keep BackgroundTasks as fallback:
     background_tasks.add_task(
         _execute_rescue_sprint,
         goal_id=goal_id,

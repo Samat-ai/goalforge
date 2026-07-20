@@ -40,5 +40,37 @@ services:
     depends_on:
       - api
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  celery_worker:
+    build:
+      context: ./apps/api
+    command: celery -A celery_app worker --loglevel=info -Q default,ai_generation,notifications -c 4
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  celery_beat:
+    build:
+      context: ./apps/api
+    command: celery -A celery_app beat --loglevel=info --scheduler celery.beat:PersistentScheduler
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    restart: unless-stopped
+
 volumes:
   pgdata:
+  redis_data:

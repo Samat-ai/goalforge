@@ -17,3 +17,6 @@ tzdata>=2024.1
 pywebpush>=2.0.0
 sentry-sdk[fastapi]>=2.20.0
 ruff>=0.9
+celery[redis]==5.4.0
+redis==5.2.0
+kombu==5.4.0
