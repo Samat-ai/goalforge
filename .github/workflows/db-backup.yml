@@ -79,11 +79,30 @@ jobs:
           # 4 hours. The bucket LISTING is fresh — assert today's object
           # exists with the exact byte size we uploaded (dump content was
           # already marker-verified before upload).
-          SIZE_REMOTE=$(curl -fsS \
+          KEY="goalforge-${STAMP}.sql.gz"
+          RESPONSE=$(curl -fsS \
             "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/goalforge-backups/objects" \
-            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
-            | jq -r --arg k "goalforge-${STAMP}.sql.gz" '.result[] | select(.key == $k) | .size')
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
+          SIZE_REMOTE=$(printf '%s' "$RESPONSE" | jq -r --arg k "$KEY" '
+            if (.result | type) == "array" then
+              .result[]? | select(.key == $k) | .size
+            elif (.result | type) == "object" then
+              ((.result.objects // .result.items // [])[]? | select(.key == $k) | .size)
+            else
+              empty
+            end
+          ' | head -n1)
+          if [ -z "${SIZE_REMOTE:-}" ] || [ "$SIZE_REMOTE" = "null" ]; then
+            echo "::error::R2 object '${KEY}' not found in list response (or size missing)."
+            printf '%s' "$RESPONSE" | jq -c '{
+              success,
+              errors,
+              messages,
+              result_type: (.result | type),
+              result_keys: (if (.result | type) == "object" then (.result | keys) else [] end)
+            }' || true
+            exit 1
+          fi
           echo "local=${SIZE_LOCAL} remote=${SIZE_REMOTE}"
-          test -n "$SIZE_REMOTE"
           test "$SIZE_LOCAL" = "$SIZE_REMOTE"
-          echo "backup goalforge-${STAMP}.sql.gz verified in R2 (${SIZE_REMOTE} bytes)"
+          echo "backup ${KEY} verified in R2 (${SIZE_REMOTE} bytes)"
