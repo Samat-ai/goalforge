@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import select
 
+from collectibles import BY_TYPE
 from models import DailyTask, Goal, Reward, User
 from services import reward_service
 from tests.conftest import TEST_USER_ID
@@ -139,10 +140,12 @@ async def test_pick_collectible_returns_none_for_standard(db_session):
     assert result is None
 
 
-async def test_pick_collectible_returns_none_for_bonus(db_session):
+async def test_pick_collectible_bonus_returns_title(db_session):
     user, goal = await _make_user_goal(db_session)
     result = await reward_service.pick_collectible("bonus", TEST_USER_ID, db_session)
-    assert result is None
+    assert result is not None
+    assert result["reward_type"] == "title"
+    assert result["key"] in [c.key for c in BY_TYPE["title"]]
 
 
 async def test_pick_collectible_crit_returns_lore(db_session):
@@ -150,7 +153,7 @@ async def test_pick_collectible_crit_returns_lore(db_session):
     result = await reward_service.pick_collectible("crit", TEST_USER_ID, db_session)
     assert result is not None
     assert result["reward_type"] == "lore"
-    assert result["key"] in [item["key"] for item in reward_service.COLLECTIBLE_REGISTRY["lore"]]
+    assert result["key"] in [c.key for c in BY_TYPE["lore"]]
 
 
 async def test_pick_collectible_jackpot_returns_theme_or_title(db_session):
@@ -163,12 +166,12 @@ async def test_pick_collectible_jackpot_returns_theme_or_title(db_session):
 async def test_pick_collectible_excludes_owned(db_session):
     user, goal = await _make_user_goal(db_session)
     # Own all lore fragments
-    for item in reward_service.COLLECTIBLE_REGISTRY["lore"]:
+    for c in BY_TYPE["lore"]:
         db_session.add(Reward(
             id=uuid.uuid4(),
             user_id=TEST_USER_ID,
             reward_type="lore",
-            reward_key=item["key"],
+            reward_key=c.key,
         ))
     await db_session.flush()
 

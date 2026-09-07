@@ -19,103 +19,23 @@ from sqlalchemy import update as sql_update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from collectibles import BY_KEY, BY_TIER, get_eligible_collectibles
 from models import DailyTask, Goal, Reward, User
 
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Static collectible registry
-# ---------------------------------------------------------------------------
-
-COLLECTIBLE_REGISTRY: dict[str, list[dict]] = {
-    "theme": [
-        {"key": "neon_cyberpunk",  "display_name": "Neon Cyberpunk",  "body": None},
-        {"key": "matcha_green",    "display_name": "Matcha Green",    "body": None},
-        {"key": "midnight_ocean",  "display_name": "Midnight Ocean",  "body": None},
-        {"key": "sunset_ember",    "display_name": "Sunset Ember",    "body": None},
-    ],
-    "title": [
-        {"key": "the_relentless",     "display_name": "The Relentless",     "body": None},
-        {"key": "streak_survivor",    "display_name": "Streak Survivor",    "body": None},
-        {"key": "comeback_kid",       "display_name": "Comeback Kid",       "body": None},
-        {"key": "night_owl",          "display_name": "Night Owl",          "body": None},
-        {"key": "early_riser",        "display_name": "Early Riser",        "body": None},
-        {"key": "the_consistent",     "display_name": "The Consistent",     "body": None},
-        {"key": "momentum_builder",   "display_name": "Momentum Builder",   "body": None},
-        {"key": "habit_forger",       "display_name": "Habit Forger",       "body": None},
-        {"key": "deep_focus",         "display_name": "Deep Focus",         "body": None},
-        {"key": "the_persistent",     "display_name": "The Persistent",     "body": None},
-        {"key": "rising_star",        "display_name": "Rising Star",        "body": None},
-        {"key": "unstoppable",        "display_name": "Unstoppable",        "body": None},
-    ],
-    "lore": [
-        {
-            "key": "lore_speck",
-            "display_name": "The Speck Awakens",
-            "body": (
-                "In the beginning there was only potential — a single point of light no larger "
-                "than a dust mote. Yet within it stirred the first whisper of ambition. The Speck "
-                "did not know what it would become, only that it must move."
-            ),
-        },
-        {
-            "key": "lore_ember",
-            "display_name": "The Ember's Oath",
-            "body": (
-                "When the Speck first caught the heat of consistent effort, it became an Ember. "
-                "Embers are fragile, but they remember the cold. Every small action fed the glow "
-                "until darkness itself learned to step aside."
-            ),
-        },
-        {
-            "key": "lore_flare",
-            "display_name": "The Flare Ignites",
-            "body": (
-                "A Flare is born in the moment discipline becomes instinct. What once required "
-                "willpower now simply happens. The Flare does not fight the day — it illuminates it."
-            ),
-        },
-        {
-            "key": "lore_luminary",
-            "display_name": "The Luminary Rises",
-            "body": (
-                "Luminaries are visible from a distance. Not because they seek attention, but "
-                "because sustained effort radiates outward. Others begin to orbit their momentum."
-            ),
-        },
-        {
-            "key": "lore_nova",
-            "display_name": "The Nova Expands",
-            "body": (
-                "The Nova stage marks the moment a goal-seeker stops becoming and starts being. "
-                "The energy no longer comes from outside — it generates itself. A Nova does not "
-                "burn out. It expands."
-            ),
-        },
-        {
-            "key": "lore_celestial",
-            "display_name": "The Celestial Endures",
-            "body": (
-                "Celestials are those who have proven that consistency is not a phase but a nature. "
-                "They have forgotten what it feels like to quit, because quitting requires imagining "
-                "a self that is less than what they have already become."
-            ),
-        },
-    ],
-}
-
-# Fast lookup: key -> {reward_type, display_name, body, key}
-_REGISTRY_BY_KEY: dict[str, dict] = {
-    item["key"]: {"reward_type": ctype, **item}
-    for ctype, items in COLLECTIBLE_REGISTRY.items()
-    for item in items
-}
-
-
 def get_collectible_info(reward_key: str) -> dict | None:
     """Look up display_name and body for a reward_key. Returns None if not in registry."""
-    return _REGISTRY_BY_KEY.get(reward_key)
+    c = BY_KEY.get(reward_key)
+    if c is None:
+        return None
+    return {
+        "key": c.key,
+        "reward_type": c.reward_type,
+        "display_name": c.display_name,
+        "body": c.description if c.reward_type == "lore" else None,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -134,12 +54,6 @@ TIER_POINTS: dict[str, int] = {
     "bonus": 15,
     "crit": 25,
     "jackpot": 50,
-}
-
-# Which collectible types each loot tier can drop
-_TIER_COLLECTIBLE_TYPES: dict[str, list[str]] = {
-    "crit":    ["lore"],
-    "jackpot": ["theme", "title"],
 }
 
 
@@ -216,17 +130,19 @@ async def pick_collectible(tier: str, user_id: str, db: AsyncSession) -> dict | 
     Select a random uncollected collectible for the given loot tier.
     Returns None if no collectibles available (pool exhausted or wrong tier).
     """
-    collect_types = list(_TIER_COLLECTIBLE_TYPES.get(tier, []))
-    if not collect_types:
+    eligible = get_eligible_collectibles(tier)  # type: ignore[arg-type]
+    if not eligible:
         return None
 
-    random.shuffle(collect_types)
+    # Group by reward_type and shuffle the type order for fairness
+    type_groups: dict[str, list] = {}
+    for c in eligible:
+        type_groups.setdefault(c.reward_type, []).append(c)
 
-    for ctype in collect_types:
-        registry = COLLECTIBLE_REGISTRY.get(ctype, [])
-        if not registry:
-            continue
+    ctypes = list(type_groups.keys())
+    random.shuffle(ctypes)
 
+    for ctype in ctypes:
         owned_result = await db.execute(
             select(Reward.reward_key).where(
                 Reward.user_id == user_id,
@@ -235,10 +151,15 @@ async def pick_collectible(tier: str, user_id: str, db: AsyncSession) -> dict | 
         )
         owned_keys = {row[0] for row in owned_result.all()}
 
-        available = [item for item in registry if item["key"] not in owned_keys]
+        available = [c for c in type_groups[ctype] if c.key not in owned_keys]
         if available:
             chosen = random.choice(available)
-            return {"reward_type": ctype, **chosen}
+            return {
+                "reward_type": chosen.reward_type,
+                "key": chosen.key,
+                "display_name": chosen.display_name,
+                "body": chosen.description if chosen.reward_type == "lore" else None,
+            }
 
     return None
 
@@ -255,6 +176,7 @@ class RewardResult:
     collectible_key: str | None
     collectible_display_name: str | None
     collectible_body: str | None
+    collectible_rarity: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -308,6 +230,11 @@ async def award_reward(
 
     await db.flush()
 
+    rarity: str | None = None
+    if final_collectible:
+        c = BY_KEY.get(final_collectible["key"])
+        rarity = c.rarity if c else None
+
     return RewardResult(
         tier=tier,
         points_awarded=points,
@@ -315,4 +242,5 @@ async def award_reward(
         collectible_key=final_collectible["key"] if final_collectible else None,
         collectible_display_name=final_collectible["display_name"] if final_collectible else None,
         collectible_body=final_collectible.get("body") if final_collectible else None,
+        collectible_rarity=rarity,
     )
