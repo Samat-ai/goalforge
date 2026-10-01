@@ -7,7 +7,7 @@ pydantic==2.10.4
 pydantic-settings==2.7.0
 google-genai==1.0.0
 python-dotenv==1.2.2
-PyJWT==2.13.0
+PyJWT==2.15.0
 httpx==0.28.1
 cachetools==7.0.5
 slowapi>=0.1.9
